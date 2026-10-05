@@ -89,11 +89,13 @@ def list_to_text(value):
 
             # Handle investment objects
             if "company_name" in item:
+
                 cleaned_items.append(
                     clean_text(item["company_name"])
                 )
 
             else:
+
                 cleaned_items.append(
                     " ".join(
                         str(v)
@@ -102,6 +104,7 @@ def list_to_text(value):
                 )
 
         else:
+
             cleaned_items.append(
                 clean_text(item)
             )
@@ -121,6 +124,161 @@ def normalize_list_text(value):
     )
 
 
+def normalize_funding_stage(value):
+    """
+    Convert noisy funding-round values into
+    standard funding stages.
+    """
+
+    if pd.isna(value):
+        return "unknown"
+
+    text = str(value).lower().strip()
+
+    if not text:
+        return "unknown"
+
+    # Normalize separators
+    normalized = (
+        text
+        .replace("-", " ")
+        .replace("_", " ")
+        .replace("$", " ")
+    )
+
+    # Pre-seed must be checked before seed
+    if "pre seed" in normalized:
+        return "pre_seed"
+
+    # Seed
+    if (
+        "seed" in normalized
+        or "seeding" in normalized
+    ):
+        return "seed"
+
+    # Series A
+    if (
+        "series a" in normalized
+        or "round a" in normalized
+        or "a series" in normalized
+    ):
+        return "series_a"
+
+    # Series B
+    if (
+        "series b" in normalized
+        or "round b" in normalized
+        or "b series" in normalized
+    ):
+        return "series_b"
+
+    # Series C
+    if (
+        "series c" in normalized
+        or "round c" in normalized
+    ):
+        return "series_c"
+
+    # Series D
+    if (
+        "series d" in normalized
+        or "round d" in normalized
+    ):
+        return "series_d"
+
+    # Series E
+    if (
+        "series e" in normalized
+        or "round e" in normalized
+    ):
+        return "series_e"
+
+    # Series F
+    if (
+        "series f" in normalized
+        or "round f" in normalized
+    ):
+        return "series_f"
+
+    # Angel
+    if "angel" in normalized:
+        return "angel"
+
+    # Venture
+    if "venture" in normalized:
+        return "venture"
+
+    # Private
+    if "private" in normalized:
+        return "private"
+
+    return "unknown"
+
+def extract_investment_stages(value):
+    """
+    Extract and normalize investor investment stages.
+
+    Handles values such as:
+    seed
+    pre_seed
+    seedseries_a
+    pre_seed seed series_a
+    series_a series_b
+    """
+    text = clean_text(value).lower()
+
+    if not text:
+        return ""
+
+    # Normalize separators
+    text = text.replace("-", "_")
+    text = text.replace(" ", "_")
+
+    # Fix common concatenated stage values
+    text = re.sub(r"seedseries", "seed series", text)
+    text = re.sub(r"post_seedseries", "post_seed series", text)
+
+    # Convert separators back to spaces for detection
+    text = text.replace("_", " ")
+
+    stages = []
+
+    # Order matters: detect specific stages first
+    if "pre seed" in text:
+        stages.append("pre_seed")
+
+    if "post seed" in text:
+        stages.append("post_seed")
+
+    if "series a" in text:
+        stages.append("series_a")
+
+    if "series b" in text:
+        stages.append("series_b")
+
+    if "series c" in text:
+        stages.append("series_c")
+
+    if "series d" in text:
+        stages.append("series_d")
+
+    if "series e" in text:
+        stages.append("series_e")
+
+    if "series f" in text:
+        stages.append("series_f")
+
+    # Detect normal seed separately
+    if re.search(r"\bseed\b", text):
+        stages.append("seed")
+
+    # Remove duplicates while preserving order
+    stages = list(dict.fromkeys(stages))
+
+    return " ".join(stages)
+
+
 # ------------------------------------------------------------
 # Founder Preprocessing
 # ------------------------------------------------------------
@@ -134,7 +292,9 @@ def preprocess_founders():
     result = pd.DataFrame()
 
     result["id"] = df["id"].astype(str)
+
     result["name"] = df["name"].apply(clean_text)
+
     result["company"] = df["company"].apply(clean_text)
 
     result["domain"] = df["domain"].apply(
@@ -149,6 +309,13 @@ def preprocess_founders():
     result["funding_round"] = df[
         "past_funding_round"
     ].apply(normalize_text)
+
+    # NEW:
+    # Convert noisy funding rounds into
+    # standardized funding stages.
+    result["funding_stage"] = df[
+        "past_funding_round"
+    ].apply(normalize_funding_stage)
 
     # Convert funding amount into numeric value
     result["funding_amount"] = (
@@ -223,7 +390,7 @@ def preprocess_investors():
 
     result["investment_stages"] = df[
         "investment_stage_pref"
-    ].apply(normalize_list_text)
+    ].apply(extract_investment_stages)
 
     result["past_investments"] = df[
         "past_investments"
