@@ -6,6 +6,7 @@ const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const recommendationRoutes = require("./routes/recommendationRoutes");
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.use("/api/auth", authRoutes);
 
 // Profile routes
 app.use("/api/profiles", profileRoutes);
+
+// Recommendation routes
+app.use("/api/recommendations", recommendationRoutes);
 
 const PORT = process.env.PORT || 5000;
 
