@@ -94,12 +94,84 @@ def load_engine(module_path):
 
 
 def run_recommendation(module_path, source_id, top_n=5):
-    """
-    Automatically find the recommendation method in the
-    selected recommendation module.
-    """
 
-    engine = load_engine(module_path)
+    if isinstance(source_id, str):
+        source_id = source_id.strip()
+
+    # Mentor dataset uses lowercase IDs such as m001.
+    # Normalize mentor IDs at the API boundary.
+    if module_path in {
+        "recommendations.mentor.mentor_to_founder",
+        "recommendations.mentor.mentor_to_investor",
+        "recommendations.mentor.mentor_to_student"
+    }:
+        source_id = source_id.lower()
+
+    module = importlib.import_module(module_path)
+
+    # --------------------------------------------------
+    # Explicit engine mapping
+    # --------------------------------------------------
+
+    engine_class_map = {
+        "recommendations.mentor.mentor_to_founder":
+            "MentorFounderEngine",
+
+        "recommendations.mentor.mentor_to_investor":
+            "MentorInvestorEngine",
+    }
+
+    if module_path in engine_class_map:
+
+        class_name = engine_class_map[module_path]
+
+        engine_class = getattr(
+            module,
+            class_name
+        )
+
+        engine = engine_class()
+
+        if module_path == \
+                "recommendations.mentor.mentor_to_founder":
+
+            result = engine.recommend_founders(
+                mentor_id=source_id,
+                top_n=top_n
+            )
+
+        elif module_path == \
+                "recommendations.mentor.mentor_to_investor":
+
+            result = engine.recommend_investors(
+                mentor_id=source_id,
+                top_n=top_n
+            )
+
+        return result, "explicit"
+
+    # --------------------------------------------------
+    # Generic handling for remaining engines
+    # --------------------------------------------------
+
+    classes = []
+
+    for _, obj in inspect.getmembers(
+        module,
+        inspect.isclass
+    ):
+
+        if obj.__module__ == module.__name__:
+            classes.append(obj)
+
+    if not classes:
+        raise RuntimeError(
+            f"No recommendation engine class found in {module_path}"
+        )
+
+    engine_class = classes[0]
+
+    engine = engine_class()
 
     methods = []
 
@@ -107,24 +179,27 @@ def run_recommendation(module_path, source_id, top_n=5):
         engine,
         predicate=callable
     ):
+
         if name.startswith("recommend_"):
-            methods.append((name, method))
+            methods.append(
+                (name, method)
+            )
 
     if not methods:
         raise RuntimeError(
             f"No recommend method found in {module_path}"
         )
 
-    # Use the first recommendation method.
     method_name, method = methods[0]
 
     signature = inspect.signature(method)
 
     kwargs = {}
 
-    for parameter_name, parameter in signature.parameters.items():
+    for parameter_name in signature.parameters:
 
         if parameter_name == "top_n":
+
             kwargs["top_n"] = top_n
 
         elif parameter_name in {
@@ -134,6 +209,7 @@ def run_recommendation(module_path, source_id, top_n=5):
             "student_id",
             "startup_id"
         }:
+
             kwargs[parameter_name] = source_id
 
     result = method(**kwargs)
