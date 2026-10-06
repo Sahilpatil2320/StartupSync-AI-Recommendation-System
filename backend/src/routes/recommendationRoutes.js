@@ -3,15 +3,18 @@ const express = require("express");
 const protect = require("../middleware/authMiddleware");
 
 const {
-    getFounderInvestors
+    getRecommendations
 } = require("../controllers/recommendationController");
+
 
 const router = express.Router();
 
+
 router.get(
-    "/founder/:founderId/investors",
+    "/:role/:sourceId/:target",
     protect,
-    getFounderInvestors
+    getRecommendations
 );
+
 
 module.exports = router;
