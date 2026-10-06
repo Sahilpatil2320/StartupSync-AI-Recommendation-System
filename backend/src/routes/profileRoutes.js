@@ -5,10 +5,12 @@ const {
     createFounderProfile,
     createInvestorProfile,
     createMentorProfile,
-    createStudentProfile
+    createStudentProfile,
+    getMyProfile
 } = require("../controllers/profileController");
 
 const router = express.Router();
+router.get("/me", protect, getMyProfile);
 
 router.post("/founder", protect, createFounderProfile);
 
