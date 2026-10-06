@@ -459,10 +459,67 @@ const getMyProfile = async (req, res) => {
     }
 };
 
+
+const updateMyProfile = async (req, res) => {
+    try {
+        let Model;
+
+        if (req.user.role === "founder") {
+            Model = Founder;
+        } else if (req.user.role === "investor") {
+            Model = Investor;
+        } else if (req.user.role === "mentor") {
+            Model = Mentor;
+        } else if (req.user.role === "student") {
+            Model = Student;
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid user role"
+            });
+        }
+
+        const profile = await Model.findOneAndUpdate(
+            {
+                userId: req.user.userId
+            },
+            {
+                $set: req.body
+            },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: "Profile not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            profile
+        });
+
+    } catch (error) {
+        console.error("Update profile error:", error.message);
+
+        res.status(500).json({
+            success: false,
+            message: "Server error while updating profile"
+        });
+    }
+};
+
 module.exports = {
     createFounderProfile,
     createInvestorProfile,
     createMentorProfile,
     createStudentProfile,
-    getMyProfile
+    getMyProfile,
+    updateMyProfile
 };
