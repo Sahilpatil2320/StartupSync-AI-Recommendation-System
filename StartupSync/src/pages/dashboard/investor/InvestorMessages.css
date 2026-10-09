@@ -1,0 +1,597 @@
+.investor-messages-page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* =========================
+   PAGE HEADER
+========================= */
+
+.investor-messages-header {
+  margin-bottom: 20px;
+}
+
+.investor-messages-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 11px;
+  margin-bottom: 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.investor-messages-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.investor-messages-header p {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* =========================
+   CHAT CONTAINER
+========================= */
+
+.investor-chat-container {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  height: calc(100vh - 220px);
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+/* =========================
+   CONVERSATION PANEL
+========================= */
+
+.investor-conversation-panel {
+  min-width: 0;
+  border-right: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.investor-conversation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 16px 12px;
+}
+
+.investor-conversation-header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.investor-conversation-header span {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.investor-conversation-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 10px;
+  padding: 0 11px;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.investor-conversation-search:focus-within {
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+.investor-conversation-search input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+}
+
+.investor-conversation-search button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.investor-conversation-list {
+  height: calc(100% - 106px);
+  overflow-y: auto;
+}
+
+.investor-conversation-item {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  padding: 13px 14px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.investor-conversation-item:hover {
+  background: #f8fafc;
+}
+
+.investor-conversation-selected {
+  background: #eff6ff !important;
+}
+
+.investor-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.investor-conversation-avatar,
+.investor-chat-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.investor-conversation-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.investor-online-dot {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.investor-conversation-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.investor-conversation-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.investor-conversation-name-row strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.investor-conversation-name-row > span {
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.investor-conversation-role {
+  margin-top: 2px;
+  color: #2563eb;
+  font-size: 9px;
+}
+
+.investor-conversation-message-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.investor-conversation-message-row p {
+  overflow: hidden;
+  margin: 0;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.investor-unread-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* =========================
+   CHAT PANEL
+========================= */
+
+.investor-chat-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.investor-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 68px;
+  padding: 10px 17px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.investor-chat-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.investor-chat-online {
+  position: absolute;
+  right: -1px;
+  bottom: 0;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.investor-chat-person {
+  min-width: 0;
+  flex: 1;
+}
+
+.investor-chat-person strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.investor-chat-person span {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.investor-chat-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.investor-chat-actions button,
+.investor-mobile-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.investor-chat-actions button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.investor-mobile-back {
+  display: none;
+}
+
+/* =========================
+   MESSAGES
+========================= */
+
+.investor-chat-messages {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.investor-chat-date {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.investor-chat-date span {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 9px;
+}
+
+.investor-message-row {
+  display: flex;
+}
+
+.investor-message-sent {
+  justify-content: flex-end;
+}
+
+.investor-message-received {
+  justify-content: flex-start;
+}
+
+.investor-message-bubble {
+  max-width: min(68%, 520px);
+  padding: 10px 12px 7px;
+  border-radius: 12px;
+}
+
+.investor-message-received .investor-message-bubble {
+  border-top-left-radius: 3px;
+  background: #ffffff;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.04);
+}
+
+.investor-message-sent .investor-message-bubble {
+  border-top-right-radius: 3px;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.investor-message-bubble p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.investor-message-received .investor-message-bubble p {
+  color: #334155;
+}
+
+.investor-message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 8px;
+}
+
+.investor-message-received .investor-message-meta {
+  color: #94a3b8;
+}
+
+.investor-message-sent .investor-message-meta {
+  color: #dbeafe;
+}
+
+/* =========================
+   COMPOSER
+========================= */
+
+.investor-message-composer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.investor-message-composer > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.investor-message-composer > button:hover {
+  background: #f1f5f9;
+  color: #2563eb;
+}
+
+.investor-message-composer input {
+  min-width: 0;
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  outline: none;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+}
+
+.investor-message-composer input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+.investor-send-button {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.investor-send-button:hover {
+  background: #1d4ed8 !important;
+}
+
+.investor-send-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =========================
+   EMPTY STATES
+========================= */
+
+.investor-no-conversations {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 45px 20px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.investor-no-conversations p {
+  margin: 9px 0 0;
+  font-size: 11px;
+}
+
+.investor-no-chat-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  min-width: 0;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.investor-no-chat-selected > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.investor-no-chat-selected h3 {
+  margin: 14px 0 5px;
+  color: #334155;
+  font-size: 16px;
+}
+
+.investor-no-chat-selected p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 900px) {
+  .investor-chat-container {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .investor-chat-container {
+    position: relative;
+    display: block;
+    height: calc(100vh - 205px);
+    min-height: 500px;
+  }
+
+  .investor-conversation-panel {
+    width: 100%;
+    height: 100%;
+    border-right: none;
+  }
+
+  .investor-chat-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: none;
+  }
+
+  .investor-mobile-chat-open .investor-chat-panel {
+    display: flex;
+  }
+
+  .investor-mobile-back {
+    display: flex;
+  }
+
+  .investor-chat-actions {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 500px) {
+  .investor-messages-header h2 {
+    font-size: 26px;
+  }
+
+  .investor-chat-messages {
+    padding: 14px;
+  }
+
+  .investor-message-bubble {
+    max-width: 82%;
+  }
+
+  .investor-message-composer {
+    padding: 8px;
+  }
+
+  .investor-message-composer > button {
+    width: 31px;
+    height: 31px;
+  }
+}

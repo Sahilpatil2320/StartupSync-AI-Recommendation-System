@@ -1,0 +1,61 @@
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  width: fit-content;
+
+  text-decoration: none;
+
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+
+  transition: opacity 0.2s ease;
+}
+
+.brand-logo:hover {
+  opacity: 0.9;
+}
+
+.brand-logo-image {
+  width: 42px;
+  height: 42px;
+
+  display: block;
+
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.brand-logo-text {
+  display: inline-block;
+
+  white-space: nowrap;
+
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.brand-logo-light {
+  color: #0f172a;
+}
+
+.brand-logo-dark {
+  color: #ffffff;
+}
+
+@media (max-width: 600px) {
+  .brand-logo {
+    gap: 8px;
+  }
+
+  .brand-logo-image {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-logo-text {
+    font-size: 20px;
+  }
+}

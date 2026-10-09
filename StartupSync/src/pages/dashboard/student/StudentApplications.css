@@ -1,0 +1,858 @@
+.student-applications-page {
+  width: 100%;
+}
+
+.student-applications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.student-applications-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.student-applications-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.student-applications-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.student-application-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.student-application-stats div {
+  min-width: 78px;
+  padding: 11px 13px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  text-align: center;
+}
+
+.student-application-stats strong {
+  display: block;
+  color: #0f172a;
+  font-size: 19px;
+}
+
+.student-application-stats span {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+/* Toolbar */
+
+.student-applications-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 190px 190px auto;
+  gap: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.student-applications-search,
+.student-applications-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #f1f5f9;
+}
+
+.student-applications-search svg,
+.student-applications-filter svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.student-applications-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.student-applications-search input::placeholder {
+  color: #94a3b8;
+}
+
+.student-applications-filter select {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.student-applications-clear {
+  height: 43px;
+  padding: 0 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.student-applications-clear:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+/* Heading */
+
+.student-applications-result-heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.student-applications-result-heading h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.student-applications-result-heading p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Application card */
+
+.student-applications-list {
+  display: grid;
+  gap: 16px;
+}
+
+.student-application-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.student-application-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.student-application-main {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.student-application-company-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.student-application-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-application-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.student-application-title-row h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.student-application-title-row p {
+  margin: 4px 0 0;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.student-application-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  flex-shrink: 0;
+  padding: 6px 9px;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.application-status-review {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.application-status-interview {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.application-status-accepted {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.application-status-rejected {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.student-application-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 13px;
+}
+
+.student-application-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.student-application-meta svg {
+  color: #94a3b8;
+}
+
+.student-application-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.student-application-skills span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Progress */
+
+.student-application-progress {
+  display: flex;
+  align-items: flex-start;
+  margin: 22px 5px 18px;
+  padding: 17px 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.student-application-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.student-stage-marker {
+  position: relative;
+  z-index: 2;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.student-stage-completed {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.student-application-stage > div:nth-child(2) {
+  min-width: 0;
+}
+
+.student-application-stage strong {
+  display: block;
+  color: #334155;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.student-application-stage span {
+  display: block;
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.student-stage-line {
+  position: absolute;
+  top: 12px;
+  left: 25px;
+  right: 0;
+  height: 2px;
+  background: #e2e8f0;
+}
+
+.student-stage-line-active {
+  background: #2563eb;
+}
+
+/* Bottom actions */
+
+.student-application-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  gap: 15px;
+  margin-top: auto;
+}
+
+.student-interview-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 150px);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #475569;
+  font-size: 11px;
+}
+
+.student-interview-note svg {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.student-application-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: fit-content;
+  min-width: 135px;
+  height: 38px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-application-view:hover {
+  background: #eff6ff;
+}
+
+/* Empty */
+
+.student-applications-empty {
+  padding: 55px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.student-applications-empty-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.student-applications-empty h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.student-applications-empty p {
+  margin: 7px auto 16px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.student-applications-empty button {
+  height: 38px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Modal */
+
+.student-application-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.student-application-modal {
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.2);
+}
+
+.student-application-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.student-application-modal-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.student-application-modal-icon {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.student-application-modal-title h3 {
+  margin: 8px 0 3px;
+  color: #0f172a;
+  font-size: 21px;
+}
+
+.student-application-modal-title p {
+  margin: 0;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.student-application-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.student-application-close:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.student-application-modal-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.student-application-modal-details div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+}
+
+.student-application-modal-details svg {
+  color: #2563eb;
+}
+
+.student-application-modal-section {
+  margin-top: 20px;
+}
+
+.student-application-modal-section h4 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.student-application-modal-section > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.student-application-modal-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.student-application-modal-skills span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Modal timeline */
+
+.student-modal-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.student-modal-timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-modal-timeline-marker {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.student-modal-timeline-completed {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.student-modal-timeline-item strong {
+  display: block;
+  color: #334155;
+  font-size: 11px;
+}
+
+.student-modal-timeline-item span {
+  display: block;
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+/* Interview */
+
+.student-application-interview-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 13px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.student-application-interview-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.student-application-interview-card strong {
+  color: #1e40af;
+  font-size: 12px;
+}
+
+.student-application-interview-card span {
+  color: #475569;
+  font-size: 11px;
+}
+
+/* Recruiter */
+
+.student-application-recruiter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.student-recruiter-avatar {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.student-application-recruiter div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.student-application-recruiter strong {
+  color: #334155;
+  font-size: 12px;
+}
+
+.student-application-recruiter span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+/* Modal actions */
+
+.student-application-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.student-application-close-button,
+.student-application-withdraw {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-application-close-button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+}
+
+.student-application-withdraw {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+  .student-applications-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .student-applications-search {
+    grid-column: 1 / -1;
+  }
+
+  .student-applications-clear {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 850px) {
+  .student-applications-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .student-application-stats {
+    width: 100%;
+  }
+
+  .student-application-stats div {
+    flex: 1;
+  }
+
+  .student-application-progress {
+    overflow-x: auto;
+    min-width: 600px;
+  }
+
+  .student-application-card {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .student-applications-header h2 {
+    font-size: 24px;
+  }
+
+  .student-application-stats {
+    overflow-x: auto;
+  }
+
+  .student-application-stats div {
+    min-width: 75px;
+  }
+
+  .student-applications-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .student-applications-search {
+    grid-column: auto;
+  }
+
+  .student-application-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .student-application-main {
+    align-items: flex-start;
+  }
+
+  .student-application-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .student-interview-note {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .student-application-view {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .student-application-modal-details {
+    grid-template-columns: 1fr;
+  }
+
+  .student-application-modal {
+    padding: 18px;
+  }
+
+  .student-application-modal-actions {
+    flex-direction: column;
+  }
+
+  .student-application-close-button,
+  .student-application-withdraw {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,185 @@
+.authentication-page {
+  min-height: 100vh;
+
+  padding: 45px 20px 60px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      var(--primary-light) 50%,
+      #eef2ff 100%
+    );
+}
+
+
+.authentication-container {
+  width: 100%;
+  max-width: 1050px;
+
+  margin: 0 auto;
+}
+
+.authentication-brand {
+  display: flex;
+  justify-content: center;
+
+  margin-bottom: 45px;
+}
+
+.role-selection-header {
+  text-align: center;
+
+  margin-bottom: 35px;
+}
+
+
+.authentication-icon {
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto 15px;
+
+  color: var(--primary);
+
+  background: var(--white);
+
+  border: 1px solid var(--border-color);
+
+  border-radius: 16px;
+
+  box-shadow: var(--shadow-sm);
+}
+
+
+.authentication-badge {
+  display: inline-block;
+
+  padding: 6px 13px;
+
+  margin-bottom: 15px;
+
+  color: var(--primary);
+
+  background: var(--primary-light);
+
+  border: 1px solid #dbeafe;
+
+  border-radius: 50px;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+.role-selection-header h1 {
+  margin: 0 0 12px;
+
+  color: var(--text-primary);
+
+  font-size: 38px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+
+.role-selection-header p {
+  max-width: 600px;
+
+  margin: 0 auto;
+
+  color: var(--text-secondary);
+
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.role-selection-action {
+  display: flex;
+  justify-content: center;
+
+  margin-top: 30px;
+}
+
+
+.login-continue-button {
+  min-width: 180px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+
+.login-continue-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+.authentication-footer-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+
+  margin-top: 25px;
+
+  color: var(--text-secondary);
+
+  font-size: 14px;
+}
+
+
+.authentication-footer-text button {
+  padding: 0;
+
+  color: var(--primary);
+
+  background: none;
+
+  border: none;
+
+  font: inherit;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.authentication-footer-text button:hover {
+  color: var(--primary-dark);
+
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+
+  .authentication-page {
+    padding: 30px 16px 45px;
+  }
+
+  .authentication-brand {
+    margin-bottom: 35px;
+  }
+
+  .role-selection-header h1 {
+    font-size: 29px;
+  }
+
+  .role-selection-header p {
+    font-size: 14px;
+  }
+
+  .authentication-footer-text {
+    flex-direction: column;
+  }
+
+}

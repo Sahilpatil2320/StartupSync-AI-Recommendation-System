@@ -1,0 +1,182 @@
+.platform-workflow {
+  padding: 100px 0;
+
+  background: #f8fafc;
+}
+
+.workflow-heading {
+  max-width: 700px;
+
+  margin: 0 auto 65px;
+
+  text-align: center;
+}
+
+.workflow-heading h2 {
+  font-size: 42px;
+
+  line-height: 1.2;
+
+  letter-spacing: -1px;
+
+  color: #0f172a;
+
+  margin-bottom: 18px;
+}
+
+.workflow-heading h2 span {
+  color: #2563eb;
+}
+
+.workflow-heading p {
+  max-width: 620px;
+
+  margin: auto;
+
+  color: #64748b;
+
+  font-size: 16px;
+
+  line-height: 1.7;
+}
+
+
+.workflow-container {
+  max-width: 1050px;
+
+  margin: auto;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 55px 35px;
+}
+
+
+.workflow-step {
+  position: relative;
+
+  padding: 28px;
+
+  background: white;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 16px;
+
+  min-height: 230px;
+
+  transition: 0.25s;
+}
+
+.workflow-step:hover {
+  transform: translateY(-5px);
+
+  border-color: #bfdbfe;
+
+  box-shadow:
+    0 15px 35px rgba(15, 23, 42, 0.08);
+}
+
+.workflow-number {
+  position: absolute;
+
+  top: 18px;
+  right: 20px;
+
+  font-size: 13px;
+
+  font-weight: 800;
+
+  color: #cbd5e1;
+}
+
+.workflow-icon {
+  width: 50px;
+  height: 50px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 22px;
+
+  border-radius: 12px;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+}
+
+.workflow-content h3 {
+  font-size: 18px;
+
+  color: #0f172a;
+
+  margin-bottom: 10px;
+}
+
+.workflow-content p {
+  color: #64748b;
+
+  font-size: 14px;
+
+  line-height: 1.65;
+}
+
+.workflow-connector {
+  position: absolute;
+
+  width: 35px;
+
+  height: 2px;
+
+  right: -35px;
+
+  top: 52px;
+
+  background: #dbeafe;
+}
+
+@media (max-width: 950px) {
+
+  .workflow-container {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .workflow-connector {
+    display: none;
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .platform-workflow {
+    padding: 70px 0;
+  }
+
+  .workflow-heading {
+    margin-bottom: 40px;
+  }
+
+  .workflow-heading h2 {
+    font-size: 32px;
+  }
+
+  .workflow-container {
+    grid-template-columns: 1fr;
+
+    gap: 18px;
+  }
+
+  .workflow-step {
+    min-height: auto;
+  }
+
+}

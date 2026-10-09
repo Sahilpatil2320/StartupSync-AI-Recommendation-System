@@ -1,0 +1,492 @@
+.admin-signup-page {
+  min-height: 100vh;
+  padding: 32px 20px 50px;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(37, 99, 235, 0.08),
+      transparent 35%
+    ),
+    #f8fafc;
+}
+
+.admin-signup-container {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.admin-signup-brand {
+  margin-bottom: 24px;
+}
+
+.admin-signup-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+  padding: 30px;
+}
+
+.admin-signup-header {
+  max-width: 680px;
+  margin: 0 auto 28px;
+  text-align: center;
+}
+
+.admin-signup-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.admin-signup-badge {
+  display: inline-flex;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-signup-header h1 {
+  margin: 0 0 10px;
+  color: #0f172a;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.admin-signup-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.admin-security-note {
+  width: fit-content;
+  max-width: 100%;
+  margin: 16px auto 0;
+  padding: 9px 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-signup-form {
+  margin-top: 28px;
+}
+
+.admin-form-step {
+  animation: adminStepFade 0.25s ease;
+}
+
+@keyframes adminStepFade {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-step-heading {
+  margin-bottom: 20px;
+}
+
+.admin-step-heading h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.admin-step-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-form-grid-spaced {
+  margin-top: 20px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.admin-field {
+  min-width: 0;
+}
+
+.admin-field label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-optional {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.admin-input-wrapper {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #f1f5f9;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.admin-input-wrapper:focus-within {
+  border-color: var(--primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.admin-input-wrapper svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.admin-input-wrapper input,
+.admin-input-wrapper select {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.admin-input-wrapper input::placeholder {
+  color: #94a3b8;
+}
+
+.admin-input-wrapper select {
+  cursor: pointer;
+}
+
+.admin-input-error {
+  border-color: #ef4444 !important;
+  background: #fef2f2;
+}
+
+.admin-input-error:focus-within {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.admin-error {
+  display: block;
+  margin-top: 5px;
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.admin-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 110px;
+  resize: vertical;
+  padding: 12px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  outline: none;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.admin-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.admin-textarea:focus {
+  border-color: var(--primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.admin-textarea-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.admin-security-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.admin-security-panel svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.admin-security-panel strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.admin-security-panel p {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-checkbox-card {
+  min-height: 46px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #f1f5f9;
+  cursor: pointer;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.admin-checkbox-card:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.admin-checkbox-card input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.admin-permission-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-permission-note svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.admin-status-box {
+  min-height: 46px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  border: 1px solid #bbf7d0;
+  border-radius: 9px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-acknowledgement {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  margin-top: 4px !important;
+  padding: 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #f8fafc;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.admin-acknowledgement input {
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+
+.admin-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.admin-form-actions .btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.admin-signup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 24px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.admin-signup-footer button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-signup-footer button:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+@media (max-width: 800px) {
+  .admin-signup-page {
+    padding: 24px 16px 40px;
+  }
+
+  .admin-signup-card {
+    padding: 24px;
+  }
+
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+
+  .admin-checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-signup-page {
+    padding: 18px 12px 30px;
+  }
+
+  .admin-signup-brand {
+    margin-bottom: 18px;
+  }
+
+  .admin-signup-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .admin-signup-header {
+    margin-bottom: 22px;
+  }
+
+  .admin-signup-header h1 {
+    font-size: 24px;
+  }
+
+  .admin-signup-header p {
+    font-size: 13px;
+  }
+
+  .admin-security-note {
+    font-size: 11px;
+  }
+
+  .admin-step-heading h2 {
+    font-size: 18px;
+  }
+
+  .admin-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .admin-form-actions .btn {
+    width: 100%;
+  }
+
+  .admin-signup-footer {
+    flex-direction: column;
+    text-align: center;
+  }
+}

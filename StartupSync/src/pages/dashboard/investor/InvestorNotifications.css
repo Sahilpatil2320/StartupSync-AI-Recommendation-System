@@ -1,0 +1,464 @@
+.investor-notifications-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.investor-notifications-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.investor-notifications-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  margin-bottom: 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.investor-notifications-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.investor-notifications-header p {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.investor-mark-all-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.investor-mark-all-button:hover {
+  background: #dbeafe;
+}
+
+/* =========================
+   SUMMARY
+========================= */
+
+.investor-notification-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.investor-notification-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.investor-notification-summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.investor-notification-summary-card span {
+  display: block;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.investor-notification-summary-card strong {
+  color: #0f172a;
+  font-size: 19px;
+}
+
+/* =========================
+   MAIN PANEL
+========================= */
+
+.investor-notification-panel {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.investor-notification-filter-row {
+  padding: 14px 17px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.investor-notification-filters {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+}
+
+.investor-notification-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.investor-notification-filters button:hover {
+  color: #2563eb;
+}
+
+.investor-notification-filters button.investor-notification-filter-active {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.investor-notification-filters button span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 9px;
+}
+
+/* =========================
+   NOTIFICATION LIST
+========================= */
+
+.investor-notification-list {
+  display: grid;
+}
+
+.investor-notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 17px;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.2s ease;
+}
+
+.investor-notification-item:last-child {
+  border-bottom: none;
+}
+
+.investor-notification-item:hover {
+  background: #f8fafc;
+}
+
+.investor-notification-unread {
+  background: #f8fbff;
+}
+
+.investor-notification-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+
+.investor-notification-icon-startup {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.investor-notification-icon-investment {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.investor-notification-icon-message {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.investor-notification-icon-mentor {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.investor-notification-icon-system {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.investor-notification-content {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.investor-notification-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.investor-notification-title-row h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+}
+
+.investor-notification-unread
+  .investor-notification-title-row h3 {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.investor-unread-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.investor-notification-content p {
+  margin: 5px 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.investor-notification-time {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.investor-notification-actions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.investor-notification-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.investor-notification-actions button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* =========================
+   EMPTY STATE
+========================= */
+
+.investor-notifications-empty {
+  padding: 70px 20px;
+  text-align: center;
+}
+
+.investor-notifications-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.investor-notifications-empty h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 17px;
+}
+
+.investor-notifications-empty p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* =========================
+   MODAL
+========================= */
+
+.investor-notification-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.investor-notification-modal {
+  width: min(560px, 100%);
+  overflow: hidden;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.2);
+}
+
+.investor-notification-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.investor-notification-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 11px;
+}
+
+.investor-notification-modal-header > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  border: none;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.investor-notification-modal-body {
+  padding: 20px;
+}
+
+.investor-notification-modal-body > span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.investor-notification-modal-body h3 {
+  margin: 6px 0 9px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.investor-notification-modal-body p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.investor-notification-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 20px 20px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 800px) {
+  .investor-notifications-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .investor-mark-all-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .investor-notification-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 550px) {
+  .investor-notifications-header h2 {
+    font-size: 26px;
+  }
+
+  .investor-notification-item {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .investor-notification-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .investor-notification-actions {
+    flex-direction: column;
+  }
+
+  .investor-notification-modal-overlay {
+    padding: 12px;
+  }
+}

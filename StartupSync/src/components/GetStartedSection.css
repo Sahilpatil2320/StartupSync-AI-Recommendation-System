@@ -1,0 +1,149 @@
+.get-started-section {
+  padding: 100px 0;
+  background: linear-gradient(
+    135deg,
+    #eff6ff 0%,
+    #eef2ff 50%,
+    #f8fafc 100%
+  );
+}
+
+.get-started-content {
+  max-width: 850px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.get-started-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: white;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+
+  border-radius: 18px;
+
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.2);
+}
+
+.get-started-badge {
+  display: inline-block;
+
+  padding: 7px 15px;
+  margin-bottom: 18px;
+
+  color: #2563eb;
+  background: white;
+
+  border: 1px solid #dbeafe;
+  border-radius: 50px;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.get-started-content h2 {
+  margin-bottom: 18px;
+
+  color: #0f172a;
+
+  font-size: 42px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.get-started-content p {
+  max-width: 680px;
+  margin: 0 auto 32px;
+
+  color: #64748b;
+
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.get-started-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+
+  margin-bottom: 45px;
+}
+
+.get-started-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ecosystem-highlights {
+  display: flex;
+  justify-content: center;
+  gap: 35px;
+
+  padding-top: 30px;
+
+  border-top: 1px solid #dbe3ef;
+}
+
+.ecosystem-highlight {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  color: #475569;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.highlight-icon {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #2563eb;
+  background: white;
+
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  .get-started-section {
+    padding: 75px 0;
+  }
+
+  .get-started-content h2 {
+    font-size: 32px;
+  }
+
+  .get-started-content p {
+    font-size: 15px;
+  }
+
+  .get-started-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .get-started-actions .btn {
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+  }
+
+  .ecosystem-highlights {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+}

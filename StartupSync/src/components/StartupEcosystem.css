@@ -1,0 +1,366 @@
+.startup-ecosystem {
+  padding: 110px 0;
+
+  background: #ffffff;
+}
+
+.ecosystem-heading {
+  max-width: 720px;
+
+  margin: 0 auto 70px;
+
+  text-align: center;
+}
+
+.ecosystem-heading h2 {
+  font-size: 42px;
+
+  line-height: 1.2;
+
+  letter-spacing: -1px;
+
+  margin-bottom: 18px;
+
+  color: #0f172a;
+}
+
+.ecosystem-heading h2 span {
+  color: #2563eb;
+}
+
+.ecosystem-heading p {
+  max-width: 650px;
+
+  margin: auto;
+
+  color: #64748b;
+
+  font-size: 16px;
+
+  line-height: 1.7;
+}
+
+.ecosystem-visual {
+  position: relative;
+
+  max-width: 850px;
+
+  height: 430px;
+
+  margin: 0 auto 70px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+.ecosystem-center {
+  width: 190px;
+  height: 190px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: white;
+
+  border: 1px solid #dbeafe;
+
+  box-shadow:
+    0 20px 50px rgba(37, 99, 235, 0.12);
+
+  z-index: 3;
+}
+
+.ecosystem-logo {
+  width: 54px;
+  height: 54px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 12px;
+
+  border-radius: 15px;
+
+  background: #2563eb;
+
+  color: white;
+}
+
+.ecosystem-center strong {
+  font-size: 19px;
+
+  color: #0f172a;
+}
+
+.ecosystem-center span {
+  margin-top: 3px;
+
+  font-size: 11px;
+
+  color: #64748b;
+}
+
+.ecosystem-card {
+  position: absolute;
+
+  min-width: 145px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  padding: 12px 15px;
+
+  background: white;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 11px;
+
+  box-shadow:
+    0 10px 25px rgba(15, 23, 42, 0.07);
+
+  z-index: 4;
+
+  transition: 0.25s;
+}
+
+.ecosystem-card:hover {
+  transform: translateY(-5px);
+
+  border-color: #bfdbfe;
+
+  box-shadow:
+    0 15px 30px rgba(15, 23, 42, 0.10);
+}
+
+.ecosystem-card strong {
+  font-size: 13px;
+
+  color: #334155;
+}
+
+.ecosystem-card.entrepreneur {
+  top: 20px;
+  left: 50%;
+
+  transform: translateX(-50%);
+}
+
+.ecosystem-card.investor {
+  top: 120px;
+  left: 5%;
+}
+
+.ecosystem-card.mentor {
+  top: 120px;
+  right: 5%;
+}
+
+.ecosystem-card.student {
+  bottom: 25px;
+  left: 18%;
+}
+
+.ecosystem-card.incubator {
+  bottom: 25px;
+  right: 18%;
+}
+
+.ecosystem-icon {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+}
+
+.ecosystem-icon.blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.ecosystem-icon.green {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.ecosystem-icon.purple {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.ecosystem-icon.orange {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.ecosystem-icon.cyan {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.ecosystem-role-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(5, 1fr);
+
+  gap: 15px;
+}
+
+.ecosystem-role-card {
+  padding: 22px;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 14px;
+
+  background: #f8fafc;
+
+  transition: 0.25s;
+}
+
+.ecosystem-role-card:hover {
+  background: white;
+
+  transform: translateY(-4px);
+
+  box-shadow:
+    0 10px 25px rgba(15, 23, 42, 0.07);
+}
+
+.ecosystem-role-icon {
+  width: 43px;
+  height: 43px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 15px;
+
+  border-radius: 10px;
+}
+
+.ecosystem-role-icon.blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.ecosystem-role-icon.green {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.ecosystem-role-icon.purple {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.ecosystem-role-icon.orange {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.ecosystem-role-icon.cyan {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.ecosystem-role-card h3 {
+  font-size: 16px;
+
+  margin-bottom: 8px;
+
+  color: #0f172a;
+}
+
+.ecosystem-role-card p {
+  font-size: 12px;
+
+  line-height: 1.6;
+
+  color: #64748b;
+}
+
+@media (max-width: 950px) {
+
+  .ecosystem-role-grid {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+}
+
+
+@media (max-width: 700px) {
+
+  .ecosystem-visual {
+    height: auto;
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 15px;
+  }
+
+  .ecosystem-center {
+    grid-column: 1 / -1;
+
+    margin: 20px auto 15px;
+  }
+
+  .ecosystem-card {
+    position: static;
+
+    min-width: 0;
+
+    transform: none !important;
+  }
+
+  .ecosystem-card:hover {
+    transform: translateY(-4px) !important;
+  }
+
+  .ecosystem-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .startup-ecosystem {
+    padding: 75px 0;
+  }
+
+  .ecosystem-heading {
+    margin-bottom: 45px;
+  }
+
+  .ecosystem-heading h2 {
+    font-size: 32px;
+  }
+
+}
