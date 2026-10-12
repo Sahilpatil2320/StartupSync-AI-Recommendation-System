@@ -9,6 +9,8 @@ const studentSchema = new mongoose.Schema(
             unique: true
         },
 
+        aiDatasetId: { type: String, trim: true },
+
         // Education
         college: {
             type: String,

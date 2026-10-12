@@ -561,3 +561,58 @@
     gap: 16px;
   }
 }
+
+
+/* Fix signup input icon and placeholder alignment */
+.founder-signup-container input,
+.investor-signup-container input,
+.mentor-signup-container input,
+.student-signup-container input {
+  box-sizing: border-box;
+}
+
+/* Keep icons separate from placeholder text */
+.founder-signup-container .form-group,
+.investor-signup-container .form-group,
+.mentor-signup-container .form-group,
+.student-signup-container .form-group {
+  position: relative;
+}
+
+.founder-signup-container .form-group input,
+.investor-signup-container .form-group input,
+.mentor-signup-container .form-group input,
+.student-signup-container .form-group input {
+  padding-left: 58px;
+}
+
+
+/* Correct icon and text alignment in signup fields */
+.signup-input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.signup-input-with-icon > svg {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-shrink: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.signup-input-with-icon > input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-left: 48px !important;
+}
+
+/* Keep the icon and placeholder separate */
+.signup-input-with-icon > input::placeholder {
+  opacity: 1;
+}

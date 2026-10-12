@@ -7,10 +7,13 @@ const {
     createMentorProfile,
     createStudentProfile,
     getMyProfile,
-    updateMyProfile
+    updateMyProfile,
+    getAllInvestors
 } = require("../controllers/profileController");
 
 const router = express.Router();
+
+router.get("/investors", protect, getAllInvestors);
 router.get("/me", protect, getMyProfile);
 
 router.put("/me", protect, updateMyProfile);

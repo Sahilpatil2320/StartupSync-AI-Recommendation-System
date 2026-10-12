@@ -7,11 +7,13 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
+const connectionRoutes = require("./routes/connectionRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/connections", connectionRoutes);
 
 // Home route
 app.get("/", (req, res) => {

@@ -9,6 +9,8 @@ const investorSchema = new mongoose.Schema(
             unique: true
         },
 
+        aiDatasetId: { type: String, trim: true },
+
         // Basic Information
         firmName: {
             type: String,

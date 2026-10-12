@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import BrandLogo from "../../components/BrandLogo";
+import api from "../../services/api";
 
 import "./InvestorLogin.css";
 
@@ -61,15 +62,37 @@ function InvestorLogin() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
 
-    if (!validateForm()) {
+const handleSubmit = async (event) => {
+  event.preventDefault();
+
+  if (!validateForm()) return;
+
+  try {
+    const response = await api.post("/auth/login", {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+    });
+
+    const { token, user } = response.data;
+
+    if (user.role !== "investor") {
+      alert("This account is not registered as an Investor.");
       return;
     }
 
-    console.log("Investor login:", formData);
-  };
+    localStorage.setItem("startupsync_token", token);
+    localStorage.setItem("startupsync_user", JSON.stringify(user));
+
+    navigate("/dashboard/investor");
+  } catch (error) {
+    alert(
+      error.response?.data?.message ||
+        "Login failed. Please check your email and password."
+    );
+  }
+};
+
 
   return (
     <main className="investor-login-page">

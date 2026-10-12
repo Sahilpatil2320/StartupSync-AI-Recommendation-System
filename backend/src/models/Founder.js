@@ -9,6 +9,8 @@ const founderSchema = new mongoose.Schema(
             unique: true
         },
 
+        aiDatasetId: { type: String, trim: true },
+
         // Basic Startup Information
         startupName: {
             type: String,
