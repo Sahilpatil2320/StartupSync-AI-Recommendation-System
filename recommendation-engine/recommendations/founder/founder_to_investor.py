@@ -2,21 +2,13 @@
 
 import numpy as np
 
-
-
 from pathlib import Path
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from sklearn.metrics.pairwise import cosine_similarity
 
-
-
 import sys
-
-
-
-
 
 # ============================================================
 
@@ -24,34 +16,25 @@ import sys
 
 # ============================================================
 
-
-
 CURRENT_DIR = Path(__file__).resolve().parent
 
 BASE_DIR = CURRENT_DIR.parent.parent.parent
 
 RESULTS_DIR = BASE_DIR / "results"
 
-
-
 ENGINE_DIR = BASE_DIR / "recommendation-engine"
 
 if str(ENGINE_DIR) not in sys.path:
+
     sys.path.append(str(ENGINE_DIR))
 
 from features.industry_mapper import IndustryMapper
-
-
-
-
 
 # ============================================================
 
 # TEXT HELPERS
 
 # ============================================================
-
-
 
 def safe_text(value):
 
@@ -61,17 +44,11 @@ def safe_text(value):
 
     """
 
-
-
     if pd.isna(value):
 
         return ""
 
-
-
     return str(value).strip().lower()
-
-
 
 # ============================================================
 
@@ -79,11 +56,7 @@ def safe_text(value):
 
 # ============================================================
 
-
-
 INDUSTRY_TERMS = {
-
-
 
     "healthtech / healthcare": {
 
@@ -109,8 +82,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "fintech / finance": {
 
         "strong": [
@@ -126,8 +97,6 @@ INDUSTRY_TERMS = {
         ]
 
     },
-
-
 
     "agritech": {
 
@@ -145,8 +114,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "foodtech / food & beverage": {
 
         "strong": [
@@ -160,8 +127,6 @@ INDUSTRY_TERMS = {
         "medium": []
 
     },
-
-
 
     "e-commerce / retail": {
 
@@ -177,8 +142,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "saas / enterprise tech": {
 
         "strong": [
@@ -192,8 +155,6 @@ INDUSTRY_TERMS = {
         "medium": []
 
     },
-
-
 
     "logistics / mobility": {
 
@@ -213,8 +174,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "real estate / proptech": {
 
         "strong": [
@@ -231,8 +190,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "media / entertainment": {
 
         "strong": [
@@ -246,8 +203,6 @@ INDUSTRY_TERMS = {
         "medium": []
 
     },
-
-
 
     "cleantech / sustainability": {
 
@@ -269,8 +224,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "edtech / education": {
 
         "strong": [
@@ -282,8 +235,6 @@ INDUSTRY_TERMS = {
         "medium": []
 
     },
-
-
 
     "cybersecurity": {
 
@@ -299,8 +250,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "automotive / autotech": {
 
         "strong": [],
@@ -309,8 +258,6 @@ INDUSTRY_TERMS = {
 
     },
 
-
-
     "traveltech / hospitality": {
 
         "strong": [],
@@ -318,8 +265,6 @@ INDUSTRY_TERMS = {
         "medium": []
 
     },
-
-
 
     "technology / digital services": {
 
@@ -347,17 +292,11 @@ INDUSTRY_TERMS = {
 
 }
 
-
-
-
-
 # ============================================================
 
 # FUNDING STAGE COMPATIBILITY
 
 # ============================================================
-
-
 
 def funding_stage_score(founder_stage, investor_stages):
 
@@ -369,37 +308,25 @@ def funding_stage_score(founder_stage, investor_stages):
 
     """
 
-
-
     founder_stage = safe_text(founder_stage)
 
     investor_stages = safe_text(investor_stages)
-
-
 
     if not founder_stage or founder_stage == "unknown":
 
         return 0.0
 
-
-
     if not investor_stages:
 
         return 0.0
 
-
-
     stages = set(investor_stages.split())
-
-
 
     # Exact stage match
 
     if founder_stage in stages:
 
         return 1.0
-
-
 
     # Nearby-stage compatibility
 
@@ -425,11 +352,7 @@ def funding_stage_score(founder_stage, investor_stages):
 
     }
 
-
-
     if founder_stage in nearby_stages:
-
-
 
         if stages.intersection(
 
@@ -439,21 +362,13 @@ def funding_stage_score(founder_stage, investor_stages):
 
             return 0.5
 
-
-
     return 0.0
-
-
-
-
 
 # ============================================================
 
 # TF-IDF SIMILARITY
 
 # ============================================================
-
-
 
 def calculate_text_similarities(
 
@@ -471,15 +386,11 @@ def calculate_text_similarities(
 
     """
 
-
-
     source_texts = [
 
         safe_text(x) for x in source_texts
 
     ]
-
-
 
     target_texts = [
 
@@ -487,11 +398,7 @@ def calculate_text_similarities(
 
     ]
 
-
-
     all_texts = source_texts + target_texts
-
-
 
     if not any(
 
@@ -513,8 +420,6 @@ def calculate_text_similarities(
 
         )
 
-
-
     vectorizer = TfidfVectorizer(
 
         lowercase=True,
@@ -527,15 +432,11 @@ def calculate_text_similarities(
 
     )
 
-
-
     matrix = vectorizer.fit_transform(
 
         all_texts
 
     )
-
-
 
     source_matrix = matrix[
 
@@ -543,15 +444,11 @@ def calculate_text_similarities(
 
     ]
 
-
-
     target_matrix = matrix[
 
         len(source_texts):
 
     ]
-
-
 
     return cosine_similarity(
 
@@ -561,25 +458,15 @@ def calculate_text_similarities(
 
     )
 
-
-
-
-
 # ============================================================
 
 # RECOMMENDATION ENGINE
 
 # ============================================================
 
-
-
 class FounderInvestorEngine:
 
-
-
     def __init__(self):
-
-
 
         founder_path = (
 
@@ -589,8 +476,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         investor_path = (
 
             RESULTS_DIR /
@@ -598,8 +483,6 @@ class FounderInvestorEngine:
             "investor_features.csv"
 
         )
-
-
 
         startup_path = (
 
@@ -609,8 +492,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         if not founder_path.exists():
 
             raise FileNotFoundError(
@@ -618,8 +499,6 @@ class FounderInvestorEngine:
                 f"Missing file: {founder_path}"
 
             )
-
-
 
         if not investor_path.exists():
 
@@ -629,8 +508,6 @@ class FounderInvestorEngine:
 
             )
 
-
-
         if not startup_path.exists():
 
             raise FileNotFoundError(
@@ -639,15 +516,11 @@ class FounderInvestorEngine:
 
             )
 
-
-
         # ----------------------------------------------------
 
         # Load datasets
 
         # ----------------------------------------------------
-
-
 
         self.founders = pd.read_csv(
 
@@ -655,15 +528,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.investors = pd.read_csv(
 
             investor_path
 
         )
-
-
 
         self.startups = pd.read_csv(
 
@@ -671,15 +540,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # Convert NaN to empty strings
 
         # ----------------------------------------------------
-
-
 
         self.founders = (
 
@@ -687,15 +552,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.investors = (
 
             self.investors.fillna("")
 
         )
-
-
 
         self.startups = (
 
@@ -703,15 +564,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         print(
 
             f"Loaded {len(self.founders)} founders"
 
         )
-
-
 
         print(
 
@@ -719,15 +576,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         print(
 
             f"Loaded {len(self.startups)} startups"
 
         )
-
-
 
         # ----------------------------------------------------
 
@@ -735,15 +588,11 @@ class FounderInvestorEngine:
 
         # ----------------------------------------------------
 
-
-
         print(
 
             "\nInitializing industry mapper..."
 
         )
-
-
 
         self.industry_mapper = (
 
@@ -751,15 +600,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # Build 15 semantic industry profiles
 
         # ----------------------------------------------------
-
-
 
         print(
 
@@ -767,11 +612,7 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.build_industry_profiles()
-
-
 
         # ----------------------------------------------------
 
@@ -779,23 +620,17 @@ class FounderInvestorEngine:
 
         # ----------------------------------------------------
 
-
-
         print(
 
             "\nBuilding TF-IDF similarity matrices..."
 
         )
 
-
-
         # ----------------------------------------------------
 
         # 1. Domain / company similarity
 
         # ----------------------------------------------------
-
-
 
         founder_domain = (
 
@@ -806,8 +641,6 @@ class FounderInvestorEngine:
             + self.founders["domain_features"]
 
         )
-
-
 
         investor_domain = (
 
@@ -823,8 +656,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.domain_similarity = (
 
             calculate_text_similarities(
@@ -837,15 +668,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # 2. Investor tag similarity
 
         # ----------------------------------------------------
-
-
 
         founder_tag_signal = (
 
@@ -861,8 +688,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         investor_tag_signal = (
 
             self.investors["tag_features"]
@@ -877,8 +702,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.tag_similarity = (
 
             calculate_text_similarities(
@@ -891,15 +714,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # 3. Investment history similarity
 
         # ----------------------------------------------------
-
-
 
         founder_history_signal = (
 
@@ -927,8 +746,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         investor_history_signal = (
 
             self.investors[
@@ -938,8 +755,6 @@ class FounderInvestorEngine:
             ]
 
         )
-
-
 
         self.history_similarity = (
 
@@ -953,15 +768,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # 4. Investment thesis similarity
 
         # ----------------------------------------------------
-
-
 
         founder_thesis_signal = (
 
@@ -981,8 +792,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         investor_thesis_signal = (
 
             self.investors[
@@ -1001,8 +810,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.thesis_similarity = (
 
             calculate_text_similarities(
@@ -1015,15 +822,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # 5. Ecosystem similarity
 
         # ----------------------------------------------------
-
-
 
         founder_ecosystem = (
 
@@ -1043,8 +846,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         investor_ecosystem = (
 
             self.investors[
@@ -1063,8 +864,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.ecosystem_similarity = (
 
             calculate_text_similarities(
@@ -1077,15 +876,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         print(
 
             "Similarity matrices created."
 
         )
-
-
 
     # ========================================================
 
@@ -1093,15 +888,11 @@ class FounderInvestorEngine:
 
     # ========================================================
 
-
-
     def build_industry_profiles(self):
 
         """
 
         Build one semantic profile for each industry.
-
-
 
         Industry compatibility focuses on:
 
@@ -1111,19 +902,13 @@ class FounderInvestorEngine:
 
             - Recommendation tags
 
-
-
         Generic technical skills and roles are intentionally
 
         excluded because they are common across many industries.
 
         """
 
-
-
         industry_profiles = {}
-
-
 
         for industry, group in (
 
@@ -1131,25 +916,15 @@ class FounderInvestorEngine:
 
         ):
 
-
-
             industry = safe_text(industry)
-
-
 
             if not industry:
 
                 continue
 
-
-
             text_parts = []
 
-
-
             for _, startup in group.iterrows():
-
-
 
                 startup_name = safe_text(
 
@@ -1157,15 +932,11 @@ class FounderInvestorEngine:
 
                 )
 
-
-
                 tags = safe_text(
 
                     startup["tags"]
 
                 )
-
-
 
                 # --------------------------------------------
 
@@ -1173,21 +944,13 @@ class FounderInvestorEngine:
 
                 # --------------------------------------------
 
-
-
                 tag_tokens = []
 
-
-
                 for token in tags.replace(",", " ").split():
-
-
 
                     if token not in tag_tokens:
 
                         tag_tokens.append(token)
-
-
 
                 cleaned_tags = " ".join(
 
@@ -1195,15 +958,11 @@ class FounderInvestorEngine:
 
                 )
 
-
-
                 # --------------------------------------------
 
                 # Build industry-specific startup text
 
                 # --------------------------------------------
-
-
 
                 startup_text = (
 
@@ -1227,8 +986,6 @@ class FounderInvestorEngine:
 
                 )
 
-
-
                 if startup_text.strip():
 
                     text_parts.append(
@@ -1237,15 +994,11 @@ class FounderInvestorEngine:
 
                     )
 
-
-
             industry_profiles[
 
                 industry
 
             ] = " ".join(text_parts)
-
-
 
         self.industry_profiles = (
 
@@ -1253,15 +1006,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         self.industry_names = list(
 
             industry_profiles.keys()
 
         )
-
-
 
         self.industry_texts = [
 
@@ -1270,8 +1019,6 @@ class FounderInvestorEngine:
             for industry in self.industry_names
 
         ]
-
-
 
         print(
 
@@ -1283,11 +1030,7 @@ class FounderInvestorEngine:
 
         )
 
-
-
         for industry in self.industry_names:
-
-
 
             print(
 
@@ -1295,15 +1038,11 @@ class FounderInvestorEngine:
 
             )
 
-
-
     # ========================================================
 
     # INDUSTRY COMPATIBILITY
 
     # ========================================================
-
-
 
     def calculate_industry_scores(
 
@@ -1312,110 +1051,174 @@ class FounderInvestorEngine:
         founder_id
 
     ):
+
         """
+
         Calculate industry compatibility using the curated
+
         INDUSTRY_TERMS vocabulary instead of raw TF-IDF similarity.
+
         """
 
         industry_predictions = self.industry_mapper.predict_industries(
+
             founder_id=founder_id,
+
             top_n=5
+
         )
 
         if not industry_predictions:
+
             return np.zeros(len(self.investors)), []
 
         def normalize_profile(value):
+
             text = safe_text(value)
+
             for char in [",", "/", "-", "_", "[", "]", "\"", "'", "(", ")"]:
+
                 text = text.replace(char, " ")
+
             return " ".join(text.split())
 
         def term_matches(profile, term):
+
             profile = normalize_profile(profile)
+
             term = normalize_profile(term)
+
             if not profile or not term:
+
                 return False
+
             if " " in term:
+
                 return term in profile
+
             return term in set(profile.split())
 
         investor_profiles = []
 
         for _, investor in self.investors.iterrows():
+
             investor_profiles.append(" ".join([
+
                 safe_text(investor["primary_domain"]),
+
                 safe_text(investor["secondary_domain_features"]),
+
                 safe_text(investor["tag_features"]),
+
                 safe_text(investor["thesis_features"]),
+
                 safe_text(investor["bio_features"]),
+
                 safe_text(investor["investment_history"])
+
             ]))
 
         industry_scores = np.zeros(len(self.investors))
+
         industry_details = []
+
         total_confidence = 0.0
 
         for prediction in industry_predictions:
+
             industry = safe_text(prediction.get("industry", ""))
+
             confidence = float(prediction.get("confidence", 0.0))
 
             if industry not in INDUSTRY_TERMS:
+
                 continue
 
             total_confidence += confidence
+
             strong_terms = INDUSTRY_TERMS[industry].get("strong", [])
+
             medium_terms = INDUSTRY_TERMS[industry].get("medium", [])
 
             for investor_index, profile in enumerate(investor_profiles):
+
                 strong_matches = [
+
                     term for term in strong_terms
+
                     if term_matches(profile, term)
+
                 ]
+
                 medium_matches = [
+
                     term for term in medium_terms
+
                     if term_matches(profile, term)
+
                 ]
 
                 total_signals = len(strong_matches) + len(medium_matches)
+
                 if total_signals == 0:
+
                     continue
 
                 affinity = (
+
                     len(strong_matches) * 1.0
+
                     + len(medium_matches) * 0.5
+
                 )
 
                 specificity = 1.0 / np.sqrt(1.0 + total_signals)
+
                 compatibility = affinity * specificity
+
                 weighted_score = compatibility * confidence
 
                 industry_scores[investor_index] += weighted_score
 
                 industry_details.append({
+
                     "investor_index": investor_index,
+
                     "industry": industry,
+
                     "confidence": confidence,
+
                     "strong_matches": strong_matches,
+
                     "medium_matches": medium_matches,
+
                     "affinity": affinity,
+
                     "specificity": specificity,
+
                     "compatibility": compatibility,
+
                     "weighted_score": weighted_score
+
                 })
 
         if total_confidence > 0:
+
             industry_scores /= total_confidence
 
         max_score = np.max(industry_scores) if len(industry_scores) else 0.0
+
         if max_score > 0:
+
             industry_scores /= max_score
 
         # Return original industry predictions for the display section.
-        # They contain industry, confidence, supporting_startups,
-        # and best_similarity.
-        return industry_scores, industry_predictions
 
+        # They contain industry, confidence, supporting_startups,
+
+        # and best_similarity.
+
+        return industry_scores, industry_predictions
 
     def calculate_score(
 
@@ -1429,15 +1232,11 @@ class FounderInvestorEngine:
 
     ):
 
-
-
         founder = self.founders.iloc[
 
             founder_index
 
         ]
-
-
 
         investor = self.investors.iloc[
 
@@ -1445,15 +1244,11 @@ class FounderInvestorEngine:
 
         ]
 
-
-
         # ----------------------------------------------------
 
         # Feature scores
 
         # ----------------------------------------------------
-
-
 
         stage_score = funding_stage_score(
 
@@ -1467,8 +1262,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         industry_score = (
 
             industry_scores[
@@ -1478,8 +1271,6 @@ class FounderInvestorEngine:
             ]
 
         )
-
-
 
         domain_score = (
 
@@ -1493,8 +1284,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         tag_score = (
 
             self.tag_similarity[
@@ -1506,8 +1295,6 @@ class FounderInvestorEngine:
             ]
 
         )
-
-
 
         history_score = (
 
@@ -1521,8 +1308,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         thesis_score = (
 
             self.thesis_similarity[
@@ -1535,8 +1320,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         ecosystem_score = (
 
             self.ecosystem_similarity[
@@ -1548,8 +1331,6 @@ class FounderInvestorEngine:
             ]
 
         )
-
-
 
         active_score = 1.0 if (
 
@@ -1571,69 +1352,47 @@ class FounderInvestorEngine:
 
         ) else 0.0
 
-
-
         # ----------------------------------------------------
 
         # Weighted score
 
         # ----------------------------------------------------
 
-
-
         final_score = (
-
-
 
             # Funding stage
 
             stage_score * 0.20
 
-
-
             # Industry compatibility
 
             + industry_score * 0.20
-
-
 
             # Domain / company
 
             + domain_score * 0.20
 
-
-
             # Tags
 
             + tag_score * 0.10
-
-
 
             # Investment history
 
             + history_score * 0.10
 
-
-
             # Investment thesis
 
             + thesis_score * 0.10
 
-
-
             # Ecosystem
 
             + ecosystem_score * 0.05
-
-
 
             # Active investor
 
             + active_score * 0.05
 
         )
-
-
 
         return min(
 
@@ -1649,15 +1408,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
     # ========================================================
 
     # RECOMMEND INVESTORS
 
     # ========================================================
-
-
 
     def recommend_investors(
 
@@ -1669,8 +1424,6 @@ class FounderInvestorEngine:
 
     ):
 
-
-
         matching = self.founders[
 
             self.founders["id"].astype(str)
@@ -1679,13 +1432,9 @@ class FounderInvestorEngine:
 
         ]
 
-
-
         if matching.empty:
 
             return [], []
-
-
 
         founder_index = (
 
@@ -1693,15 +1442,11 @@ class FounderInvestorEngine:
 
         )
 
-
-
         # ----------------------------------------------------
 
         # Calculate industry compatibility
 
         # ----------------------------------------------------
-
-
 
         (
 
@@ -1715,19 +1460,13 @@ class FounderInvestorEngine:
 
         )
 
-
-
         recommendations = []
-
-
 
         for investor_index in range(
 
             len(self.investors)
 
         ):
-
-
 
             score = self.calculate_score(
 
@@ -1739,37 +1478,25 @@ class FounderInvestorEngine:
 
             )
 
-
-
             investor = self.investors.iloc[
 
                 investor_index
 
             ]
 
-
-
             recommendations.append({
-
-
 
                 "investor_id":
 
                     investor["id"],
 
-
-
                 "investor_name":
 
                     investor["name"],
 
-
-
                 "firm_name":
 
                     investor["firm_name"],
-
-
 
                 "funding_stage":
 
@@ -1778,8 +1505,6 @@ class FounderInvestorEngine:
                         "investment_stages"
 
                     ],
-
-
 
                 "industry_score":
 
@@ -1793,13 +1518,9 @@ class FounderInvestorEngine:
 
                     ),
 
-
-
                 "score":
 
                     score,
-
-
 
                 "score_percentage":
 
@@ -1812,8 +1533,6 @@ class FounderInvestorEngine:
                     )
 
             })
-
-
 
         recommendations.sort(
 
@@ -1831,8 +1550,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
         return (
 
             recommendations[:top_n],
@@ -1841,10 +1558,6 @@ class FounderInvestorEngine:
 
         )
 
-
-
-
-
 # ============================================================
 
 # SIMPLE TEST
@@ -1852,20 +1565,132 @@ class FounderInvestorEngine:
 # ============================================================
 
 
+    # ========================================================
+    # CUSTOM FOUNDER RECOMMENDATIONS
+    # ========================================================
+
+    def recommend_custom_founder(self, founder_profile, top_n=5):
+        """
+        Recommend investors for a founder profile that is not present
+        in the preprocessed founder dataset.
+
+        Uses TF-IDF text similarity plus funding-stage compatibility.
+        The match percentage is a ranking score, not a probability.
+        """
+        startup_text = " ".join([
+            safe_text(founder_profile.get("name", "")),
+            safe_text(founder_profile.get("company", "")),
+            safe_text(founder_profile.get("domain", "")),
+            safe_text(founder_profile.get("description", "")),
+            safe_text(founder_profile.get("problemStatement", "")),
+            safe_text(founder_profile.get("solution", "")),
+        ]).strip()
+
+        if not startup_text or self.investors.empty:
+            return []
+
+        investor_columns = [
+            "primary_domain",
+            "secondary_domain_features",
+            "tag_features",
+            "thesis_features",
+            "bio_features",
+            "investment_history",
+        ]
+
+        investor_texts = []
+        for _, investor in self.investors.iterrows():
+            parts = [
+                safe_text(investor.get(column, ""))
+                for column in investor_columns
+            ]
+            investor_texts.append(" ".join(parts).strip())
+
+        # Calculate TF-IDF cosine similarity for this custom startup
+        # against all investors.
+        similarities = calculate_text_similarities(
+            [startup_text],
+            investor_texts
+        )[0]
+
+        founder_stage = safe_text(
+            founder_profile.get("funding_stage", "")
+        )
+        # Map common profile labels to stages used in the dataset.
+        stage_aliases = {
+            "bootstrapped": "pre_seed",
+            "idea": "pre_seed",
+            "prototype": "pre_seed",
+            "mvp": "pre_seed",
+            "early stage": "pre_seed",
+            "early_stage": "pre_seed",
+        }
+        founder_stage = stage_aliases.get(
+            founder_stage, founder_stage
+        )
+
+        recommendations = []
+
+        for investor_index, (_, investor) in enumerate(
+            self.investors.iterrows()
+        ):
+            similarity = float(similarities[investor_index])
+
+            # Use the actual TF-IDF cosine similarity (0.0 to 1.0).
+            # Do not divide by the highest similarity: that would make
+            # the best candidate appear to have a 100% text match even
+            # when the actual similarity is very low.
+            text_score = max(0.0, min(similarity, 1.0))
+
+            stage_score = funding_stage_score(
+                founder_stage,
+                investor.get("investment_stages", "")
+            )
+
+            # Heuristic ranking score:
+            # 75% actual text similarity + 25% stage compatibility.
+            # This is not a probability of receiving funding.
+            final_score = (
+                0.75 * text_score
+                + 0.25 * stage_score
+            )
+
+            active_value = safe_text(investor.get("active", ""))
+            is_active = active_value in {"1", "true", "yes"}
+
+            recommendations.append({
+                "investor_id": str(investor.get("id", "")),
+                "investor_name": str(investor.get("name", "")),
+                "firm_name": str(investor.get("firm_name", "")),
+                "funding_stage": str(
+                    investor.get("investment_stages", "")
+                ),
+                "text_similarity_score": round(similarity, 4),
+                "stage_score": round(float(stage_score), 4),
+                "score": round(float(final_score), 4),
+                "score_percentage": round(
+                    float(final_score) * 100, 2
+                ),
+                "active": is_active,
+            })
+
+        recommendations.sort(
+            key=lambda item: (
+                -item["score"],
+                item["investor_name"]
+            )
+        )
+
+        return recommendations[:top_n]
+
 
 if __name__ == "__main__":
 
-
-
     engine = FounderInvestorEngine()
-
-
 
     # Test with first founder
 
     founder = engine.founders.iloc[0]
-
-
 
     print(
 
@@ -1875,23 +1700,17 @@ if __name__ == "__main__":
 
     )
 
-
-
     print(
 
         "FOUNDER â†’ INVESTOR RECOMMENDATION"
 
     )
 
-
-
     print(
 
         "=" * 70
 
     )
-
-
 
     print(
 
@@ -1901,8 +1720,6 @@ if __name__ == "__main__":
 
     )
 
-
-
     print(
 
         f"Company: "
@@ -1911,8 +1728,6 @@ if __name__ == "__main__":
 
     )
 
-
-
     print(
 
         f"Funding Stage: "
@@ -1920,8 +1735,6 @@ if __name__ == "__main__":
         f"{founder['funding_stage']}"
 
     )
-
-
 
     recommendations, industries = (
 
@@ -1935,15 +1748,11 @@ if __name__ == "__main__":
 
     )
 
-
-
     # --------------------------------------------------------
 
     # Predicted industries
 
     # --------------------------------------------------------
-
-
 
     print(
 
@@ -1951,11 +1760,7 @@ if __name__ == "__main__":
 
     )
 
-
-
     if not industries:
-
-
 
         print(
 
@@ -1963,11 +1768,7 @@ if __name__ == "__main__":
 
         )
 
-
-
     else:
-
-
 
         for position, result in enumerate(
 
@@ -1977,8 +1778,6 @@ if __name__ == "__main__":
 
         ):
 
-
-
             print(
 
                 f"{position}. "
@@ -1986,8 +1785,6 @@ if __name__ == "__main__":
                 f"{result['industry']}"
 
             )
-
-
 
             print(
 
@@ -1997,8 +1794,6 @@ if __name__ == "__main__":
 
             )
 
-
-
             print(
 
                 f"   Supporting startups: "
@@ -2006,8 +1801,6 @@ if __name__ == "__main__":
                 f"{result['supporting_startups']}"
 
             )
-
-
 
             print(
 
@@ -2017,11 +1810,7 @@ if __name__ == "__main__":
 
             )
 
-
-
             print()
-
-
 
     # --------------------------------------------------------
 
@@ -2029,15 +1818,11 @@ if __name__ == "__main__":
 
     # --------------------------------------------------------
 
-
-
     print(
 
         "Top 5 Investors:\n"
 
     )
-
-
 
     for position, recommendation in enumerate(
 
@@ -2047,8 +1832,6 @@ if __name__ == "__main__":
 
     ):
 
-
-
         print(
 
             f"{position}. "
@@ -2056,8 +1839,6 @@ if __name__ == "__main__":
             f"{recommendation['investor_name']}"
 
         )
-
-
 
         print(
 
@@ -2067,8 +1848,6 @@ if __name__ == "__main__":
 
         )
 
-
-
         print(
 
             f"   Stage: "
@@ -2076,8 +1855,6 @@ if __name__ == "__main__":
             f"{recommendation['funding_stage']}"
 
         )
-
-
 
         print(
 
@@ -2087,8 +1864,6 @@ if __name__ == "__main__":
 
         )
 
-
-
         print(
 
             f"   Overall Compatibility: "
@@ -2097,7 +1872,4 @@ if __name__ == "__main__":
 
         )
 
-
-
         print()
-

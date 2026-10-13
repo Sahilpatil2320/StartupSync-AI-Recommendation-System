@@ -590,6 +590,65 @@ def student_to_mentor():
     )
 
 
+@app.route("/recommend/custom-founder/investors", methods=["POST"])
+def recommend_custom_founder_investors():
+    data = request.get_json() or {}
+
+    required_fields = [
+        "startupName",
+        "domain",
+        "description",
+        "fundingStage",
+    ]
+
+    missing = [
+        field for field in required_fields
+        if not str(data.get(field, "")).strip()
+    ]
+
+    if missing:
+        return jsonify({
+            "success": False,
+            "message": "Missing required fields",
+            "missing": missing,
+        }), 400
+
+    try:
+        module = importlib.import_module(
+            MODULES["founder_investor"]
+        )
+        engine = getattr(
+            module, "FounderInvestorEngine"
+        )()
+
+        recommendations = engine.recommend_custom_founder(
+            {
+                "id": "custom-founder",
+                "name": data["startupName"],
+                "company": data["startupName"],
+                "domain": data["domain"],
+                "description": data["description"],
+                "funding_stage": data["fundingStage"],
+            },
+            top_n=5,
+        )
+
+        return jsonify(make_json_safe({
+            "success": True,
+            "direction": "founder_investor",
+            "source": "StartupSync AI Recommendation Engine",
+            "recommendations": recommendations,
+        }))
+
+    except Exception as error:
+        app.logger.exception("Custom founder recommendation failed")
+        return jsonify({
+            "success": False,
+            "message": "Failed to generate recommendations",
+            "error": str(error),
+        }), 500
+
+
 # ============================================================
 # START SERVER
 # ============================================================

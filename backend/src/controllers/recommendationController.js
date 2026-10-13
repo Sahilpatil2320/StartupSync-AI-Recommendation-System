@@ -71,29 +71,100 @@ const getRecommendations = async (req, res) => {
             });
         }
 
-        if (!profile.aiDatasetId) {
-            return res.status(409).json({
-                success: false,
-                message:
-                    "Your profile is not linked to an AI dataset record yet. Configure its AI dataset ID before requesting recommendations.",
-            });
-        }
+        const hasDatasetId = Boolean(
+            String(profile.aiDatasetId || "").trim()
+        );
 
-        const datasetId = String(profile.aiDatasetId).trim();
+        const datasetId = hasDatasetId
+            ? String(profile.aiDatasetId).trim()
+            : null;
 
-        // Do not trust a dataset ID supplied by the URL.
-        if (sourceId !== String(user._id) && sourceId !== datasetId) {
+        // Only accept the authenticated user's ID or their linked dataset ID.
+        if (
+            sourceId !== String(user._id) &&
+            sourceId !== datasetId
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "The requested recommendation source does not match your profile.",
             });
         }
 
+        // Custom recommendation path for founders without a dataset ID.
+        if (!hasDatasetId) {
+            if (role !== "founder" || target !== "investors") {
+                return res.status(409).json({
+                    success: false,
+                    message: "This profile is not linked to an AI dataset record.",
+                });
+            }
+
+            const customProfile = {
+                startupName: profile.startupName || "",
+                domain: [
+                    profile.domain || "",
+                    profile.industry || "",
+                ].filter(Boolean).join(" "),
+                description: profile.description || "",
+                fundingStage:
+                    profile.fundingStage ||
+                    profile.startupStage ||
+                    "pre_seed",
+            };
+
+            const missingFields = [
+                "startupName",
+                "domain",
+                "description",
+                "fundingStage",
+            ].filter(
+                (field) => !String(customProfile[field] || "").trim()
+            );
+
+            if (missingFields.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please complete the required startup profile fields.",
+                    missing: missingFields,
+                });
+            }
+
+            const response = await fetch(
+                `${AI_API_URL}/recommend/custom-founder/investors`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(customProfile),
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return res.status(502).json({
+                    success: false,
+                    message: "Custom AI recommendation service failed.",
+                    error: data,
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                source: "StartupSync AI Recommendation Engine",
+                data,
+            });
+        }
+
+        // Existing dataset-based recommendation flow.
         const response = await fetch(
             `${AI_API_URL}/recommend/${recommendationMap[role][target]}`,
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({
                     [`${role}_id`]: datasetId,
                 }),
