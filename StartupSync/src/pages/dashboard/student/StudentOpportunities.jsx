@@ -8,116 +8,13 @@ import {
   MapPin,
   Search,
   UsersRound,
-  X
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import "./StudentOpportunities.css";
 
-const opportunityData = [
-  {
-    id: 1,
-    title: "National Startup Hackathon",
-    organizer: "Startup India Community",
-    type: "Hackathon",
-    category: "Technology",
-    mode: "Hybrid",
-    location: "Pune, Maharashtra",
-    date: "October 18, 2026",
-    duration: "2 Days",
-    participants: "500+",
-    match: 96,
-    posted: "2 days ago",
-    description:
-      "Build innovative technology solutions for real-world problems and present your prototype to industry experts.",
-    tags: ["Innovation", "Technology", "Startups", "Coding"]
-  },
-  {
-    id: 2,
-    title: "Future Founders Workshop",
-    organizer: "Innovation Growth Network",
-    type: "Workshop",
-    category: "Entrepreneurship",
-    mode: "Online",
-    location: "Online",
-    date: "October 24, 2026",
-    duration: "1 Day",
-    participants: "250+",
-    match: 92,
-    posted: "3 days ago",
-    description:
-      "A practical workshop covering startup validation, product development, pitching and early-stage business strategy.",
-    tags: ["Startup", "Business", "Pitching", "Founders"]
-  },
-  {
-    id: 3,
-    title: "AI & Machine Learning Challenge",
-    organizer: "TechNova Labs",
-    type: "Competition",
-    category: "Artificial Intelligence",
-    mode: "Online",
-    location: "Online",
-    date: "November 5, 2026",
-    duration: "7 Days",
-    participants: "1,000+",
-    match: 89,
-    posted: "5 days ago",
-    description:
-      "Solve machine learning challenges and demonstrate practical AI skills through a competitive project.",
-    tags: ["AI", "Machine Learning", "Python", "Data Science"]
-  },
-  {
-    id: 4,
-    title: "Student Innovation Summit",
-    organizer: "National Innovation Forum",
-    type: "Event",
-    category: "Innovation",
-    mode: "On-site",
-    location: "Mumbai, Maharashtra",
-    date: "November 12, 2026",
-    duration: "2 Days",
-    participants: "800+",
-    match: 87,
-    posted: "1 week ago",
-    description:
-      "Connect with student innovators, entrepreneurs, mentors and technology professionals at a two-day innovation summit.",
-    tags: ["Innovation", "Networking", "Students", "Technology"]
-  },
-  {
-    id: 5,
-    title: "Emerging Developer Program",
-    organizer: "FutureTech Foundation",
-    type: "Program",
-    category: "Software Development",
-    mode: "Hybrid",
-    location: "Bangalore, Karnataka",
-    date: "December 1, 2026",
-    duration: "8 Weeks",
-    participants: "150+",
-    match: 94,
-    posted: "1 week ago",
-    description:
-      "An intensive development program for students interested in building production-ready software and collaborating with engineering teams.",
-    tags: ["Development", "React", "Node.js", "Career"]
-  },
-  {
-    id: 6,
-    title: "Women in Technology Scholarship",
-    organizer: "Digital Futures Foundation",
-    type: "Scholarship",
-    category: "Education",
-    mode: "Online",
-    location: "India",
-    date: "December 15, 2026",
-    duration: "Application Based",
-    participants: "300+",
-    match: 81,
-    posted: "2 weeks ago",
-    description:
-      "A scholarship opportunity supporting students pursuing technology-focused education and professional development.",
-    tags: ["Scholarship", "Education", "Technology", "Career"]
-  }
-];
+const API_BASE_URL = "http://localhost:5000/api";
 
 const categories = [
   "All Categories",
@@ -126,7 +23,7 @@ const categories = [
   "Artificial Intelligence",
   "Innovation",
   "Software Development",
-  "Education"
+  "Education",
 ];
 
 const types = [
@@ -136,57 +33,118 @@ const types = [
   "Competition",
   "Event",
   "Program",
-  "Scholarship"
+  "Scholarship",
+  "Internship",
+  "Job",
+  "Other",
 ];
 
-const modes = [
-  "All Modes",
-  "Online",
-  "Hybrid",
-  "On-site"
-];
+const modes = ["All Modes", "Online", "Hybrid", "On-site"];
+
+const formatDate = (value) => {
+  if (!value) return "Not specified";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not specified";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const getOpportunityId = (opportunity) =>
+  String(opportunity._id || opportunity.id);
 
 function StudentOpportunities() {
+  const [opportunities, setOpportunities] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] =
-    useState("All Categories");
-  const [typeFilter, setTypeFilter] =
-    useState("All Types");
-  const [modeFilter, setModeFilter] =
-    useState("All Modes");
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [typeFilter, setTypeFilter] = useState("All Types");
+  const [modeFilter, setModeFilter] = useState("All Modes");
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [actionLoading, setActionLoading] = useState({});
+  const [notice, setNotice] = useState("");
 
-  const [savedOpportunities, setSavedOpportunities] =
-    useState([]);
-  const [registeredOpportunities, setRegisteredOpportunities] =
-    useState([]);
-  const [selectedOpportunity, setSelectedOpportunity] =
-    useState(null);
+  const getAuthConfig = useCallback(() => {
+    const token = localStorage.getItem("startupsync_token");
+
+    if (!token) {
+      throw new Error("Please log in again to access opportunities.");
+    }
+
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+  }, []);
+
+  const loadOpportunities = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const config = getAuthConfig();
+      const response = await axios.get(
+        `${API_BASE_URL}/opportunities`,
+        config
+      );
+
+      if (!response.data?.success || !Array.isArray(response.data.data)) {
+        throw new Error("Unexpected response from the opportunities API.");
+      }
+
+      setOpportunities(response.data.data);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load opportunities. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthConfig]);
+
+  useEffect(() => {
+    loadOpportunities();
+  }, [loadOpportunities]);
 
   const filteredOpportunities = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
-    return opportunityData.filter((opportunity) => {
+    return opportunities.filter((opportunity) => {
+      const tags = Array.isArray(opportunity.tags) ? opportunity.tags : [];
+      const organizer =
+        typeof opportunity.organizer === "string"
+          ? opportunity.organizer
+          : opportunity.createdBy?.name || "Unknown organizer";
+
+      const category = opportunity.category || "";
+      const type = opportunity.type || "";
+      const mode = opportunity.mode || "";
+
       const matchesSearch =
         !search ||
-        opportunity.title.toLowerCase().includes(search) ||
-        opportunity.organizer.toLowerCase().includes(search) ||
-        opportunity.category.toLowerCase().includes(search) ||
-        opportunity.type.toLowerCase().includes(search) ||
-        opportunity.tags.some((tag) =>
-          tag.toLowerCase().includes(search)
-        );
+        (opportunity.title || "").toLowerCase().includes(search) ||
+        organizer.toLowerCase().includes(search) ||
+        category.toLowerCase().includes(search) ||
+        type.toLowerCase().includes(search) ||
+        tags.some((tag) => String(tag).toLowerCase().includes(search));
 
       const matchesCategory =
         categoryFilter === "All Categories" ||
-        opportunity.category === categoryFilter;
+        category === categoryFilter;
 
       const matchesType =
-        typeFilter === "All Types" ||
-        opportunity.type === typeFilter;
+        typeFilter === "All Types" || type === typeFilter;
 
       const matchesMode =
-        modeFilter === "All Modes" ||
-        opportunity.mode === modeFilter;
+        modeFilter === "All Modes" || mode === modeFilter;
 
       return (
         matchesSearch &&
@@ -196,33 +154,217 @@ function StudentOpportunities() {
       );
     });
   }, [
+    opportunities,
     searchTerm,
     categoryFilter,
     typeFilter,
-    modeFilter
+    modeFilter,
   ]);
 
-  const toggleSave = (opportunityId) => {
-    setSavedOpportunities((current) =>
-      current.includes(opportunityId)
-        ? current.filter((id) => id !== opportunityId)
-        : [...current, opportunityId]
-    );
-  };
-
-  const handleRegister = (opportunityId) => {
-    setRegisteredOpportunities((current) =>
-      current.includes(opportunityId)
-        ? current
-        : [...current, opportunityId]
-    );
-  };
+  const savedCount = opportunities.filter((item) => item.saved).length;
+  const registeredCount = opportunities.filter(
+    (item) => item.registered
+  ).length;
 
   const clearFilters = () => {
     setSearchTerm("");
     setCategoryFilter("All Categories");
     setTypeFilter("All Types");
     setModeFilter("All Modes");
+  };
+
+  const performAction = async (opportunity, action) => {
+    const id = getOpportunityId(opportunity);
+    const actionKey = `${id}-${action}`;
+
+    setActionLoading((current) => ({ ...current, [actionKey]: true }));
+    setNotice("");
+    setError("");
+
+    try {
+      const config = getAuthConfig();
+      const response = await axios.post(
+        `${API_BASE_URL}/opportunities/${encodeURIComponent(id)}/${action}`,
+        {},
+        config
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Action failed.");
+      }
+
+      if (action === "save") {
+        const saved = Boolean(response.data.saved);
+
+        setOpportunities((current) =>
+          current.map((item) =>
+            getOpportunityId(item) === id
+              ? { ...item, saved }
+              : item
+          )
+        );
+
+        setSelectedOpportunity((current) =>
+          current && getOpportunityId(current) === id
+            ? { ...current, saved }
+            : current
+        );
+      }
+
+      if (action === "register") {
+        setOpportunities((current) =>
+          current.map((item) =>
+            getOpportunityId(item) === id
+              ? { ...item, registered: true }
+              : item
+          )
+        );
+
+        setSelectedOpportunity((current) =>
+          current && getOpportunityId(current) === id
+            ? { ...current, registered: true }
+            : current
+        );
+      }
+
+      setNotice(
+        response.data.message ||
+          (action === "save"
+            ? "Saved status updated."
+            : "Registration submitted.")
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "The action could not be completed."
+      );
+    } finally {
+      setActionLoading((current) => ({
+        ...current,
+        [actionKey]: false,
+      }));
+    }
+  };
+
+  const getOrganizer = (opportunity) =>
+    opportunity.organizer ||
+    opportunity.createdBy?.name ||
+    "Unknown organizer";
+
+  const getParticipants = (opportunity) =>
+    opportunity.participants || "Not specified";
+
+  const getDuration = (opportunity) =>
+    opportunity.duration || "Not specified";
+
+  const getLocation = (opportunity) =>
+    opportunity.location || opportunity.mode || "Not specified";
+
+  const getDate = (opportunity) => formatDate(opportunity.date);
+
+  const getPosted = (opportunity) =>
+    opportunity.createdAt ? formatDate(opportunity.createdAt) : "Not specified";
+
+  const renderOpportunityCard = (opportunity) => {
+    const id = getOpportunityId(opportunity);
+    const isSaved = Boolean(opportunity.saved);
+    const isRegistered = Boolean(opportunity.registered);
+    const saving = Boolean(actionLoading[`${id}-save`]);
+    const registering = Boolean(actionLoading[`${id}-register`]);
+    const tags = Array.isArray(opportunity.tags) ? opportunity.tags : [];
+
+    return (
+      <article className="student-opportunity-card" key={id}>
+        <div className="student-opportunity-card-top">
+          <div className="student-opportunity-icon">
+            {(opportunity.title || "O").charAt(0).toUpperCase()}
+          </div>
+
+          <button
+            type="button"
+            className={`student-opportunity-save ${
+              isSaved ? "student-opportunity-save-active" : ""
+            }`}
+            onClick={() => performAction(opportunity, "save")}
+            disabled={saving}
+            aria-label={isSaved ? "Remove saved opportunity" : "Save opportunity"}
+          >
+            <Bookmark size={19} fill={isSaved ? "currentColor" : "none"} />
+          </button>
+        </div>
+
+        <div className="student-opportunity-type">
+          {opportunity.type || "Opportunity"}
+        </div>
+
+        <h4>{opportunity.title}</h4>
+
+        <p className="student-opportunity-organizer">
+          {getOrganizer(opportunity)}
+        </p>
+
+        <div className="student-opportunity-meta">
+          <span>
+            <MapPin size={15} />
+            {getLocation(opportunity)}
+          </span>
+          <span>
+            <CalendarDays size={15} />
+            {getDate(opportunity)}
+          </span>
+          <span>
+            <Clock3 size={15} />
+            {getDuration(opportunity)}
+          </span>
+          <span>
+            <UsersRound size={15} />
+            {getParticipants(opportunity)}
+          </span>
+        </div>
+
+        <div className="student-opportunity-tags">
+          {tags.map((tag, index) => (
+            <span key={`${tag}-${index}`}>{tag}</span>
+          ))}
+        </div>
+
+        <div className="student-opportunity-card-footer">
+          <span>{opportunity.mode || "Mode not specified"}</span>
+          <span>Posted {getPosted(opportunity)}</span>
+        </div>
+
+        <div className="student-opportunity-actions">
+          <button
+            type="button"
+            className="student-opportunity-view"
+            onClick={() => setSelectedOpportunity(opportunity)}
+          >
+            View Details
+          </button>
+
+          <button
+            type="button"
+            className={`student-opportunity-register ${
+              isRegistered ? "student-opportunity-registered" : ""
+            }`}
+            disabled={isRegistered || registering}
+            onClick={() => performAction(opportunity, "register")}
+          >
+            {isRegistered ? (
+              <>
+                <Check size={16} />
+                Registered
+              </>
+            ) : registering ? (
+              "Registering..."
+            ) : (
+              "Register"
+            )}
+          </button>
+        </div>
+      </article>
+    );
   };
 
   return (
@@ -235,31 +377,23 @@ function StudentOpportunities() {
           </span>
 
           <h2>Explore Opportunities</h2>
-
           <p>
-            Discover hackathons, workshops, competitions,
-            programs and other opportunities to grow your
-            career.
+            Discover hackathons, workshops, competitions, programs and other
+            opportunities to grow your career.
           </p>
         </div>
 
         <div className="student-opportunities-summary">
           <div>
-            <strong>
-              {filteredOpportunities.length}
-            </strong>
+            <strong>{filteredOpportunities.length}</strong>
             <span>Available</span>
           </div>
-
           <div>
-            <strong>{savedOpportunities.length}</strong>
+            <strong>{savedCount}</strong>
             <span>Saved</span>
           </div>
-
           <div>
-            <strong>
-              {registeredOpportunities.length}
-            </strong>
+            <strong>{registeredCount}</strong>
             <span>Registered</span>
           </div>
         </div>
@@ -268,14 +402,11 @@ function StudentOpportunities() {
       <div className="student-opportunities-search-panel">
         <div className="student-opportunities-search">
           <Search size={19} />
-
           <input
             type="text"
             placeholder="Search opportunities, organizers, skills..."
             value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(event.target.value)
-            }
+            onChange={(event) => setSearchTerm(event.target.value)}
           />
         </div>
 
@@ -287,34 +418,34 @@ function StudentOpportunities() {
         <div className="student-opportunities-filters">
           <select
             value={categoryFilter}
-            onChange={(event) =>
-              setCategoryFilter(event.target.value)
-            }
+            onChange={(event) => setCategoryFilter(event.target.value)}
           >
             {categories.map((category) => (
-              <option key={category}>{category}</option>
+              <option key={category} value={category}>
+                {category}
+              </option>
             ))}
           </select>
 
           <select
             value={typeFilter}
-            onChange={(event) =>
-              setTypeFilter(event.target.value)
-            }
+            onChange={(event) => setTypeFilter(event.target.value)}
           >
             {types.map((type) => (
-              <option key={type}>{type}</option>
+              <option key={type} value={type}>
+                {type}
+              </option>
             ))}
           </select>
 
           <select
             value={modeFilter}
-            onChange={(event) =>
-              setModeFilter(event.target.value)
-            }
+            onChange={(event) => setModeFilter(event.target.value)}
           >
             {modes.map((mode) => (
-              <option key={mode}>{mode}</option>
+              <option key={mode} value={mode}>
+                {mode}
+              </option>
             ))}
           </select>
 
@@ -328,180 +459,56 @@ function StudentOpportunities() {
         </div>
       </div>
 
+      {(error || notice) && (
+        <div
+          role="status"
+          className={error ? "student-opportunities-error" : "student-opportunities-notice"}
+        >
+          {error || notice}
+          {error && (
+            <button type="button" onClick={loadOpportunities}>
+              Retry
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="student-opportunities-results-header">
         <div>
-          <h3>Recommended Opportunities</h3>
-
-          <p>
-            Recommendations are currently represented using
-            demo frontend data.
-          </p>
+          <h3>Available Opportunities</h3>
+          <p>Opportunities published by registered StartupSync members.</p>
         </div>
-
-        <span>
-          {filteredOpportunities.length} results
-        </span>
+        <span>{filteredOpportunities.length} results</span>
       </div>
 
-      {filteredOpportunities.length > 0 ? (
+      {loading ? (
+        <div className="student-opportunities-empty">
+          <p>Loading opportunities...</p>
+        </div>
+      ) : filteredOpportunities.length > 0 ? (
         <div className="student-opportunities-grid">
-          {filteredOpportunities.map((opportunity) => {
-            const isSaved = savedOpportunities.includes(
-              opportunity.id
-            );
-
-            const isRegistered =
-              registeredOpportunities.includes(
-                opportunity.id
-              );
-
-            return (
-              <article
-                className="student-opportunity-card"
-                key={opportunity.id}
-              >
-                <div className="student-opportunity-card-top">
-                  <div className="student-opportunity-icon">
-                    {opportunity.title.charAt(0)}
-                  </div>
-
-                  <button
-                    type="button"
-                    className={`student-opportunity-save ${
-                      isSaved
-                        ? "student-opportunity-save-active"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      toggleSave(opportunity.id)
-                    }
-                    aria-label={
-                      isSaved
-                        ? "Remove saved opportunity"
-                        : "Save opportunity"
-                    }
-                  >
-                    <Bookmark
-                      size={19}
-                      fill={
-                        isSaved
-                          ? "currentColor"
-                          : "none"
-                      }
-                    />
-                  </button>
-                </div>
-
-                <div className="student-opportunity-type">
-                  {opportunity.type}
-                </div>
-
-                <div className="student-opportunity-match">
-                  {opportunity.match}% Match
-                </div>
-
-                <h4>{opportunity.title}</h4>
-
-                <p className="student-opportunity-organizer">
-                  {opportunity.organizer}
-                </p>
-
-                <div className="student-opportunity-meta">
-                  <span>
-                    <MapPin size={15} />
-                    {opportunity.location}
-                  </span>
-
-                  <span>
-                    <CalendarDays size={15} />
-                    {opportunity.date}
-                  </span>
-
-                  <span>
-                    <Clock3 size={15} />
-                    {opportunity.duration}
-                  </span>
-
-                  <span>
-                    <UsersRound size={15} />
-                    {opportunity.participants}
-                  </span>
-                </div>
-
-                <div className="student-opportunity-tags">
-                  {opportunity.tags.map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
-
-                <div className="student-opportunity-card-footer">
-                  <span>
-                    {opportunity.mode}
-                  </span>
-
-                  <span>
-                    {opportunity.posted}
-                  </span>
-                </div>
-
-                <div className="student-opportunity-actions">
-                  <button
-                    type="button"
-                    className="student-opportunity-view"
-                    onClick={() =>
-                      setSelectedOpportunity(
-                        opportunity
-                      )
-                    }
-                  >
-                    View Details
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`student-opportunity-register ${
-                      isRegistered
-                        ? "student-opportunity-registered"
-                        : ""
-                    }`}
-                    disabled={isRegistered}
-                    onClick={() =>
-                      handleRegister(opportunity.id)
-                    }
-                  >
-                    {isRegistered ? (
-                      <>
-                        <Check size={16} />
-                        Registered
-                      </>
-                    ) : (
-                      "Register"
-                    )}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+          {filteredOpportunities.map(renderOpportunityCard)}
         </div>
       ) : (
         <div className="student-opportunities-empty">
           <div className="student-opportunities-empty-icon">
             <Search size={25} />
           </div>
-
-          <h3>No opportunities found</h3>
-
+          <h3>
+            {opportunities.length === 0
+              ? "No opportunities published yet"
+              : "No opportunities found"}
+          </h3>
           <p>
-            Try another search term or clear the filters to
-            explore more opportunities.
+            {opportunities.length === 0
+              ? "Check back after a founder, investor, or mentor publishes an opportunity."
+              : "Try another search term or clear the filters to explore more opportunities."}
           </p>
-
-          <button
-            type="button"
-            onClick={clearFilters}
-          >
-            Clear Filters
-          </button>
+          {opportunities.length > 0 && (
+            <button type="button" onClick={clearFilters}>
+              Clear Filters
+            </button>
+          )}
         </div>
       )}
 
@@ -517,30 +524,16 @@ function StudentOpportunities() {
             <div className="student-opportunity-modal-header">
               <div>
                 <div className="student-opportunity-modal-labels">
-                  <span>
-                    {selectedOpportunity.type}
-                  </span>
-
-                  <span>
-                    {selectedOpportunity.match}% Match
-                  </span>
+                  <span>{selectedOpportunity.type || "Opportunity"}</span>
                 </div>
-
-                <h3>
-                  {selectedOpportunity.title}
-                </h3>
-
-                <p>
-                  {selectedOpportunity.organizer}
-                </p>
+                <h3>{selectedOpportunity.title}</h3>
+                <p>{getOrganizer(selectedOpportunity)}</p>
               </div>
 
               <button
                 type="button"
                 className="student-opportunity-close"
-                onClick={() =>
-                  setSelectedOpportunity(null)
-                }
+                onClick={() => setSelectedOpportunity(null)}
                 aria-label="Close opportunity details"
               >
                 <X size={20} />
@@ -550,128 +543,112 @@ function StudentOpportunities() {
             <div className="student-opportunity-modal-details">
               <div>
                 <MapPin size={17} />
-                <span>
-                  {selectedOpportunity.location}
-                </span>
+                <span>{getLocation(selectedOpportunity)}</span>
               </div>
-
               <div>
                 <CalendarDays size={17} />
-                <span>
-                  {selectedOpportunity.date}
-                </span>
+                <span>{getDate(selectedOpportunity)}</span>
               </div>
-
               <div>
                 <Clock3 size={17} />
-                <span>
-                  {selectedOpportunity.duration}
-                </span>
+                <span>{getDuration(selectedOpportunity)}</span>
               </div>
-
               <div>
                 <UsersRound size={17} />
-                <span>
-                  {selectedOpportunity.participants}
-                </span>
+                <span>{getParticipants(selectedOpportunity)}</span>
               </div>
             </div>
 
             <div className="student-opportunity-modal-section">
               <h4>About This Opportunity</h4>
-
               <p>
-                {selectedOpportunity.description}
+                {selectedOpportunity.description || "No description provided."}
               </p>
             </div>
 
             <div className="student-opportunity-modal-section">
-              <h4>Categories & Skills</h4>
-
+              <h4>Categories &amp; Skills</h4>
               <div className="student-opportunity-modal-tags">
-                {selectedOpportunity.tags.map((tag) => (
-                  <span key={tag}>{tag}</span>
+                {(Array.isArray(selectedOpportunity.tags)
+                  ? selectedOpportunity.tags
+                  : []
+                ).map((tag, index) => (
+                  <span key={`${tag}-${index}`}>{tag}</span>
                 ))}
               </div>
             </div>
 
             <div className="student-opportunity-modal-section">
               <h4>Opportunity Information</h4>
-
               <div className="student-opportunity-info-grid">
                 <div>
                   <span>Category</span>
-                  <strong>
-                    {selectedOpportunity.category}
-                  </strong>
+                  <strong>{selectedOpportunity.category || "Not specified"}</strong>
                 </div>
-
                 <div>
                   <span>Type</span>
-                  <strong>
-                    {selectedOpportunity.type}
-                  </strong>
+                  <strong>{selectedOpportunity.type || "Not specified"}</strong>
                 </div>
-
                 <div>
                   <span>Mode</span>
-                  <strong>
-                    {selectedOpportunity.mode}
-                  </strong>
+                  <strong>{selectedOpportunity.mode || "Not specified"}</strong>
                 </div>
-
                 <div>
                   <span>Posted</span>
-                  <strong>
-                    {selectedOpportunity.posted}
-                  </strong>
+                  <strong>{getPosted(selectedOpportunity)}</strong>
                 </div>
               </div>
             </div>
+
+            {selectedOpportunity.registrationUrl && (
+              <div className="student-opportunity-modal-section">
+                <h4>External Registration</h4>
+                <a
+                  href={selectedOpportunity.registrationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open organizer's registration page
+                </a>
+              </div>
+            )}
 
             <div className="student-opportunity-modal-actions">
               <button
                 type="button"
                 className="student-opportunity-modal-save"
-                onClick={() =>
-                  toggleSave(selectedOpportunity.id)
-                }
+                disabled={Boolean(
+                  actionLoading[`${getOpportunityId(selectedOpportunity)}-save`]
+                )}
+                onClick={() => performAction(selectedOpportunity, "save")}
               >
                 <Bookmark
                   size={17}
-                  fill={
-                    savedOpportunities.includes(
-                      selectedOpportunity.id
-                    )
-                      ? "currentColor"
-                      : "none"
-                  }
+                  fill={selectedOpportunity.saved ? "currentColor" : "none"}
                 />
-
-                {savedOpportunities.includes(
-                  selectedOpportunity.id
-                )
-                  ? "Saved"
-                  : "Save Opportunity"}
+                {selectedOpportunity.saved ? "Saved" : "Save Opportunity"}
               </button>
 
               <button
                 type="button"
                 className="student-opportunity-modal-register"
-                disabled={registeredOpportunities.includes(
-                  selectedOpportunity.id
-                )}
-                onClick={() =>
-                  handleRegister(
-                    selectedOpportunity.id
+                disabled={
+                  Boolean(selectedOpportunity.registered) ||
+                  Boolean(
+                    actionLoading[
+                      `${getOpportunityId(selectedOpportunity)}-register`
+                    ]
                   )
                 }
+                onClick={() => performAction(selectedOpportunity, "register")}
               >
-                {registeredOpportunities.includes(
-                  selectedOpportunity.id
-                )
+                {selectedOpportunity.registered
                   ? "Registration Submitted"
-                  : "Register Now"}
+                  : actionLoading[
+                        `${getOpportunityId(selectedOpportunity)}-register`
+                      ]
+                    ? "Registering..."
+                    : "Register Now"}
               </button>
             </div>
           </div>

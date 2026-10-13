@@ -1,377 +1,183 @@
 import {
-  BriefcaseBusiness,
-  CalendarDays,
-  Check,
-  ChevronRight,
-  Clock3,
-  FileText,
-  Filter,
-  MapPin,
   Search,
-  Send,
-  UserRound,
-  X
+  Filter,
+  CalendarDays,
+  Clock3,
+  MapPin,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import "./StudentApplications.css";
 
-const applicationData = [
-  {
-    id: 1,
-    company: "FinFlow Technologies",
-    role: "MERN Stack Intern",
-    type: "Internship",
-    location: "Pune, Maharashtra",
-    mode: "Hybrid",
-    appliedDate: "September 22, 2026",
-    status: "Interview",
-    lastUpdated: "2 days ago",
-    recruiter: "Priya Sharma",
-    recruiterRole: "Talent Acquisition",
-    interviewDate: "October 2, 2026",
-    interviewTime: "11:00 AM",
-    description:
-      "MERN Stack internship focused on building production-ready web applications with React, Node.js, Express.js and MongoDB.",
-    skills: ["React.js", "Node.js", "MongoDB", "JavaScript"],
-    stages: [
-      {
-        label: "Application Submitted",
-        date: "September 22, 2026",
-        completed: true
-      },
-      {
-        label: "Application Reviewed",
-        date: "September 24, 2026",
-        completed: true
-      },
-      {
-        label: "Interview Scheduled",
-        date: "October 2, 2026",
-        completed: true
-      },
-      {
-        label: "Final Decision",
-        date: "Pending",
-        completed: false
-      }
-    ]
-  },
-  {
-    id: 2,
-    company: "TechNova Solutions",
-    role: "Frontend Developer Intern",
-    type: "Internship",
-    location: "Bangalore, Karnataka",
-    mode: "Remote",
-    appliedDate: "September 18, 2026",
-    status: "Under Review",
-    lastUpdated: "4 days ago",
-    recruiter: "Rahul Mehta",
-    recruiterRole: "Recruitment Manager",
-    interviewDate: null,
-    interviewTime: null,
-    description:
-      "Frontend development opportunity involving responsive interfaces, reusable React components and collaboration with product designers.",
-    skills: ["HTML", "CSS", "JavaScript", "React.js"],
-    stages: [
-      {
-        label: "Application Submitted",
-        date: "September 18, 2026",
-        completed: true
-      },
-      {
-        label: "Application Reviewed",
-        date: "September 21, 2026",
-        completed: true
-      },
-      {
-        label: "Interview",
-        date: "Pending",
-        completed: false
-      },
-      {
-        label: "Final Decision",
-        date: "Pending",
-        completed: false
-      }
-    ]
-  },
-  {
-    id: 3,
-    company: "AgriNova Labs",
-    role: "Software Developer Intern",
-    type: "Internship",
-    location: "Nagpur, Maharashtra",
-    mode: "On-site",
-    appliedDate: "September 10, 2026",
-    status: "Accepted",
-    lastUpdated: "1 week ago",
-    recruiter: "Amit Patil",
-    recruiterRole: "Engineering Manager",
-    interviewDate: null,
-    interviewTime: null,
-    description:
-      "Software development internship working on technology products for agricultural and supply-chain use cases.",
-    skills: ["Java", "Python", "SQL", "Git"],
-    stages: [
-      {
-        label: "Application Submitted",
-        date: "September 10, 2026",
-        completed: true
-      },
-      {
-        label: "Application Reviewed",
-        date: "September 12, 2026",
-        completed: true
-      },
-      {
-        label: "Interview Completed",
-        date: "September 16, 2026",
-        completed: true
-      },
-      {
-        label: "Offer Accepted",
-        date: "September 20, 2026",
-        completed: true
-      }
-    ]
-  },
-  {
-    id: 4,
-    company: "HealthNest Innovations",
-    role: "Backend Developer Intern",
-    type: "Internship",
-    location: "Mumbai, Maharashtra",
-    mode: "Hybrid",
-    appliedDate: "September 5, 2026",
-    status: "Rejected",
-    lastUpdated: "2 weeks ago",
-    recruiter: "Neha Kulkarni",
-    recruiterRole: "HR Manager",
-    interviewDate: null,
-    interviewTime: null,
-    description:
-      "Backend development role involving REST APIs, database operations and application services.",
-    skills: ["Node.js", "Express.js", "MongoDB", "REST API"],
-    stages: [
-      {
-        label: "Application Submitted",
-        date: "September 5, 2026",
-        completed: true
-      },
-      {
-        label: "Application Reviewed",
-        date: "September 8, 2026",
-        completed: true
-      },
-      {
-        label: "Interview",
-        date: "Not Selected",
-        completed: true
-      },
-      {
-        label: "Final Decision",
-        date: "September 14, 2026",
-        completed: true
-      }
-    ]
-  },
-  {
-    id: 5,
-    company: "EduBridge",
-    role: "Full Stack Developer Intern",
-    type: "Internship",
-    location: "Remote",
-    mode: "Remote",
-    appliedDate: "August 28, 2026",
-    status: "Interview",
-    lastUpdated: "3 weeks ago",
-    recruiter: "Ananya Rao",
-    recruiterRole: "People Operations",
-    interviewDate: "October 4, 2026",
-    interviewTime: "3:30 PM",
-    description:
-      "Full-stack development opportunity focused on building features for an education technology platform.",
-    skills: ["React.js", "Node.js", "MongoDB", "REST API"],
-    stages: [
-      {
-        label: "Application Submitted",
-        date: "August 28, 2026",
-        completed: true
-      },
-      {
-        label: "Application Reviewed",
-        date: "August 31, 2026",
-        completed: true
-      },
-      {
-        label: "Interview Scheduled",
-        date: "October 4, 2026",
-        completed: true
-      },
-      {
-        label: "Final Decision",
-        date: "Pending",
-        completed: false
-      }
-    ]
-  },
-  {
-    id: 6,
-    company: "GreenGrid Systems",
-    role: "Software Engineering Intern",
-    type: "Internship",
-    location: "Hyderabad, Telangana",
-    mode: "Hybrid",
-    appliedDate: "August 20, 2026",
-    status: "Under Review",
-    lastUpdated: "1 month ago",
-    recruiter: "Vikram Joshi",
-    recruiterRole: "Engineering Recruiter",
-    interviewDate: null,
-    interviewTime: null,
-    description:
-      "Software engineering opportunity focused on technology solutions for sustainable infrastructure.",
-    skills: ["Java", "Python", "SQL", "Git"],
-    stages: [
-      {
-        label: "Application Submitted",
-        date: "August 20, 2026",
-        completed: true
-      },
-      {
-        label: "Application Reviewed",
-        date: "August 24, 2026",
-        completed: true
-      },
-      {
-        label: "Interview",
-        date: "Pending",
-        completed: false
-      },
-      {
-        label: "Final Decision",
-        date: "Pending",
-        completed: false
-      }
-    ]
-  }
-];
+const API_BASE_URL = "http://localhost:5000/api";
 
 const statusOptions = [
   "All Statuses",
-  "Under Review",
-  "Interview",
-  "Accepted",
-  "Rejected"
+  "Submitted",
+  "Withdrawn",
 ];
 
-const typeOptions = [
-  "All Types",
-  "Internship",
-  "Job",
-  "Opportunity"
-];
+function formatDate(value) {
+  if (!value) return "Not specified";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "Not specified";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 function StudentApplications() {
+  const [applications, setApplications] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState("All Statuses");
-  const [typeFilter, setTypeFilter] =
-    useState("All Types");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [withdrawingId, setWithdrawingId] = useState(null);
 
-  const [selectedApplication, setSelectedApplication] =
-    useState(null);
+  const getAuthConfig = useCallback(() => {
+    const token = localStorage.getItem("startupsync_token");
 
-  const [withdrawnApplications, setWithdrawnApplications] =
-    useState([]);
+    if (!token) {
+      throw new Error("Please log in again to view your applications.");
+    }
+
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+  }, []);
+
+  const loadApplications = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/applications/my`,
+        getAuthConfig()
+      );
+
+      if (
+        !response.data?.success ||
+        !Array.isArray(response.data.data)
+      ) {
+        throw new Error("Unexpected response from the applications API.");
+      }
+
+      setApplications(response.data.data);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load applications."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthConfig]);
+
+  useEffect(() => {
+    loadApplications();
+  }, [loadApplications]);
 
   const filteredApplications = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
-    return applicationData.filter((application) => {
-      const matchesWithdrawn =
-        !withdrawnApplications.includes(application.id);
-
+    return applications.filter((application) => {
       const matchesSearch =
         !search ||
-        application.company
-          .toLowerCase()
-          .includes(search) ||
-        application.role
-          .toLowerCase()
-          .includes(search) ||
-        application.location
-          .toLowerCase()
-          .includes(search);
+        (application.title || "").toLowerCase().includes(search) ||
+        (application.company || "").toLowerCase().includes(search) ||
+        (application.organizer || "").toLowerCase().includes(search) ||
+        (application.category || "").toLowerCase().includes(search) ||
+        (application.type || "").toLowerCase().includes(search);
 
       const matchesStatus =
         statusFilter === "All Statuses" ||
         application.status === statusFilter;
 
-      const matchesType =
-        typeFilter === "All Types" ||
-        application.type === typeFilter;
-
-      return (
-        matchesWithdrawn &&
-        matchesSearch &&
-        matchesStatus &&
-        matchesType
-      );
+      return matchesSearch && matchesStatus;
     });
-  }, [
-    searchTerm,
-    statusFilter,
-    typeFilter,
-    withdrawnApplications
-  ]);
+  }, [applications, searchTerm, statusFilter]);
 
-  const stats = {
-    total: applicationData.length,
-    review: applicationData.filter(
-      (application) =>
-        application.status === "Under Review"
-    ).length,
-    interview: applicationData.filter(
-      (application) =>
-        application.status === "Interview"
-    ).length,
-    accepted: applicationData.filter(
-      (application) =>
-        application.status === "Accepted"
-    ).length
-  };
+  const submittedCount = applications.filter(
+    (item) => item.status === "Submitted"
+  ).length;
 
-  const handleWithdraw = (applicationId) => {
-    setWithdrawnApplications((current) => [
-      ...current,
-      applicationId
-    ]);
-
-    setSelectedApplication(null);
-  };
+  const withdrawnCount = applications.filter(
+    (item) => item.status === "Withdrawn"
+  ).length;
 
   const clearFilters = () => {
     setSearchTerm("");
     setStatusFilter("All Statuses");
-    setTypeFilter("All Types");
   };
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "Accepted":
-        return "application-status-accepted";
+  const withdrawApplication = async (application) => {
+    if (!application.canWithdraw || withdrawingId) return;
 
-      case "Interview":
-        return "application-status-interview";
+    const confirmed = window.confirm(
+      `Are you sure you want to withdraw your application for "${application.title}"?`
+    );
 
-      case "Rejected":
-        return "application-status-rejected";
+    if (!confirmed) return;
 
-      default:
-        return "application-status-review";
+    setWithdrawingId(application._id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await axios.patch(
+        `${API_BASE_URL}/applications/${encodeURIComponent(
+          application._id
+        )}/withdraw`,
+        {},
+        getAuthConfig()
+      );
+
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Unable to withdraw application."
+        );
+      }
+
+      const updatedApplication = {
+        ...application,
+        status: "Withdrawn",
+        canWithdraw: false,
+      };
+
+      setApplications((current) =>
+        current.map((item) =>
+          item._id === application._id ? updatedApplication : item
+        )
+      );
+
+      setSelectedApplication((current) =>
+        current?._id === application._id ? updatedApplication : current
+      );
+
+      setNotice("Application withdrawn successfully.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to withdraw application."
+      );
+    } finally {
+      setWithdrawingId(null);
     }
   };
 
@@ -380,262 +186,206 @@ function StudentApplications() {
       <div className="student-applications-header">
         <div>
           <span className="student-applications-badge">
-            <FileText size={15} />
-            Application Tracker
+            <CheckCircle2 size={15} />
+            My Applications
           </span>
 
-          <h2>My Applications</h2>
+          <h2>Track Your Applications</h2>
 
           <p>
-            Track your applications and stay updated on
-            every stage of your opportunities.
+            View your opportunity registrations and keep track of their
+            current status.
           </p>
         </div>
 
-        <div className="student-application-stats">
+        <div className="student-applications-summary">
           <div>
-            <strong>{stats.total}</strong>
+            <strong>{applications.length}</strong>
             <span>Total</span>
           </div>
 
           <div>
-            <strong>{stats.review}</strong>
-            <span>Review</span>
+            <strong>{submittedCount}</strong>
+            <span>Submitted</span>
           </div>
 
           <div>
-            <strong>{stats.interview}</strong>
-            <span>Interview</span>
-          </div>
-
-          <div>
-            <strong>{stats.accepted}</strong>
-            <span>Accepted</span>
+            <strong>{withdrawnCount}</strong>
+            <span>Withdrawn</span>
           </div>
         </div>
       </div>
 
-      <div className="student-applications-toolbar">
+      <div className="student-applications-search-panel">
         <div className="student-applications-search">
-          <Search size={18} />
+          <Search size={19} />
 
           <input
             type="text"
-            placeholder="Search company, role or location..."
+            placeholder="Search applications or organizers..."
             value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(event.target.value)
-            }
+            onChange={(event) => setSearchTerm(event.target.value)}
           />
         </div>
 
-        <div className="student-applications-filter">
-          <Filter size={16} />
+        <div className="student-applications-filter-title">
+          <Filter size={17} />
+          <span>Filter Applications</span>
+        </div>
 
+        <div className="student-applications-filters">
           <select
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value)
-            }
+            onChange={(event) => setStatusFilter(event.target.value)}
           >
             {statusOptions.map((status) => (
-              <option key={status}>{status}</option>
+              <option key={status} value={status}>
+                {status}
+              </option>
             ))}
           </select>
-        </div>
-
-        <div className="student-applications-filter">
-          <BriefcaseBusiness size={16} />
-
-          <select
-            value={typeFilter}
-            onChange={(event) =>
-              setTypeFilter(event.target.value)
-            }
-          >
-            {typeOptions.map((type) => (
-              <option key={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="button"
-          className="student-applications-clear"
-          onClick={clearFilters}
-        >
-          Clear
-        </button>
-      </div>
-
-      <div className="student-applications-result-heading">
-        <div>
-          <h3>Application History</h3>
-
-          <p>
-            {filteredApplications.length} application
-            {filteredApplications.length !== 1
-              ? "s"
-              : ""}{" "}
-            shown
-          </p>
-        </div>
-      </div>
-
-      {filteredApplications.length > 0 ? (
-        <div className="student-applications-list">
-          {filteredApplications.map((application) => (
-            <article
-              className="student-application-card"
-              key={application.id}
-            >
-              <div className="student-application-main">
-                <div className="student-application-company-icon">
-                  {application.company.charAt(0)}
-                </div>
-
-                <div className="student-application-info">
-                  <div className="student-application-title-row">
-                    <div>
-                      <h4>{application.role}</h4>
-
-                      <p>{application.company}</p>
-                    </div>
-
-                    <span
-                      className={`student-application-status ${getStatusClass(
-                        application.status
-                      )}`}
-                    >
-                      {application.status}
-                    </span>
-                  </div>
-
-                  <div className="student-application-meta">
-                    <span>
-                      <MapPin size={14} />
-                      {application.location}
-                    </span>
-
-                    <span>
-                      <BriefcaseBusiness size={14} />
-                      {application.mode}
-                    </span>
-
-                    <span>
-                      <CalendarDays size={14} />
-                      Applied {application.appliedDate}
-                    </span>
-
-                    <span>
-                      <Clock3 size={14} />
-                      Updated {application.lastUpdated}
-                    </span>
-                  </div>
-
-                  <div className="student-application-skills">
-                    {application.skills.map((skill) => (
-                      <span key={skill}>{skill}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="student-application-progress">
-                {application.stages.map(
-                  (stage, index) => (
-                    <div
-                      className="student-application-stage"
-                      key={stage.label}
-                    >
-                      <div
-                        className={`student-stage-marker ${
-                          stage.completed
-                            ? "student-stage-completed"
-                            : ""
-                        }`}
-                      >
-                        {stage.completed ? (
-                          <Check size={13} />
-                        ) : (
-                          index + 1
-                        )}
-                      </div>
-
-                      <div>
-                        <strong>{stage.label}</strong>
-
-                        <span>{stage.date}</span>
-                      </div>
-
-                      {index <
-                        application.stages.length - 1 && (
-                        <div
-                          className={`student-stage-line ${
-                            stage.completed
-                              ? "student-stage-line-active"
-                              : ""
-                          }`}
-                        />
-                      )}
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div className="student-application-actions">
-                {application.interviewDate && (
-                  <div className="student-interview-note">
-                    <CalendarDays size={15} />
-
-                    <span>
-                      Interview:{" "}
-                      <strong>
-                        {application.interviewDate}
-                      </strong>{" "}
-                      at{" "}
-                      <strong>
-                        {application.interviewTime}
-                      </strong>
-                    </span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="student-application-view"
-                  onClick={() =>
-                    setSelectedApplication(
-                      application
-                    )
-                  }
-                >
-                  View Application
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="student-applications-empty">
-          <div className="student-applications-empty-icon">
-            <FileText size={25} />
-          </div>
-
-          <h3>No applications found</h3>
-
-          <p>
-            No applications match your current search and
-            filters.
-          </p>
 
           <button
             type="button"
+            className="student-applications-clear"
             onClick={clearFilters}
           >
             Clear Filters
           </button>
+
+          <button
+            type="button"
+            onClick={loadApplications}
+            disabled={loading}
+            title="Refresh applications"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {(error || notice) && (
+        <div
+          role="status"
+          className={
+            error
+              ? "student-applications-error"
+              : "student-applications-notice"
+          }
+        >
+          {error ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
+          <span>{error || notice}</span>
+        </div>
+      )}
+
+      <div className="student-applications-results-header">
+        <div>
+          <h3>Your Applications</h3>
+          <p>Records are loaded from your StartupSync account.</p>
+        </div>
+
+        <span>{filteredApplications.length} results</span>
+      </div>
+
+      {loading ? (
+        <div className="student-applications-empty">
+          <p>Loading applications...</p>
+        </div>
+      ) : filteredApplications.length === 0 ? (
+        <div className="student-applications-empty">
+          <div className="student-applications-empty-icon">
+            <Search size={25} />
+          </div>
+
+          <h3>
+            {applications.length === 0
+              ? "No applications yet"
+              : "No applications found"}
+          </h3>
+
+          <p>
+            {applications.length === 0
+              ? "When you register for an opportunity, its record will appear here."
+              : "Try changing your search or status filter."}
+          </p>
+
+          {applications.length > 0 && (
+            <button type="button" onClick={clearFilters}>
+              Clear Filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="student-applications-grid">
+          {filteredApplications.map((application) => (
+            <article
+              className="student-application-card"
+              key={application._id}
+            >
+              <div className="student-application-card-top">
+                <div className="student-application-icon">
+                  {(application.title || "A").charAt(0).toUpperCase()}
+                </div>
+
+                <span
+                  className={`student-application-status student-application-status-${(
+                    application.status || "submitted"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                >
+                  {application.status}
+                </span>
+              </div>
+
+              <h4>{application.title}</h4>
+
+              <p className="student-application-company">
+                {application.company || application.organizer}
+              </p>
+
+              <div className="student-application-meta">
+                <span>
+                  <MapPin size={15} />
+                  {application.location || "Not specified"}
+                </span>
+
+                <span>
+                  <CalendarDays size={15} />
+                  Applied {formatDate(application.applicationDate)}
+                </span>
+
+                <span>
+                  <Clock3 size={15} />
+                  {application.type || "Opportunity"}
+                </span>
+              </div>
+
+              <div className="student-application-card-footer">
+                <button
+                  type="button"
+                  className="student-application-view"
+                  onClick={() => setSelectedApplication(application)}
+                >
+                  View Details
+                </button>
+
+                {application.canWithdraw && (
+                  <button
+                    type="button"
+                    className="student-application-withdraw"
+                    disabled={withdrawingId === application._id}
+                    onClick={() => withdrawApplication(application)}
+                  >
+                    {withdrawingId === application._id
+                      ? "Withdrawing..."
+                      : "Withdraw"}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
         </div>
       )}
 
@@ -646,201 +396,98 @@ function StudentApplications() {
         >
           <div
             className="student-application-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="student-application-modal-header">
-              <div className="student-application-modal-title">
-                <div className="student-application-modal-icon">
-                  {selectedApplication.company.charAt(0)}
-                </div>
+              <div>
+                <span className="student-application-modal-label">
+                  Application Details
+                </span>
 
-                <div>
-                  <span
-                    className={`student-application-status ${getStatusClass(
-                      selectedApplication.status
-                    )}`}
-                  >
-                    {selectedApplication.status}
-                  </span>
+                <h3>{selectedApplication.title}</h3>
 
-                  <h3>
-                    {selectedApplication.role}
-                  </h3>
-
-                  <p>
-                    {selectedApplication.company}
-                  </p>
-                </div>
+                <p>
+                  {selectedApplication.company ||
+                    selectedApplication.organizer}
+                </p>
               </div>
 
               <button
                 type="button"
                 className="student-application-close"
-                onClick={() =>
-                  setSelectedApplication(null)
-                }
+                onClick={() => setSelectedApplication(null)}
                 aria-label="Close application details"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="student-application-modal-details">
-              <div>
-                <MapPin size={17} />
+            <div className="student-application-modal-section">
+              <h4>Application Information</h4>
 
-                <span>
-                  {selectedApplication.location}
-                </span>
-              </div>
+              <div className="student-application-info-grid">
+                <div>
+                  <span>Status</span>
+                  <strong>{selectedApplication.status}</strong>
+                </div>
 
-              <div>
-                <BriefcaseBusiness size={17} />
+                <div>
+                  <span>Application Date</span>
+                  <strong>
+                    {formatDate(selectedApplication.applicationDate)}
+                  </strong>
+                </div>
 
-                <span>
-                  {selectedApplication.mode}
-                </span>
-              </div>
+                <div>
+                  <span>Opportunity Type</span>
+                  <strong>{selectedApplication.type || "Not specified"}</strong>
+                </div>
 
-              <div>
-                <CalendarDays size={17} />
+                <div>
+                  <span>Category</span>
+                  <strong>
+                    {selectedApplication.category || "Not specified"}
+                  </strong>
+                </div>
 
-                <span>
-                  {selectedApplication.appliedDate}
-                </span>
-              </div>
+                <div>
+                  <span>Location</span>
+                  <strong>
+                    {selectedApplication.location || "Not specified"}
+                  </strong>
+                </div>
 
-              <div>
-                <UserRound size={17} />
-
-                <span>
-                  {selectedApplication.recruiter}
-                </span>
+                <div>
+                  <span>Mode</span>
+                  <strong>
+                    {selectedApplication.mode || "Not specified"}
+                  </strong>
+                </div>
               </div>
             </div>
 
             <div className="student-application-modal-section">
-              <h4>About the Position</h4>
-
+              <h4>About the Opportunity</h4>
               <p>
-                {selectedApplication.description}
+                {selectedApplication.description ||
+                  "No description is available."}
               </p>
             </div>
 
-            <div className="student-application-modal-section">
-              <h4>Required Skills</h4>
-
-              <div className="student-application-modal-skills">
-                {selectedApplication.skills.map(
-                  (skill) => (
-                    <span key={skill}>{skill}</span>
-                  )
-                )}
-              </div>
-            </div>
-
-            <div className="student-application-modal-section">
-              <h4>Application Progress</h4>
-
-              <div className="student-modal-timeline">
-                {selectedApplication.stages.map(
-                  (stage, index) => (
-                    <div
-                      className="student-modal-timeline-item"
-                      key={stage.label}
-                    >
-                      <div
-                        className={`student-modal-timeline-marker ${
-                          stage.completed
-                            ? "student-modal-timeline-completed"
-                            : ""
-                        }`}
-                      >
-                        {stage.completed ? (
-                          <Check size={13} />
-                        ) : (
-                          index + 1
-                        )}
-                      </div>
-
-                      <div>
-                        <strong>
-                          {stage.label}
-                        </strong>
-
-                        <span>{stage.date}</span>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-
-            {selectedApplication.interviewDate && (
-              <div className="student-application-interview-card">
-                <CalendarDays size={19} />
-
-                <div>
-                  <strong>
-                    Upcoming Interview
-                  </strong>
-
-                  <span>
-                    {selectedApplication.interviewDate}
-                    {" • "}
-                    {selectedApplication.interviewTime}
-                  </span>
-                </div>
+            {selectedApplication.canWithdraw && (
+              <div className="student-application-modal-actions">
+                <button
+                  type="button"
+                  className="student-application-withdraw"
+                  disabled={withdrawingId === selectedApplication._id}
+                  onClick={() => withdrawApplication(selectedApplication)}
+                >
+                  {withdrawingId === selectedApplication._id
+                    ? "Withdrawing..."
+                    : "Withdraw Application"}
+                </button>
               </div>
             )}
-
-            <div className="student-application-recruiter">
-              <div className="student-recruiter-avatar">
-                {selectedApplication.recruiter.charAt(0)}
-              </div>
-
-              <div>
-                <strong>
-                  {selectedApplication.recruiter}
-                </strong>
-
-                <span>
-                  {selectedApplication.recruiterRole}
-                </span>
-              </div>
-            </div>
-
-            <div className="student-application-modal-actions">
-              <button
-                type="button"
-                className="student-application-close-button"
-                onClick={() =>
-                  setSelectedApplication(null)
-                }
-              >
-                Close
-              </button>
-
-              {selectedApplication.status !==
-                "Accepted" &&
-                selectedApplication.status !==
-                  "Rejected" && (
-                  <button
-                    type="button"
-                    className="student-application-withdraw"
-                    onClick={() =>
-                      handleWithdraw(
-                        selectedApplication.id
-                      )
-                    }
-                  >
-                    <Send size={15} />
-                    Withdraw Application
-                  </button>
-                )}
-            </div>
           </div>
         </div>
       )}

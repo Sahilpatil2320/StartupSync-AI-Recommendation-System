@@ -1,4 +1,3 @@
-
 const User = require("../models/User");
 const Founder = require("../models/Founder");
 const Investor = require("../models/Investor");
@@ -15,11 +14,7 @@ const createFounderProfile = async (req, res) => {
             });
         }
 
-        const existingProfile = await Founder.findOne({
-            userId: req.user.userId,
-        });
-
-        if (existingProfile) {
+        if (await Founder.findOne({ userId: req.user.userId })) {
             return res.status(409).json({
                 success: false,
                 message: "Founder profile already exists",
@@ -27,78 +22,31 @@ const createFounderProfile = async (req, res) => {
         }
 
         const {
-            aiDatasetId,
-            startupName,
-            industry,
-            domain,
-            description,
-            foundedYear,
-            startupStage,
-            teamSize,
-            businessModel,
-            problemStatement,
-            solution,
-            targetMarket,
-            targetCustomers,
-            technologies,
-            programmingLanguages,
-            aiMlUsed,
-            fundingStage,
-            fundingRaised,
-            fundingRequired,
-            revenue,
-            usersCount,
-            growthRate,
-            productStatus,
-            competitors,
-            competitiveAdvantage,
-            lookingFor,
-            website,
-            linkedin,
-            github,
-            productDemo,
+            aiDatasetId, startupName, industry, domain, description,
+            foundedYear, startupStage, teamSize, businessModel,
+            problemStatement, solution, targetMarket, targetCustomers,
+            technologies, programmingLanguages, aiMlUsed, fundingStage,
+            fundingRaised, fundingRequired, revenue, usersCount, growthRate,
+            productStatus, competitors, competitiveAdvantage, lookingFor,
+            website, linkedin, github, productDemo,
         } = req.body;
 
         if (!startupName || !industry || !domain || !description) {
             return res.status(400).json({
                 success: false,
-                message:
-                    "Startup name, industry, domain and description are required",
+                message: "Startup name, industry, domain and description are required",
             });
         }
 
-        const founder = await Founder.create({
+        const profile = await Founder.create({
             userId: req.user.userId,
-            aiDatasetId,
-            startupName,
-            industry,
-            domain,
-            description,
-            foundedYear,
-            startupStage,
-            teamSize,
-            businessModel,
-            problemStatement,
-            solution,
-            targetMarket,
-            targetCustomers,
-            technologies,
-            programmingLanguages,
-            aiMlUsed,
-            fundingStage,
-            fundingRaised,
-            fundingRequired,
-            revenue,
-            usersCount,
-            growthRate,
-            productStatus,
-            competitors,
-            competitiveAdvantage,
-            lookingFor,
-            website,
-            linkedin,
-            github,
-            productDemo,
+            aiDatasetId, startupName, industry, domain, description,
+            foundedYear, startupStage, teamSize, businessModel,
+            problemStatement, solution, targetMarket, targetCustomers,
+            technologies, programmingLanguages, aiMlUsed, fundingStage,
+            fundingRaised, fundingRequired, revenue, usersCount, growthRate,
+            productStatus, competitors, competitiveAdvantage, lookingFor,
+            website, linkedin, github, productDemo,
         });
 
         await User.findByIdAndUpdate(req.user.userId, {
@@ -108,11 +56,10 @@ const createFounderProfile = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Founder profile created successfully",
-            profile: founder,
+            profile,
         });
     } catch (error) {
         console.error("Founder profile error:", error.message);
-
         return res.status(500).json({
             success: false,
             message: "Server error while creating founder profile",
@@ -130,11 +77,7 @@ const createInvestorProfile = async (req, res) => {
             });
         }
 
-        const existingProfile = await Investor.findOne({
-            userId: req.user.userId,
-        });
-
-        if (existingProfile) {
+        if (await Investor.findOne({ userId: req.user.userId })) {
             return res.status(409).json({
                 success: false,
                 message: "Investor profile already exists",
@@ -142,26 +85,12 @@ const createInvestorProfile = async (req, res) => {
         }
 
         const {
-            aiDatasetId,
-            firmName,
-            investorType,
-            location,
-            investmentIndustries,
-            investmentDomains,
-            preferredStartupStages,
-            preferredGeography,
-            minimumInvestment,
-            maximumInvestment,
-            previousInvestments,
-            portfolioCompanies,
-            investmentThesis,
-            investmentTags,
-            investmentFocus,
-            bio,
-            website,
-            linkedin,
+            aiDatasetId, firmName, investorType, location,
+            investmentIndustries, investmentDomains, preferredStartupStages,
+            preferredGeography, minimumInvestment, maximumInvestment,
+            previousInvestments, portfolioCompanies, investmentThesis,
+            investmentTags, investmentFocus, bio, website, linkedin,
         } = req.body;
-
 
         const cleanText = (value) =>
             typeof value === "string" ? value.trim() : "";
@@ -176,8 +105,7 @@ const createInvestorProfile = async (req, res) => {
             });
         }
 
-
-        const investor = await Investor.create({
+        const profile = await Investor.create({
             userId: req.user.userId,
             aiDatasetId,
             firmName: cleanedFirmName,
@@ -206,11 +134,10 @@ const createInvestorProfile = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Investor profile created successfully",
-            profile: investor,
+            profile,
         });
     } catch (error) {
         console.error("Investor profile error:", error.message);
-
         return res.status(500).json({
             success: false,
             message: "Server error while creating investor profile",
@@ -228,11 +155,7 @@ const createMentorProfile = async (req, res) => {
             });
         }
 
-        const existingProfile = await Mentor.findOne({
-            userId: req.user.userId,
-        });
-
-        if (existingProfile) {
+        if (await Mentor.findOne({ userId: req.user.userId })) {
             return res.status(409).json({
                 success: false,
                 message: "Mentor profile already exists",
@@ -240,22 +163,10 @@ const createMentorProfile = async (req, res) => {
         }
 
         const {
-            aiDatasetId,
-            location,
-            industry,
-            domain,
-            expertise,
-            skills,
-            experienceYears,
-            professionalInterests,
-            mentoringInterests,
-            mentoringAreas,
-            preferredStartupStages,
-            preferredDomains,
-            availability,
-            bio,
-            linkedin,
-            website,
+            aiDatasetId, location, industry, domain, expertise, skills,
+            experienceYears, professionalInterests, mentoringInterests,
+            mentoringAreas, preferredStartupStages, preferredDomains,
+            availability, bio, linkedin, website,
         } = req.body;
 
         if (!location || !industry || !domain) {
@@ -265,7 +176,7 @@ const createMentorProfile = async (req, res) => {
             });
         }
 
-        const mentor = await Mentor.create({
+        const profile = await Mentor.create({
             userId: req.user.userId,
             aiDatasetId,
             location,
@@ -292,11 +203,10 @@ const createMentorProfile = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Mentor profile created successfully",
-            profile: mentor,
+            profile,
         });
     } catch (error) {
         console.error("Mentor profile error:", error.message);
-
         return res.status(500).json({
             success: false,
             message: "Server error while creating mentor profile",
@@ -314,11 +224,7 @@ const createStudentProfile = async (req, res) => {
             });
         }
 
-        const existingProfile = await Student.findOne({
-            userId: req.user.userId,
-        });
-
-        if (existingProfile) {
+        if (await Student.findOne({ userId: req.user.userId })) {
             return res.status(409).json({
                 success: false,
                 message: "Student profile already exists",
@@ -326,27 +232,11 @@ const createStudentProfile = async (req, res) => {
         }
 
         const {
-            aiDatasetId,
-            college,
-            branch,
-            graduationYear,
-            gpa,
-            technicalSkills,
-            programmingLanguages,
-            frameworks,
-            tools,
-            internshipDone,
-            internshipDomain,
-            internshipDescription,
-            projects,
-            interestedIndustry,
-            interestedDomain,
-            placementDomain,
-            careerGoal,
-            clubs,
-            certifications,
-            achievements,
-            startupInterests,
+            aiDatasetId, college, branch, graduationYear, gpa,
+            technicalSkills, programmingLanguages, frameworks, tools,
+            internshipDone, internshipDomain, internshipDescription,
+            projects, interestedIndustry, interestedDomain, placementDomain,
+            careerGoal, clubs, certifications, achievements, startupInterests,
         } = req.body;
 
         if (!college || !branch || !graduationYear) {
@@ -356,7 +246,7 @@ const createStudentProfile = async (req, res) => {
             });
         }
 
-        const student = await Student.create({
+        const profile = await Student.create({
             userId: req.user.userId,
             aiDatasetId,
             college,
@@ -388,11 +278,10 @@ const createStudentProfile = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Student profile created successfully",
-            profile: student,
+            profile,
         });
     } catch (error) {
         console.error("Student profile error:", error.message);
-
         return res.status(500).json({
             success: false,
             message: "Server error while creating student profile",
@@ -412,26 +301,21 @@ const getMyProfile = async (req, res) => {
             });
         }
 
-        let profile = null;
+        const profileModels = {
+            founder: Founder,
+            investor: Investor,
+            mentor: Mentor,
+            student: Student,
+        };
 
-        if (user.role === "founder") {
-            profile = await Founder.findOne({ userId: user._id });
-        } else if (user.role === "investor") {
-            profile = await Investor.findOne({ userId: user._id });
-        } else if (user.role === "mentor") {
-            profile = await Mentor.findOne({ userId: user._id });
-        } else if (user.role === "student") {
-            profile = await Student.findOne({ userId: user._id });
-        }
+        const Model = profileModels[user.role];
+        const profile = Model
+            ? await Model.findOne({ userId: user._id })
+            : null;
 
-        return res.status(200).json({
-            success: true,
-            user,
-            profile,
-        });
+        return res.status(200).json({ success: true, user, profile });
     } catch (error) {
         console.error("Get profile error:", error.message);
-
         return res.status(500).json({
             success: false,
             message: "Server error while fetching profile",
@@ -458,22 +342,12 @@ const updateMyProfile = async (req, res) => {
             });
         }
 
-        // Only allow legitimate profile fields to be updated.
-        // Never allow changing userId through this endpoint.
-        const {
-            userId,
-            _id,
-            __v,
-            ...updates
-        } = req.body;
+        const { userId, _id, __v, ...updates } = req.body;
 
         const profile = await Model.findOneAndUpdate(
             { userId: req.user.userId },
             { $set: updates },
-            {
-                new: true,
-                runValidators: true,
-            }
+            { new: true, runValidators: true }
         );
 
         if (!profile) {
@@ -490,7 +364,6 @@ const updateMyProfile = async (req, res) => {
         });
     } catch (error) {
         console.error("Update profile error:", error.message);
-
         return res.status(500).json({
             success: false,
             message: "Server error while updating profile",
@@ -498,64 +371,160 @@ const updateMyProfile = async (req, res) => {
     }
 };
 
-
-/**
- * Get registered investor profiles for discovery.
- * Public profile fields only; never return passwords or private account data.
- */
+// Get registered investor profiles for discovery
 const getAllInvestors = async (req, res) => {
     try {
         const investors = await Investor.find({})
             .select("-aiDatasetId -__v")
             .populate({
                 path: "userId",
-                select: "name profileImage role profileCompleted accountStatus"
+                select: "name profileImage role profileCompleted accountStatus",
             })
             .lean();
 
         const results = investors
-            .filter(
-                (investor) =>
-                    investor.userId &&
-                    investor.userId.accountStatus === "active" &&
-                    investor.userId.profileCompleted
+            .filter((item) =>
+                item.userId &&
+                item.userId.accountStatus === "active" &&
+                item.userId.profileCompleted
             )
-            .map((investor) => ({
-                id: investor._id,
-                userId: investor.userId._id,
-                name: investor.firmName || investor.userId.name,
-                type: investor.investorType || "Investor",
-                location: investor.location || "Location not provided",
+            .map((item) => ({
+                id: item._id,
+                userId: item.userId._id,
+                name: item.firmName || item.userId.name,
+                type: item.investorType || "Investor",
+                location: item.location || "Location not provided",
                 industries: [
-                    ...(investor.investmentIndustries || []),
-                    ...(investor.investmentDomains || []),
-                    ...(investor.investmentTags || [])
+                    ...(item.investmentIndustries || []),
+                    ...(item.investmentDomains || []),
+                    ...(item.investmentTags || []),
                 ].filter(Boolean),
-                stages: investor.preferredStartupStages || [],
-                minimumInvestment: investor.minimumInvestment ?? 0,
-                maximumInvestment: investor.maximumInvestment ?? 0,
-                bio: investor.bio || "",
-                investmentThesis: investor.investmentThesis || "",
-                website: investor.website || "",
-                linkedin: investor.linkedin || ""
+                stages: item.preferredStartupStages || [],
+                minimumInvestment: item.minimumInvestment ?? 0,
+                maximumInvestment: item.maximumInvestment ?? 0,
+                bio: item.bio || "",
+                investmentThesis: item.investmentThesis || "",
+                website: item.website || "",
+                linkedin: item.linkedin || "",
             }));
 
         return res.status(200).json({
             success: true,
             count: results.length,
-            investors: results
+            investors: results,
         });
     } catch (error) {
         console.error("Get investors error:", error.message);
-
         return res.status(500).json({
             success: false,
-            message: "Unable to fetch investor profiles"
+            message: "Unable to fetch investor profiles",
         });
     }
 };
 
+// Get registered mentor profiles for discovery
+const getAllMentors = async (req, res) => {
+    try {
+        const mentors = await Mentor.find({})
+            .select("-aiDatasetId -__v")
+            .populate({
+                path: "userId",
+                select: "name profileImage role profileCompleted accountStatus",
+            })
+            .lean();
 
+        const results = mentors
+            .filter((item) =>
+                item.userId &&
+                item.userId.accountStatus === "active" &&
+                item.userId.profileCompleted
+            )
+            .map((item) => ({
+                id: item._id,
+                userId: item.userId._id,
+                name: item.userId.name || "Mentor",
+                location: item.location || "Location not provided",
+                industry: item.industry || "",
+                domain: item.domain || "",
+                expertise: item.expertise || "",
+                skills: item.skills || [],
+                experienceYears: item.experienceYears ?? null,
+                professionalInterests: item.professionalInterests || [],
+                mentoringInterests: item.mentoringInterests || [],
+                mentoringAreas: item.mentoringAreas || [],
+                preferredStartupStages: item.preferredStartupStages || [],
+                preferredDomains: item.preferredDomains || [],
+                availability: item.availability || "Not specified",
+                bio: item.bio || "",
+                linkedin: item.linkedin || "",
+                website: item.website || "",
+            }));
+
+        return res.status(200).json({
+            success: true,
+            count: results.length,
+            mentors: results,
+        });
+    } catch (error) {
+        console.error("Get mentors error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to fetch mentor profiles",
+        });
+    }
+};
+
+// Get registered student profiles for founder talent discovery
+const getAllStudents = async (req, res) => {
+    try {
+        const students = await Student.find({})
+            .select("-aiDatasetId -__v")
+            .populate({
+                path: "userId",
+                select: "name profileImage role profileCompleted accountStatus",
+            })
+            .lean();
+
+        const results = students
+            .filter((item) =>
+                item.userId &&
+                item.userId.role === "student" &&
+                item.userId.accountStatus === "active" &&
+                item.userId.profileCompleted
+            )
+            .map((item) => ({
+                id: item._id,
+                userId: item.userId._id,
+                name: item.userId.name || "Student",
+                profileImage: item.userId.profileImage || "",
+                role: "Student",
+                college: item.college || "",
+                branch: item.branch || "",
+                graduationYear: item.graduationYear ?? "",
+                technicalSkills: item.technicalSkills || [],
+                programmingLanguages: item.programmingLanguages || [],
+                frameworks: item.frameworks || [],
+                tools: item.tools || [],
+                projects: item.projects || [],
+                interestedIndustry: item.interestedIndustry || [],
+                interestedDomain: item.interestedDomain || [],
+                careerGoal: item.careerGoal || "",
+                startupInterests: item.startupInterests || [],
+            }));
+
+        return res.status(200).json({
+            success: true,
+            count: results.length,
+            students: results,
+        });
+    } catch (error) {
+        console.error("Get students error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to fetch student profiles",
+        });
+    }
+};
 
 module.exports = {
     createFounderProfile,
@@ -565,4 +534,6 @@ module.exports = {
     getMyProfile,
     updateMyProfile,
     getAllInvestors,
+    getAllMentors,
+    getAllStudents,
 };

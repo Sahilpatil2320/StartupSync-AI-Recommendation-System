@@ -649,6 +649,62 @@ def recommend_custom_founder_investors():
         }), 500
 
 
+
+@app.route("/recommend/custom-founder/mentors", methods=["POST"])
+def recommend_custom_founder_mentors():
+    data = request.get_json() or {}
+
+    required_fields = [
+        "startupName",
+        "domain",
+        "description",
+    ]
+
+    missing = [
+        field for field in required_fields
+        if not str(data.get(field, "")).strip()
+    ]
+
+    if missing:
+        return jsonify({
+            "success": False,
+            "message": "Missing required fields",
+            "missing": missing,
+        }), 400
+
+    try:
+        module = importlib.import_module(
+            MODULES["founder_mentor"]
+        )
+
+        engine = getattr(
+            module, "FounderMentorEngine"
+        )()
+
+        recommendations = engine.recommend_custom_founder(
+            data,
+            top_n=5,
+        )
+
+        return jsonify(make_json_safe({
+            "success": True,
+            "direction": "founder_mentor",
+            "source": "StartupSync AI Recommendation Engine",
+            "recommendations": recommendations,
+        }))
+
+    except Exception as error:
+        app.logger.exception(
+            "Custom founder-to-mentor recommendation failed"
+        )
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to generate mentor recommendations",
+            "error": str(error),
+        }), 500
+
+
 # ============================================================
 # START SERVER
 # ============================================================

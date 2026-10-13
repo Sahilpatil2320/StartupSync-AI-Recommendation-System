@@ -779,6 +779,123 @@ class FounderMentorEngine:
             industries
         )
 
+    
+    def recommend_custom_founder(self, founder_profile, top_n=5):
+        """
+        Recommend mentors for a startup profile that is not
+        present in the founder dataset.
+
+        Scores are ranking scores, not probabilities.
+        """
+        startup_text = " ".join([
+            safe_text(founder_profile.get("startupName", "")),
+            safe_text(founder_profile.get("name", "")),
+            safe_text(founder_profile.get("company", "")),
+            safe_text(founder_profile.get("domain", "")),
+            safe_text(founder_profile.get("industry", "")),
+            safe_text(founder_profile.get("description", "")),
+            safe_text(founder_profile.get("problemStatement", "")),
+            safe_text(founder_profile.get("solution", "")),
+            safe_text(founder_profile.get("technologies", "")),
+            safe_text(founder_profile.get("targetMarket", "")),
+        ]).strip()
+
+        if not startup_text or self.mentors.empty:
+            return []
+
+        mentor_columns = [
+            "expertise",
+            "skills",
+            "industry",
+            "domain",
+            "interests",
+        ]
+
+        mentor_texts = []
+        for _, mentor in self.mentors.iterrows():
+            mentor_texts.append(
+                " ".join(
+                    safe_text(mentor.get(column, ""))
+                    for column in mentor_columns
+                ).strip()
+            )
+
+        similarities = text_similarity(
+            [startup_text],
+            mentor_texts
+        )[0]
+
+        startup_industry = (
+            founder_profile.get("industry", "")
+            or founder_profile.get("domain", "")
+        )
+        startup_tokens = tokenize(startup_text)
+
+        recommendations = []
+
+        for index, (_, mentor) in enumerate(
+            self.mentors.iterrows()
+        ):
+            mentor_tokens = set()
+
+            for column in mentor_columns:
+                mentor_tokens.update(
+                    tokenize(mentor.get(column, ""))
+                )
+
+            union = startup_tokens | mentor_tokens
+            overlap = (
+                len(startup_tokens & mentor_tokens) / len(union)
+                if union else 0.0
+            )
+
+            industry_score = industry_compatibility(
+                [{"industry": startup_industry, "confidence": 1.0}],
+                mentor.get("industry", "")
+            )
+
+            try:
+                experience = self.experience_score(
+                    mentor.get("experience_years", 0)
+                )
+            except (TypeError, ValueError):
+                experience = 0.0
+
+            similarity_score = float(similarities[index])
+
+            final_score = (
+                similarity_score * 0.55
+                + industry_score * 0.25
+                + overlap * 0.15
+                + experience * 0.05
+            )
+
+            recommendations.append({
+                "mentor_id": str(mentor.get("id", "")),
+                "mentor_name": str(mentor.get("name", "")),
+                "expertise": str(mentor.get("expertise", "")),
+                "skills": str(mentor.get("skills", "")),
+                "industry": str(mentor.get("industry", "")),
+                "domain": str(mentor.get("domain", "")),
+                "experience_years": str(
+                    mentor.get("experience_years", "")
+                ),
+                "location": str(mentor.get("location", "")),
+                "interests": str(mentor.get("interests", "")),
+                "score": round(final_score, 4),
+                "score_percentage": round(final_score * 100, 2),
+            })
+
+        recommendations.sort(
+            key=lambda item: (
+                -item["score"],
+                item["mentor_name"].lower()
+            )
+        )
+
+        return recommendations[:top_n]
+
+
 
 # ============================================================
 # MAIN
@@ -905,4 +1022,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

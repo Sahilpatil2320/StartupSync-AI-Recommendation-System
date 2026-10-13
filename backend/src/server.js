@@ -8,38 +8,44 @@ const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const connectionRoutes = require("./routes/connectionRoutes");
+const opportunityRoutes = require("./routes/opportunityRoutes");
+const applicationRoutes = require("./routes/applicationRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/api/connections", connectionRoutes);
 
-// Home route
+
 app.get("/", (req, res) => {
-    res.json({
-        success: true,
-        message: "StartupSync API is running"
-    });
+  res.json({
+    success: true,
+    message: "StartupSync API is running",
+  });
 });
 
-// Authentication routes
 app.use("/api/auth", authRoutes);
-
-// Profile routes
 app.use("/api/profiles", profileRoutes);
-
-// Recommendation routes
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/connections", connectionRoutes);
+app.use("/api/opportunities", opportunityRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/messages", messageRoutes);
 
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
+  try {
     await connectDB();
 
     app.listen(PORT, () => {
-        console.log(`StartupSync server running on port ${PORT}`);
+      console.log(`StartupSync server running on port ${PORT}`);
     });
+  } catch (error) {
+    console.error("Failed to start StartupSync server:", error.message);
+    process.exit(1);
+  }
 };
 
 startServer();

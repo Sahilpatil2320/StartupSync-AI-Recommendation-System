@@ -90,9 +90,11 @@ const getRecommendations = async (req, res) => {
             });
         }
 
+
         // Custom recommendation path for founders without a dataset ID.
         if (!hasDatasetId) {
-            if (role !== "founder" || target !== "investors") {
+            if (role !== "founder" ||
+                !["investors", "mentors"].includes(target)) {
                 return res.status(409).json({
                     success: false,
                     message: "This profile is not linked to an AI dataset record.",
@@ -116,7 +118,6 @@ const getRecommendations = async (req, res) => {
                 "startupName",
                 "domain",
                 "description",
-                "fundingStage",
             ].filter(
                 (field) => !String(customProfile[field] || "").trim()
             );
@@ -129,16 +130,18 @@ const getRecommendations = async (req, res) => {
                 });
             }
 
-            const response = await fetch(
-                `${AI_API_URL}/recommend/custom-founder/investors`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(customProfile),
-                }
-            );
+            const endpoint =
+                target === "investors"
+                    ? "/recommend/custom-founder/investors"
+                    : "/recommend/custom-founder/mentors";
+
+            const response = await fetch(`${AI_API_URL}${endpoint}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(customProfile),
+            });
 
             const data = await response.json();
 
@@ -156,6 +159,7 @@ const getRecommendations = async (req, res) => {
                 data,
             });
         }
+
 
         // Existing dataset-based recommendation flow.
         const response = await fetch(
