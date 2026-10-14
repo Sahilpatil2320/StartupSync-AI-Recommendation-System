@@ -1,3 +1,4 @@
+
 import {
   Bookmark,
   Check,
@@ -7,191 +8,417 @@ import {
   Rocket,
   Search,
   UsersRound,
-  X
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import api from "../../../services/api";
+import { getRecommendations } from "../../../services/aiApi";
 import "./InvestorDiscoverStartups.css";
 
-const startups = [
-  {
-    id: 1,
-    name: "FinFlow",
-    tagline: "Simplifying financial management for growing businesses.",
-    industry: "FinTech",
-    stage: "Seed",
-    fundingStage: "Seed",
-    location: "Pune, Maharashtra",
-    fundingSought: "₹75 Lakhs",
-    teamSize: 8,
-    founded: 2025,
-    match: 94
-  },
-  {
-    id: 2,
-    name: "HealthNest",
-    tagline: "Making preventive healthcare more accessible and affordable.",
-    industry: "HealthTech",
-    stage: "Pre-Seed",
-    fundingStage: "Pre-Seed",
-    location: "Bengaluru, Karnataka",
-    fundingSought: "₹40 Lakhs",
-    teamSize: 5,
-    founded: 2026,
-    match: 91
-  },
-  {
-    id: 3,
-    name: "AgriNova",
-    tagline: "Smart farming solutions for modern Indian agriculture.",
-    industry: "AgriTech",
-    stage: "Seed",
-    fundingStage: "Seed",
-    location: "Nagpur, Maharashtra",
-    fundingSought: "₹1.2 Crore",
-    teamSize: 11,
-    founded: 2024,
-    match: 89
-  },
-  {
-    id: 4,
-    name: "EduBridge",
-    tagline: "Connecting students with practical career opportunities.",
-    industry: "EdTech",
-    stage: "Growth",
-    fundingStage: "Series A",
-    location: "Mumbai, Maharashtra",
-    fundingSought: "₹3 Crore",
-    teamSize: 24,
-    founded: 2023,
-    match: 86
-  },
-  {
-    id: 5,
-    name: "GreenGrid",
-    tagline: "Building smarter energy solutions for sustainable communities.",
-    industry: "CleanTech",
-    stage: "Seed",
-    fundingStage: "Seed",
-    location: "Hyderabad, Telangana",
-    fundingSought: "₹90 Lakhs",
-    teamSize: 12,
-    founded: 2024,
-    match: 84
-  },
-  {
-    id: 6,
-    name: "ShopSphere",
-    tagline: "Helping local retailers build stronger digital businesses.",
-    industry: "E-Commerce",
-    stage: "Pre-Seed",
-    fundingStage: "Pre-Seed",
-    location: "Kolhapur, Maharashtra",
-    fundingSought: "₹30 Lakhs",
-    teamSize: 6,
-    founded: 2026,
-    match: 81
+const getUserIdFromToken = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(window.atob(normalized));
+    return decoded.userId || decoded.id || decoded._id || decoded.sub || "";
+  } catch {
+    return "";
   }
-];
+};
 
-const industryOptions = [
-  "All Industries",
-  "FinTech",
-  "HealthTech",
-  "AgriTech",
-  "EdTech",
-  "CleanTech",
-  "E-Commerce"
-];
+const getProfileId = (profile) =>
+  String(
+    profile?._id ||
+      profile?.id ||
+      profile?.userId?._id ||
+      profile?.userId?.id ||
+      profile?.userId ||
+      profile?.user?._id ||
+      profile?.user?.id ||
+      ""
+  );
 
-const stageOptions = [
-  "All Stages",
-  "Pre-Seed",
-  "Seed",
-  "Growth"
-];
+const getName = (profile) =>
+  profile?.startupName ||
+  profile?.companyName ||
+  profile?.name ||
+  profile?.userId?.name ||
+  profile?.user?.name ||
+  profile?.fullName ||
+  "Startup";
 
-const fundingOptions = [
-  "All Funding Stages",
-  "Pre-Seed",
-  "Seed",
-  "Series A"
-];
+const getIndustry = (profile) =>
+  profile?.industry || profile?.domain || profile?.sector || "";
 
-const locationOptions = [
-  "All Locations",
-  "Maharashtra",
-  "Karnataka",
-  "Telangana"
-];
+const getStage = (profile) =>
+  profile?.fundingStage ||
+  profile?.startupStage ||
+  profile?.stage ||
+  profile?.businessStage ||
+  "";
+
+const getLocation = (profile) => {
+  if (typeof profile?.location === "string") return profile.location;
+
+  if (profile?.location && typeof profile.location === "object") {
+    return [
+      profile.location.city,
+      profile.location.state,
+      profile.location.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return [profile?.city, profile?.state, profile?.country]
+    .filter(Boolean)
+    .join(", ");
+};
+
+const getDescription = (profile) =>
+  profile?.tagline ||
+  profile?.description ||
+  profile?.startupDescription ||
+  profile?.businessDescription ||
+  "No startup description provided.";
+
+const getFunding = (profile) =>
+  profile?.fundingSought ??
+  profile?.fundingRequired ??
+  profile?.fundingNeeded ??
+  profile?.investmentRequired ??
+  profile?.fundingAmount ??
+  "";
+
+const getTeamSize = (profile) =>
+  profile?.teamSize ??
+  profile?.numberOfEmployees ??
+  profile?.employees ??
+  "";
+
+const getFounded = (profile) =>
+  profile?.foundedYear || profile?.founded || profile?.yearFounded || "";
+
+const getRecommendationItems = (response) => {
+  const root = response?.data;
+
+  const candidates = [
+    root?.data?.recommendations,
+    root?.data?.founders,
+    root?.data?.results,
+    root?.recommendations,
+    root?.founders,
+    root?.results,
+    root?.data,
+  ];
+
+  return candidates.find(Array.isArray) || [];
+};
+
+const getRecommendationId = (item) =>
+  String(
+    item?.founderId ||
+      item?.founder_id ||
+      item?.profileId ||
+      item?.profile_id ||
+      item?.userId ||
+      item?.user_id ||
+      item?._id ||
+      item?.id ||
+      ""
+  );
+
+const getRecommendationName = (item) =>
+  item?.startupName ||
+  item?.companyName ||
+  item?.name ||
+  item?.founder_name ||
+  item?.startup_name ||
+  item?.founder?.startupName ||
+  item?.founder?.name ||
+  "";
+
+const getRecommendationScore = (item) => {
+  const score =
+    item?.matchScore ??
+    item?.match_score ??
+    item?.similarity_score ??
+    item?.similarity ??
+    item?.score ??
+    item?.confidence;
+
+  if (typeof score !== "number" || !Number.isFinite(score)) return null;
+
+  return Math.round(
+    Math.max(0, Math.min(100, score >= 0 && score <= 1 ? score * 100 : score))
+  );
+};
 
 function InvestorDiscoverStartups() {
+  const [founders, setFounders] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [industry, setIndustry] = useState("All Industries");
   const [stage, setStage] = useState("All Stages");
-  const [fundingStage, setFundingStage] =
-    useState("All Funding Stages");
   const [location, setLocation] = useState("All Locations");
-
+  const [sortBy, setSortBy] = useState("name");
   const [savedStartups, setSavedStartups] = useState([]);
   const [connectedStartups, setConnectedStartups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [connectingId, setConnectingId] = useState("");
 
-  const filteredStartups = useMemo(() => {
+  const fetchFounders = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("startupsync_token");
+
+      if (!token) {
+        throw new Error("Please log in again to view founder profiles.");
+      }
+
+      const response = await api.get("/profiles/founders", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const records =
+        response.data?.founders ||
+        response.data?.data ||
+        response.data?.profiles ||
+        [];
+
+      if (!Array.isArray(records)) {
+        throw new Error("Unexpected response from the founder profiles API.");
+      }
+
+      setFounders(records);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load founder profiles."
+      );
+      setFounders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchRecommendations = useCallback(async () => {
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const token = localStorage.getItem("startupsync_token");
+
+      if (!token) {
+        throw new Error("Please log in again to view AI recommendations.");
+      }
+
+      const userId = getUserIdFromToken(token);
+
+      if (!userId) {
+        throw new Error("Could not identify your account from the login token.");
+      }
+
+      const response = await getRecommendations("investor", "founders", userId);
+      const records = getRecommendationItems(response);
+
+      setRecommendations(records.slice(0, 5));
+    } catch (err) {
+      setAiError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load AI recommendations."
+      );
+      setRecommendations([]);
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFounders();
+    fetchRecommendations();
+  }, [fetchFounders, fetchRecommendations]);
+
+  const industries = useMemo(
+    () => [
+      "All Industries",
+      ...new Set(founders.map(getIndustry).filter(Boolean)),
+    ],
+    [founders]
+  );
+
+  const stages = useMemo(
+    () => ["All Stages", ...new Set(founders.map(getStage).filter(Boolean))],
+    [founders]
+  );
+
+  const locations = useMemo(
+    () => [
+      "All Locations",
+      ...new Set(
+        founders
+          .map(getLocation)
+          .filter(Boolean)
+          .map((value) => value.split(",").pop().trim())
+      ),
+    ],
+    [founders]
+  );
+
+  const recommendedFounders = useMemo(() => {
+    const matched = recommendations
+      .map((recommendation) => {
+        const recommendationId = getRecommendationId(recommendation);
+        const recommendationName = getRecommendationName(recommendation)
+          .trim()
+          .toLowerCase();
+
+        const founder = founders.find((item) => {
+          const profileId = getProfileId(item);
+          const linkedUserId =
+            typeof item.userId === "object"
+              ? String(item.userId?._id || item.userId?.id || "")
+              : String(item.userId || "");
+
+          const idMatches =
+            recommendationId &&
+            [profileId, linkedUserId].some(
+              (id) => id && id === recommendationId
+            );
+
+          const nameMatches =
+            recommendationName &&
+            getName(item).trim().toLowerCase() === recommendationName;
+
+          return idMatches || nameMatches;
+        });
+
+        if (!founder) return null;
+
+        return {
+          ...founder,
+          _aiScore: getRecommendationScore(recommendation),
+        };
+      })
+      .filter(Boolean);
+
+    return matched.filter(
+      (founder, index) =>
+        matched.findIndex(
+          (item) => getProfileId(item) === getProfileId(founder)
+        ) === index
+    );
+  }, [founders, recommendations]);
+
+  const recommendedIds = useMemo(
+    () => new Set(recommendedFounders.map(getProfileId)),
+    [recommendedFounders]
+  );
+
+  const remainingFounders = useMemo(() => {
     const search = searchTerm.toLowerCase().trim();
 
-    return startups.filter((startup) => {
-      const matchesSearch =
-        !search ||
-        startup.name.toLowerCase().includes(search) ||
-        startup.tagline.toLowerCase().includes(search) ||
-        startup.industry.toLowerCase().includes(search) ||
-        startup.location.toLowerCase().includes(search);
+    const filtered = founders.filter((founder) => {
+      if (recommendedIds.has(getProfileId(founder))) return false;
 
+      const searchableText = [
+        getName(founder),
+        getIndustry(founder),
+        getStage(founder),
+        getLocation(founder),
+        getDescription(founder),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      const matchesSearch = !search || searchableText.includes(search);
       const matchesIndustry =
-        industry === "All Industries" ||
-        startup.industry === industry;
-
+        industry === "All Industries" || getIndustry(founder) === industry;
       const matchesStage =
-        stage === "All Stages" ||
-        startup.stage === stage;
-
-      const matchesFunding =
-        fundingStage === "All Funding Stages" ||
-        startup.fundingStage === fundingStage;
-
+        stage === "All Stages" || getStage(founder) === stage;
       const matchesLocation =
         location === "All Locations" ||
-        startup.location.includes(location);
+        getLocation(founder).toLowerCase().includes(location.toLowerCase());
 
       return (
-        matchesSearch &&
-        matchesIndustry &&
-        matchesStage &&
-        matchesFunding &&
-        matchesLocation
+        matchesSearch && matchesIndustry && matchesStage && matchesLocation
       );
     });
-  }, [
-    searchTerm,
-    industry,
-    stage,
-    fundingStage,
-    location
-  ]);
 
-  const toggleSave = (startupId) => {
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "name") return getName(a).localeCompare(getName(b));
+      if (sortBy === "industry")
+        return getIndustry(a).localeCompare(getIndustry(b));
+      if (sortBy === "stage") return getStage(a).localeCompare(getStage(b));
+      if (sortBy === "location")
+        return getLocation(a).localeCompare(getLocation(b));
+      if (sortBy === "newest")
+        return (
+          Number(getFounded(b) || 0) - Number(getFounded(a) || 0)
+        );
+      return 0;
+    });
+  }, [founders, recommendedIds, searchTerm, industry, stage, location, sortBy]);
+
+  const toggleSave = (id) => {
     setSavedStartups((current) =>
-      current.includes(startupId)
-        ? current.filter((id) => id !== startupId)
-        : [...current, startupId]
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
     );
   };
 
-  const toggleConnect = (startupId) => {
-    setConnectedStartups((current) =>
-      current.includes(startupId)
-        ? current.filter((id) => id !== startupId)
-        : [...current, startupId]
+  const expressInterest = async (founder) => {
+    const id = getProfileId(founder);
+
+    if (!id) {
+      window.alert("This founder profile does not have a valid profile ID.");
+      return;
+    }
+
+    if (connectedStartups.includes(id)) return;
+
+    try {
+      setConnectingId(id);
+
+      const token = localStorage.getItem("startupsync_token");
+
+      await api.post(
+        `/connections/founders/${encodeURIComponent(id)}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setConnectedStartups((current) => [...current, id]);
+      window.alert("Your interest has been sent successfully.");
+    } catch (err) {
+      window.alert(
+        err.response?.data?.message ||
+          "Unable to send your interest. Please try again."
+      );
+    } finally {
+      setConnectingId("");
+    }
+  };
+
+  const viewProfile = (founder) => {
+    window.alert(
+      [
+        `Startup: ${getName(founder)}`,
+        `Industry: ${getIndustry(founder) || "Not specified"}`,
+        `Stage: ${getStage(founder) || "Not specified"}`,
+        `Location: ${getLocation(founder) || "Not specified"}`,
+        `Team size: ${getTeamSize(founder) || "Not specified"}`,
+        `Funding sought: ${getFunding(founder) || "Not specified"}`,
+        `Description: ${getDescription(founder)}`,
+      ].join("\n\n")
     );
   };
 
@@ -199,58 +426,184 @@ function InvestorDiscoverStartups() {
     setSearchTerm("");
     setIndustry("All Industries");
     setStage("All Stages");
-    setFundingStage("All Funding Stages");
     setLocation("All Locations");
+    setSortBy("name");
   };
 
-  const hasFilters =
-    searchTerm ||
-    industry !== "All Industries" ||
-    stage !== "All Stages" ||
-    fundingStage !== "All Funding Stages" ||
-    location !== "All Locations";
+  const renderFounderCard = (founder, recommended = false) => {
+    const id = getProfileId(founder);
+    const isSaved = savedStartups.includes(id);
+    const isConnected = connectedStartups.includes(id);
+    const score = founder._aiScore;
+
+    return (
+      <article className="investor-startup-card" key={id || getName(founder)}>
+        <div className="startup-card-top">
+          <div className="startup-logo">
+            <Rocket size={23} />
+          </div>
+
+          <div className="startup-card-title">
+            <h3>{getName(founder)}</h3>
+            <span>{getIndustry(founder) || "Industry not specified"}</span>
+          </div>
+
+          <button
+            type="button"
+            className={`startup-save-button ${
+              isSaved ? "startup-save-active" : ""
+            }`}
+            onClick={() => toggleSave(id)}
+            aria-label={isSaved ? "Remove saved startup" : "Save startup"}
+          >
+            <Bookmark size={19} fill={isSaved ? "currentColor" : "none"} />
+          </button>
+        </div>
+
+        {recommended && (
+          <div className="startup-match">
+            <span>AI Recommended</span>
+            {score !== null && score !== undefined && <strong>{score}%</strong>}
+          </div>
+        )}
+
+        <p className="startup-tagline">{getDescription(founder)}</p>
+
+        <div className="startup-details">
+          <div className="startup-detail">
+            <MapPin size={16} />
+            <span>{getLocation(founder) || "Location not provided"}</span>
+          </div>
+
+          <div className="startup-detail">
+            <UsersRound size={16} />
+            <span>
+              {getTeamSize(founder)
+                ? `${getTeamSize(founder)} team members`
+                : "Team size not provided"}
+            </span>
+          </div>
+
+          <div className="startup-detail">
+            <span className="startup-detail-label">Stage</span>
+            <span>{getStage(founder) || "Not specified"}</span>
+          </div>
+
+          <div className="startup-detail">
+            <span className="startup-detail-label">Funding</span>
+            <span>
+              {getFunding(founder) === ""
+                ? "Not specified"
+                : String(getFunding(founder))}
+            </span>
+          </div>
+
+          <div className="startup-detail">
+            <span className="startup-detail-label">Founded</span>
+            <span>{getFounded(founder) || "Not specified"}</span>
+          </div>
+        </div>
+
+        <div className="startup-card-actions">
+          <button
+            type="button"
+            className="btn btn-secondary startup-view-button"
+            onClick={() => viewProfile(founder)}
+          >
+            View Profile
+            <ExternalLink size={16} />
+          </button>
+
+          <button
+            type="button"
+            className={`btn startup-connect-button ${
+              isConnected ? "startup-connected" : "btn-primary"
+            }`}
+            disabled={isConnected || connectingId === id}
+            onClick={() => expressInterest(founder)}
+          >
+            {isConnected ? (
+              <>
+                <Check size={16} />
+                Interest Sent
+              </>
+            ) : connectingId === id ? (
+              "Sending..."
+            ) : (
+              "Express Interest"
+            )}
+          </button>
+        </div>
+      </article>
+    );
+  };
 
   return (
     <div className="investor-discover-page">
-
-      {/* Page Header */}
       <section className="investor-discover-header">
         <div>
           <span className="investor-discover-badge">
             <Rocket size={15} />
             Startup Discovery
           </span>
-
           <h2>Discover Startups</h2>
-
           <p>
-            Explore promising startups, review their profiles,
-            and discover investment opportunities that match
-            your preferences.
+            Discover AI-recommended founders and explore the StartupSync
+            startup ecosystem.
           </p>
         </div>
 
         <div className="investor-discover-summary">
-          <strong>{filteredStartups.length}</strong>
-          <span>Startups Found</span>
+          <strong>{founders.length}</strong>
+          <span>Registered Startups</span>
         </div>
       </section>
 
-      {/* Search */}
-      <section className="investor-search-panel">
+      <section style={{ margin: "24px 0 14px" }}>
+        <h3>Top 5 AI Recommendations</h3>
+        <p>Founders recommended for your investor profile.</p>
+      </section>
 
+      {aiLoading ? (
+        <p>Loading AI recommendations...</p>
+      ) : aiError ? (
+        <section className="investor-empty-state">
+          <h3>Recommendations unavailable</h3>
+          <p>{aiError}</p>
+        </section>
+      ) : recommendedFounders.length > 0 ? (
+        <section className="investor-startup-grid">
+          {recommendedFounders.slice(0, 5).map((founder) =>
+            renderFounderCard(founder, true)
+          )}
+        </section>
+      ) : (
+        <section className="investor-empty-state">
+          <div className="investor-empty-icon">
+            <Rocket size={28} />
+          </div>
+          <h3>No matched AI recommendations</h3>
+          <p>
+            The AI response did not match registered founder profiles. Check
+            the dataset IDs and profile links.
+          </p>
+        </section>
+      )}
+
+      <section style={{ margin: "32px 0 14px" }}>
+        <h3>Explore All Other Startups</h3>
+        <p>Search, filter, and sort the remaining registered founder profiles.</p>
+      </section>
+
+      <section className="investor-search-panel">
         <div className="investor-search-box">
           <Search size={19} />
-
           <input
             type="text"
             placeholder="Search startups, industries or locations..."
             value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(event.target.value)
-            }
+            onChange={(event) => setSearchTerm(event.target.value)}
           />
-
           {searchTerm && (
             <button
               type="button"
@@ -265,56 +618,60 @@ function InvestorDiscoverStartups() {
 
         <div className="investor-filter-title">
           <Filter size={17} />
-          <span>Filters</span>
+          <span>Filters and Sorting</span>
         </div>
 
         <div className="investor-filter-grid">
-
           <select
             value={industry}
-            onChange={(event) =>
-              setIndustry(event.target.value)
-            }
+            onChange={(event) => setIndustry(event.target.value)}
           >
-            {industryOptions.map((option) => (
-              <option key={option}>{option}</option>
+            {industries.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
 
           <select
             value={stage}
-            onChange={(event) =>
-              setStage(event.target.value)
-            }
+            onChange={(event) => setStage(event.target.value)}
           >
-            {stageOptions.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
-
-          <select
-            value={fundingStage}
-            onChange={(event) =>
-              setFundingStage(event.target.value)
-            }
-          >
-            {fundingOptions.map((option) => (
-              <option key={option}>{option}</option>
+            {stages.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
 
           <select
             value={location}
-            onChange={(event) =>
-              setLocation(event.target.value)
-            }
+            onChange={(event) => setLocation(event.target.value)}
           >
-            {locationOptions.map((option) => (
-              <option key={option}>{option}</option>
+            {locations.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
 
-          {hasFilters && (
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            aria-label="Sort startups"
+          >
+            <option value="name">Sort: Name A–Z</option>
+            <option value="industry">Sort: Industry</option>
+            <option value="stage">Sort: Stage</option>
+            <option value="location">Sort: Location</option>
+            <option value="newest">Sort: Newest Founded</option>
+          </select>
+
+          {(searchTerm ||
+            industry !== "All Industries" ||
+            stage !== "All Stages" ||
+            location !== "All Locations" ||
+            sortBy !== "name") && (
             <button
               type="button"
               className="investor-clear-filters"
@@ -326,155 +683,30 @@ function InvestorDiscoverStartups() {
         </div>
       </section>
 
-      {/* Startup Cards */}
-      {filteredStartups.length > 0 ? (
-        <section className="investor-startup-grid">
-          {filteredStartups.map((startup) => {
-            const isSaved = savedStartups.includes(startup.id);
-            const isConnected =
-              connectedStartups.includes(startup.id);
-
-            return (
-              <article
-                className="investor-startup-card"
-                key={startup.id}
-              >
-
-                <div className="startup-card-top">
-
-                  <div className="startup-logo">
-                    <Rocket size={23} />
-                  </div>
-
-                  <div className="startup-card-title">
-                    <h3>{startup.name}</h3>
-
-                    <span>{startup.industry}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={`startup-save-button ${
-                      isSaved
-                        ? "startup-save-active"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      toggleSave(startup.id)
-                    }
-                    aria-label={
-                      isSaved
-                        ? "Remove from saved startups"
-                        : "Save startup"
-                    }
-                  >
-                    <Bookmark
-                      size={19}
-                      fill={isSaved ? "currentColor" : "none"}
-                    />
-                  </button>
-                </div>
-
-                <div className="startup-match">
-                  <span>Profile Match</span>
-                  <strong>{startup.match}%</strong>
-                </div>
-
-                <p className="startup-tagline">
-                  {startup.tagline}
-                </p>
-
-                <div className="startup-details">
-
-                  <div className="startup-detail">
-                    <MapPin size={16} />
-                    <span>{startup.location}</span>
-                  </div>
-
-                  <div className="startup-detail">
-                    <UsersRound size={16} />
-                    <span>
-                      {startup.teamSize} team members
-                    </span>
-                  </div>
-
-                  <div className="startup-detail">
-                    <span className="startup-detail-label">
-                      Stage
-                    </span>
-                    <span>{startup.stage}</span>
-                  </div>
-
-                  <div className="startup-detail">
-                    <span className="startup-detail-label">
-                      Funding
-                    </span>
-                    <span>{startup.fundingSought}</span>
-                  </div>
-
-                  <div className="startup-detail">
-                    <span className="startup-detail-label">
-                      Founded
-                    </span>
-                    <span>{startup.founded}</span>
-                  </div>
-                </div>
-
-                <div className="startup-card-actions">
-
-                  <button
-                    type="button"
-                    className="btn btn-secondary startup-view-button"
-                    onClick={() =>
-                      alert(
-                        `Startup profile for ${startup.name} will be connected to the backend later.`
-                      )
-                    }
-                  >
-                    View Profile
-                    <ExternalLink size={16} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`btn startup-connect-button ${
-                      isConnected
-                        ? "startup-connected"
-                        : "btn-primary"
-                    }`}
-                    onClick={() =>
-                      toggleConnect(startup.id)
-                    }
-                  >
-                    {isConnected ? (
-                      <>
-                        <Check size={16} />
-                        Interest Sent
-                      </>
-                    ) : (
-                      "Express Interest"
-                    )}
-                  </button>
-
-                </div>
-              </article>
-            );
-          })}
+      {loading ? (
+        <p>Loading founder profiles...</p>
+      ) : error ? (
+        <section className="investor-empty-state">
+          <h3>Unable to load startups</h3>
+          <p>{error}</p>
         </section>
+      ) : remainingFounders.length > 0 ? (
+        <>
+          <p style={{ margin: "18px 0" }}>
+            {remainingFounders.length} other startup
+            {remainingFounders.length !== 1 ? "s" : ""} found
+          </p>
+          <section className="investor-startup-grid">
+            {remainingFounders.map((founder) => renderFounderCard(founder))}
+          </section>
+        </>
       ) : (
         <section className="investor-empty-state">
-
           <div className="investor-empty-icon">
             <Search size={28} />
           </div>
-
-          <h3>No startups found</h3>
-
-          <p>
-            We couldn't find startups matching your current
-            search and filters.
-          </p>
-
+          <h3>No other startups found</h3>
+          <p>Try changing your search or filter criteria.</p>
           <button
             type="button"
             className="btn btn-primary"
@@ -482,10 +714,8 @@ function InvestorDiscoverStartups() {
           >
             Clear Filters
           </button>
-
         </section>
       )}
-
     </div>
   );
 }
