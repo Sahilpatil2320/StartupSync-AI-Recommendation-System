@@ -10,6 +10,8 @@ from pathlib import Path
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 CORS(app)
@@ -703,6 +705,98 @@ def recommend_custom_founder_mentors():
             "message": "Failed to generate mentor recommendations",
             "error": str(error),
         }), 500
+
+@app.route("/recommend/student/opportunities", methods=["POST"])
+def recommend_student_opportunities():
+    data = request.get_json() or {}
+    student = data.get("student", {})
+    opportunities = data.get("opportunities", [])
+
+    if not isinstance(student, dict) or not isinstance(opportunities, list):
+        return jsonify({
+            "success": False,
+            "message": "Invalid student or opportunities data"
+        }), 400
+
+    if not opportunities:
+        return jsonify({
+            "success": True,
+            "recommendations": []
+        })
+
+    def text_value(value):
+        if isinstance(value, list):
+            return " ".join(str(item) for item in value if item)
+        return str(value or "")
+
+    student_text = " ".join([
+        text_value(student.get("technicalSkills")),
+        text_value(student.get("programmingLanguages")),
+        text_value(student.get("frameworks")),
+        text_value(student.get("tools")),
+        text_value(student.get("projects")),
+        text_value(student.get("interestedIndustry")),
+        text_value(student.get("interestedDomain")),
+        text_value(student.get("placementDomain")),
+        text_value(student.get("careerGoal")),
+        text_value(student.get("startupInterests")),
+        text_value(student.get("internshipDomain")),
+        text_value(student.get("internshipDescription")),
+        text_value(student.get("certifications")),
+    ]).strip()
+
+    if not student_text:
+        return jsonify({
+            "success": True,
+            "message": "Complete your student profile to receive recommendations",
+            "recommendations": []
+        })
+
+    opportunity_texts = []
+
+    for opportunity in opportunities:
+        opportunity_texts.append(" ".join([
+            text_value(opportunity.get("title")),
+            text_value(opportunity.get("type")),
+            text_value(opportunity.get("category")),
+            text_value(opportunity.get("description")),
+            text_value(opportunity.get("tags")),
+            text_value(opportunity.get("organizer")),
+        ]))
+
+    documents = [student_text] + opportunity_texts
+
+    try:
+        vectorizer = TfidfVectorizer(
+            lowercase=True,
+            stop_words="english",
+            ngram_range=(1, 2)
+        )
+        matrix = vectorizer.fit_transform(documents)
+        scores = cosine_similarity(matrix[0:1], matrix[1:]).flatten()
+
+        ranked = []
+
+        for opportunity, score in zip(opportunities, scores):
+            ranked.append({
+                "opportunityId": str(opportunity.get("_id", "")),
+                "score": round(float(score) * 100, 2)
+            })
+
+        ranked.sort(key=lambda item: item["score"], reverse=True)
+
+        return jsonify({
+            "success": True,
+            "method": "TF-IDF + Cosine Similarity",
+            "recommendations": ranked
+        })
+
+    except ValueError:
+        return jsonify({
+            "success": True,
+            "message": "Not enough text to generate recommendations",
+            "recommendations": []
+        })
 
 
 # ============================================================

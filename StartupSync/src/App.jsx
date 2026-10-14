@@ -52,6 +52,7 @@ import MentorMessages from "./pages/dashboard/mentor/MentorMessages";
 import MentorNotifications from "./pages/dashboard/mentor/MentorNotifications";
 
 import StudentInternships from "./pages/dashboard/student/StudentInternships";
+import StudentInvestors from "./pages/dashboard/student/StudentInvestors";
 import StudentOpportunities from "./pages/dashboard/student/StudentOpportunities";
 import StudentApplications from "./pages/dashboard/student/StudentApplications";
 import StudentMessages from "./pages/dashboard/student/StudentMessages";
@@ -315,6 +316,15 @@ function App() {
                     element={
                         <DashboardLayout role="student">
                             <StudentInternships />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
+                    path="/dashboard/student/investors"
+                    element={
+                        <DashboardLayout role="student">
+                            <StudentInvestors />
                         </DashboardLayout>
                     }
                 />

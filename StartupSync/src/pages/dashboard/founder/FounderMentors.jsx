@@ -1,4 +1,3 @@
-
 import {
   ArrowRight,
   Award,
@@ -19,8 +18,10 @@ const getToken = () => localStorage.getItem("startupsync_token");
 
 const getUserIdFromToken = (token) => {
   try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.userId || payload.id || payload._id || "";
+    const payload = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+    );
+    return payload.userId || payload.id || payload._id || payload.sub || "";
   } catch {
     return "";
   }
@@ -35,26 +36,20 @@ const asArray = (value) => {
 };
 
 const getName = (mentor) =>
-  mentor.name ||
-  mentor.fullName ||
-  mentor.user?.name ||
-  mentor.userId?.name ||
-  "Mentor";
+  mentor.name || mentor.fullName || mentor.user?.name ||
+  mentor.userId?.name || mentor.mentor_name || "Mentor";
 
 const getExpertise = (mentor) =>
-  mentor.expertise ||
-  mentor.mentoringAreas ||
-  mentor.skills ||
-  mentor.domain ||
-  "Expertise not specified";
+  mentor.expertise || mentor.mentoringAreas || mentor.skills ||
+  mentor.domain || "Expertise not specified";
 
 const getIndustries = (mentor) =>
-  [
+  [...new Set([
     ...asArray(mentor.industries),
     ...asArray(mentor.industry),
     ...asArray(mentor.preferredDomains),
     ...asArray(mentor.domain),
-  ].filter((value, index, values) => values.indexOf(value) === index);
+  ])];
 
 const getExperience = (mentor) => {
   const years = mentor.experienceYears ?? mentor.experience;
@@ -65,22 +60,28 @@ const getExperience = (mentor) => {
 };
 
 const getMatchScore = (mentor) => {
-  const score =
+  const raw =
+    mentor.score_percentage ??
     mentor.matchPercentage ??
     mentor.match_percentage ??
     mentor.matchScore ??
     mentor.score ??
     mentor.similarity;
 
-  if (score === undefined || score === null || score === "") return null;
+  if (raw === undefined || raw === null || raw === "") return null;
 
-  const number = Number(score);
+  const number = Number(raw);
   if (!Number.isFinite(number)) return null;
 
-  // Similarity scores are commonly represented between 0 and 1.
   const percentage = number >= 0 && number <= 1 ? number * 100 : number;
   return Math.max(0, Math.min(100, Number(percentage.toFixed(1))));
 };
+
+const getMentorId = (mentor) =>
+  String(
+    mentor.id || mentor._id || mentor.mentorId ||
+    mentor.mentor_id || mentor.userId?._id || mentor.userId || ""
+  );
 
 function FounderMentors() {
   const [mentors, setMentors] = useState([]);
@@ -101,9 +102,7 @@ function FounderMentors() {
       setError("");
 
       const token = getToken();
-      if (!token) {
-        throw new Error("Please log in again to view mentor profiles.");
-      }
+      if (!token) throw new Error("Please log in again to view mentor profiles.");
 
       const response = await api.get("/profiles/mentors", {
         headers: { Authorization: `Bearer ${token}` },
@@ -116,23 +115,20 @@ function FounderMentors() {
         [];
 
       if (!Array.isArray(records)) {
-        throw new Error("The mentor API returned an unexpected response.");
+        throw new Error("Unexpected response from the mentor API.");
       }
 
       setMentors(records.map((mentor) => ({
         ...mentor,
-        id: mentor.id || mentor._id,
+        id: getMentorId(mentor),
         name: getName(mentor),
         expertise: getExpertise(mentor),
         industries: getIndustries(mentor),
         experience: getExperience(mentor),
         location: mentor.location || "Location not provided",
         availability: mentor.availability || "Not specified",
-        format:
-          mentor.format ||
-          mentor.mentoringFormat ||
-          mentor.mentoringMode ||
-          "Not specified",
+        format: mentor.format || mentor.mentoringFormat ||
+          mentor.mentoringMode || "Not specified",
         startups: mentor.startupsMentored ?? mentor.mentoredStartups ?? null,
       })));
     } catch (err) {
@@ -154,14 +150,10 @@ function FounderMentors() {
       setAiError("");
 
       const token = getToken();
-      if (!token) {
-        throw new Error("Please log in again to view AI recommendations.");
-      }
+      if (!token) throw new Error("Please log in again to view AI recommendations.");
 
       const userId = getUserIdFromToken(token);
-      if (!userId) {
-        throw new Error("Could not identify your account from the login token.");
-      }
+      if (!userId) throw new Error("Could not identify your account from the login token.");
 
       const response = await api.get(
         `/recommendations/founder/${encodeURIComponent(userId)}/mentors`,
@@ -174,7 +166,7 @@ function FounderMentors() {
         [];
 
       if (!Array.isArray(records)) {
-        throw new Error("The recommendation API returned an unexpected response.");
+        throw new Error("Unexpected response from the recommendation API.");
       }
 
       setRecommendations(records.slice(0, 5));
@@ -183,7 +175,7 @@ function FounderMentors() {
       setAiError(
         err.response?.data?.message ||
         err.message ||
-        "Unable to connect to the AI recommendation service."
+        "Unable to load AI mentor recommendations."
       );
       setRecommendations([]);
     } finally {
@@ -197,18 +189,16 @@ function FounderMentors() {
   }, [fetchMentors, fetchRecommendations]);
 
   const allExpertise = useMemo(
-    () =>
-      [...new Set(mentors.flatMap((mentor) => asArray(mentor.expertise)))]
-        .filter((value) => value && value !== "Expertise not specified")
-        .sort(),
+    () => [...new Set(mentors.flatMap((mentor) => asArray(mentor.expertise)))]
+      .filter((value) => value && value !== "Expertise not specified")
+      .sort(),
     [mentors]
   );
 
   const allIndustries = useMemo(
-    () =>
-      [...new Set(mentors.flatMap((mentor) => mentor.industries || []))]
-        .filter(Boolean)
-        .sort(),
+    () => [...new Set(mentors.flatMap((mentor) => mentor.industries || []))]
+      .filter(Boolean)
+      .sort(),
     [mentors]
   );
 
@@ -223,28 +213,33 @@ function FounderMentors() {
         ...mentor.industries,
       ].join(" ").toLowerCase();
 
-      const matchesSearch = !search || searchableText.includes(search);
-      const matchesExpertise =
-        expertiseFilter === "All" ||
-        asArray(mentor.expertise).includes(expertiseFilter) ||
-        mentor.expertise === expertiseFilter;
-      const matchesIndustry =
-        industryFilter === "All" ||
-        mentor.industries.includes(industryFilter);
-      const matchesFormat =
-        formatFilter === "All" || mentor.format === formatFilter;
-
       return (
-        matchesSearch &&
-        matchesExpertise &&
-        matchesIndustry &&
-        matchesFormat
+        (!search || searchableText.includes(search)) &&
+        (expertiseFilter === "All" ||
+          asArray(mentor.expertise).includes(expertiseFilter) ||
+          mentor.expertise === expertiseFilter) &&
+        (industryFilter === "All" ||
+          mentor.industries.includes(industryFilter)) &&
+        (formatFilter === "All" || mentor.format === formatFilter)
       );
     });
   }, [mentors, searchTerm, expertiseFilter, industryFilter, formatFilter]);
 
+  const recommendedIds = useMemo(
+    () => new Set(recommendations.map(getMentorId).filter(Boolean)),
+    [recommendations]
+  );
+
+  const remainingMentors = useMemo(
+    () => filteredMentors.filter((mentor) => !recommendedIds.has(getMentorId(mentor))),
+    [filteredMentors, recommendedIds]
+  );
+
   const handleRequest = async (mentorId) => {
-    if (!mentorId) return;
+    if (!mentorId) {
+      window.alert("This recommendation does not have a registered mentor account ID.");
+      return;
+    }
 
     try {
       const token = getToken();
@@ -253,7 +248,6 @@ function FounderMentors() {
         return;
       }
 
-      // This endpoint must be implemented and authorized by the backend.
       await api.post(
         `/connections/mentors/${encodeURIComponent(mentorId)}`,
         {},
@@ -263,9 +257,10 @@ function FounderMentors() {
       setRequestedMentors((current) =>
         current.includes(mentorId) ? current : [...current, mentorId]
       );
+      window.alert("Mentorship request sent successfully!");
     } catch (err) {
       console.error("Unable to send mentorship request:", err);
-      setError(
+      window.alert(
         err.response?.data?.message ||
         "Could not send the mentorship request. Please try again."
       );
@@ -273,28 +268,29 @@ function FounderMentors() {
   };
 
   const openProfile = (mentor) => {
-    const details = [
+    window.alert([
       getName(mentor),
-      `Expertise: ${mentor.expertise || "Not specified"}`,
-      `Industry: ${(mentor.industries || []).join(", ") || "Not specified"}`,
+      `Expertise: ${getExpertise(mentor)}`,
+      `Industry: ${getIndustries(mentor).join(", ") || "Not specified"}`,
       `Location: ${mentor.location || "Not specified"}`,
-      `Experience: ${mentor.experience || "Not specified"}`,
+      `Experience: ${getExperience(mentor)}`,
       `Availability: ${mentor.availability || "Not specified"}`,
       mentor.bio ? `\nAbout: ${mentor.bio}` : "",
-    ].filter(Boolean);
-
-    window.alert(details.join("\n"));
+    ].filter(Boolean).join("\n"));
   };
 
-  const renderMentorCard = (mentor, isRecommended = false) => {
-    const mentorId = mentor.id || mentor._id || mentor.mentorId;
+  const renderMentorCard = (mentor, isRecommended = false, index = 0) => {
+    const mentorId = getMentorId(mentor);
     const name = getName(mentor);
     const industries = getIndustries(mentor);
     const match = getMatchScore(mentor);
     const requested = requestedMentors.includes(mentorId);
 
     return (
-      <article className="founder-mentor-card" key={mentorId || name}>
+      <article
+        className="founder-mentor-card"
+        key={mentorId || `${name}-${index}`}
+      >
         <div className="founder-mentor-card-top">
           <div className="founder-mentor-avatar">
             {name.charAt(0).toUpperCase()}
@@ -306,9 +302,7 @@ function FounderMentors() {
           </div>
 
           <div className="founder-mentor-match">
-            <strong>
-              {match === null ? "—" : `${match}%`}
-            </strong>
+            <strong>{match === null ? "—" : `${match}%`}</strong>
             <span>{isRecommended ? "Relative match" : "Match"}</span>
           </div>
         </div>
@@ -330,13 +324,9 @@ function FounderMentors() {
         </div>
 
         <div className="founder-mentor-industries">
-          {industries.length ? (
-            industries.slice(0, 5).map((industry) => (
-              <span key={industry}>{industry}</span>
-            ))
-          ) : (
-            <span>Industries not specified</span>
-          )}
+          {industries.length ? industries.slice(0, 5).map((industry) => (
+            <span key={industry}>{industry}</span>
+          )) : <span>Industries not specified</span>}
         </div>
 
         <div className="founder-mentor-network">
@@ -359,25 +349,18 @@ function FounderMentors() {
             className="founder-mentor-view-button"
             onClick={() => openProfile(mentor)}
           >
-            View Profile
-            <ArrowRight size={15} />
+            View Profile <ArrowRight size={15} />
           </button>
 
           <button
             type="button"
-            className={`founder-mentor-request-button ${requested ? "founder-mentor-requested" : ""
-              }`}
+            className={`founder-mentor-request-button ${requested ? "founder-mentor-requested" : ""}`}
             onClick={() => handleRequest(mentorId)}
             disabled={!mentorId || requested}
           >
             {requested ? (
-              <>
-                <CheckCircle2 size={15} />
-                Request Sent
-              </>
-            ) : (
-              "Request Mentorship"
-            )}
+              <><CheckCircle2 size={15} /> Request Sent</>
+            ) : "Request Mentorship"}
           </button>
         </div>
       </article>
@@ -409,8 +392,7 @@ function FounderMentors() {
             onClick={fetchRecommendations}
             disabled={aiLoading}
           >
-            <RefreshCw size={16} />
-            Refresh
+            <RefreshCw size={16} /> Refresh
           </button>
         </div>
 
@@ -427,24 +409,22 @@ function FounderMentors() {
             </button>
           </div>
         ) : recommendations.length ? (
-          <section className="founder-mentors-grid">
-            {recommendations.map((mentor, index) =>
-              renderMentorCard(
-                { ...mentor, id: mentor.id || mentor._id || mentor.mentorId || `recommendation-${index}` },
-                true
-              )
-            )}
-          </section>
+          <>
+            <section className="founder-mentors-grid">
+              {recommendations.map((mentor, index) =>
+                renderMentorCard(mentor, true, index)
+              )}
+            </section>
+            <p className="founder-mentor-score-note">
+              Match scores are ranking scores, not guarantees of a successful
+              mentorship. AI dataset records may differ from registered accounts.
+            </p>
+          </>
         ) : (
           <div className="founder-mentors-empty">
             No AI mentor recommendations are available for this account yet.
           </div>
         )}
-
-        <p className="founder-mentor-score-note">
-          Match scores are ranking scores, not guarantees of a successful
-          mentorship.
-        </p>
       </section>
 
       <section className="founder-mentors-filters">
@@ -467,9 +447,7 @@ function FounderMentors() {
             >
               <option value="All">All Expertise</option>
               {allExpertise.map((expertise) => (
-                <option key={expertise} value={expertise}>
-                  {expertise}
-                </option>
+                <option key={expertise} value={expertise}>{expertise}</option>
               ))}
             </select>
           </div>
@@ -482,9 +460,7 @@ function FounderMentors() {
             >
               <option value="All">All Industries</option>
               {allIndustries.map((industry) => (
-                <option key={industry} value={industry}>
-                  {industry}
-                </option>
+                <option key={industry} value={industry}>{industry}</option>
               ))}
             </select>
           </div>
@@ -499,9 +475,7 @@ function FounderMentors() {
               {[...new Set(mentors.map((mentor) => mentor.format))]
                 .filter((format) => format && format !== "Not specified")
                 .map((format) => (
-                  <option key={format} value={format}>
-                    {format}
-                  </option>
+                  <option key={format} value={format}>{format}</option>
                 ))}
             </select>
           </div>
@@ -514,7 +488,7 @@ function FounderMentors() {
           <p>
             {loading
               ? "Loading mentor profiles..."
-              : `${filteredMentors.length} mentor${filteredMentors.length === 1 ? "" : "s"} found`}
+              : `${remainingMentors.length} mentor${remainingMentors.length === 1 ? "" : "s"} found`}
           </p>
         </div>
       </div>
@@ -522,9 +496,7 @@ function FounderMentors() {
       {error && (
         <section className="founder-mentors-empty">
           <p>{error}</p>
-          <button type="button" onClick={fetchMentors}>
-            Retry
-          </button>
+          <button type="button" onClick={fetchMentors}>Retry</button>
         </section>
       )}
 
@@ -532,9 +504,11 @@ function FounderMentors() {
         <section className="founder-mentors-empty">
           Loading mentor profiles from the database...
         </section>
-      ) : !error && filteredMentors.length ? (
+      ) : !error && remainingMentors.length ? (
         <section className="founder-mentors-grid">
-          {filteredMentors.map((mentor) => renderMentorCard(mentor))}
+          {remainingMentors.map((mentor, index) =>
+            renderMentorCard(mentor, false, index)
+          )}
         </section>
       ) : !error ? (
         <section className="founder-mentors-empty">
