@@ -4,181 +4,137 @@ import {
   CalendarDays,
   Check,
   Clock3,
-  ExternalLink,
   Filter,
-  IndianRupee,
   MapPin,
   Search,
-  UsersRound,
-  X
+  X,
+  ExternalLink,
 } from "lucide-react";
-import { useMemo, useState } from "react";
 
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import "./StudentInternships.css";
 
-const internshipData = [
-  {
-    id: 1,
-    company: "FinFlow Technologies",
-    role: "MERN Stack Intern",
-    domain: "Web Development",
-    location: "Pune, Maharashtra",
-    mode: "Hybrid",
-    duration: "6 Months",
-    stipend: "₹15,000 / month",
-    applicants: 84,
-    match: 96,
-    posted: "2 days ago",
-    description:
-      "Work with the development team to build scalable web applications using React, Node.js, Express.js and MongoDB.",
-    skills: ["React.js", "Node.js", "MongoDB", "JavaScript"]
-  },
-  {
-    id: 2,
-    company: "TechNova Solutions",
-    role: "Frontend Developer Intern",
-    domain: "Frontend Development",
-    location: "Bangalore, Karnataka",
-    mode: "Remote",
-    duration: "4 Months",
-    stipend: "₹12,000 / month",
-    applicants: 126,
-    match: 91,
-    posted: "3 days ago",
-    description:
-      "Help create responsive and user-friendly interfaces while working closely with designers and backend developers.",
-    skills: ["HTML", "CSS", "JavaScript", "React.js"]
-  },
-  {
-    id: 3,
-    company: "AgriNova Labs",
-    role: "Software Developer Intern",
-    domain: "Software Development",
-    location: "Nagpur, Maharashtra",
-    mode: "On-site",
-    duration: "6 Months",
-    stipend: "₹10,000 / month",
-    applicants: 68,
-    match: 88,
-    posted: "5 days ago",
-    description:
-      "Contribute to software products focused on solving real-world agricultural and supply-chain challenges.",
-    skills: ["Java", "Python", "SQL", "Git"]
-  },
-  {
-    id: 4,
-    company: "HealthNest Innovations",
-    role: "Backend Developer Intern",
-    domain: "Backend Development",
-    location: "Mumbai, Maharashtra",
-    mode: "Hybrid",
-    duration: "5 Months",
-    stipend: "₹14,000 / month",
-    applicants: 93,
-    match: 86,
-    posted: "1 week ago",
-    description:
-      "Build backend APIs and services while working with databases and cloud-based application architecture.",
-    skills: ["Node.js", "Express.js", "MongoDB", "REST API"]
-  },
-  {
-    id: 5,
-    company: "EduBridge",
-    role: "Full Stack Developer Intern",
-    domain: "Full Stack Development",
-    location: "Remote",
-    mode: "Remote",
-    duration: "6 Months",
-    stipend: "₹18,000 / month",
-    applicants: 157,
-    match: 94,
-    posted: "1 week ago",
-    description:
-      "Join the product engineering team and develop full-stack features for a modern education technology platform.",
-    skills: ["React.js", "Node.js", "MongoDB", "REST API"]
-  },
-  {
-    id: 6,
-    company: "GreenGrid Systems",
-    role: "Software Engineering Intern",
-    domain: "Software Development",
-    location: "Hyderabad, Telangana",
-    mode: "Hybrid",
-    duration: "6 Months",
-    stipend: "₹16,000 / month",
-    applicants: 72,
-    match: 83,
-    posted: "2 weeks ago",
-    description:
-      "Assist engineers in developing technology solutions for sustainable energy and smart infrastructure.",
-    skills: ["Java", "Python", "SQL", "Git"]
-  }
-];
+const API_URL = "http://localhost:5000/api/opportunities";
 
-const filterOptions = {
-  domain: [
-    "All Domains",
-    "Web Development",
-    "Frontend Development",
-    "Backend Development",
-    "Full Stack Development",
-    "Software Development"
-  ],
-  mode: ["All Modes", "Remote", "Hybrid", "On-site"],
-  duration: ["All Durations", "4 Months", "5 Months", "6 Months"],
-  location: [
-    "All Locations",
-    "Remote",
-    "Pune",
-    "Bangalore",
-    "Nagpur",
-    "Mumbai",
-    "Hyderabad"
-  ]
+const getToken = () => localStorage.getItem("startupsync_token");
+
+const getErrorMessage = (error) =>
+  error.response?.data?.message || "Something went wrong. Please try again.";
+
+const getPostedDate = (date) => {
+  if (!date) return "Date not available";
+
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  );
+
+  if (days === 0) return "Today";
+  if (days === 1) return "1 day ago";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)} week(s) ago`;
+
+  return new Date(date).toLocaleDateString();
 };
 
 function StudentInternships() {
+  const [internships, setInternships] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [domainFilter, setDomainFilter] = useState("All Domains");
   const [modeFilter, setModeFilter] = useState("All Modes");
   const [durationFilter, setDurationFilter] = useState("All Durations");
   const [locationFilter, setLocationFilter] = useState("All Locations");
-
-  const [savedInternships, setSavedInternships] = useState([]);
-  const [appliedInternships, setAppliedInternships] = useState([]);
   const [selectedInternship, setSelectedInternship] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState("");
+  const [recommendationAvailable, setRecommendationAvailable] =
+    useState(false);
+  const [recommendationMessage, setRecommendationMessage] = useState("");
+
+  const fetchInternships = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await axios.get(API_URL, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+
+      const data = response.data.data || [];
+
+      const internshipItems = data
+        .filter((item) => item.type === "Internship")
+        .map((item) => ({
+          ...item,
+          id: item._id,
+          company: item.organizer || "Organization not specified",
+          role: item.title,
+          domain: item.category || "General",
+          location: item.location || "Not specified",
+          mode: item.mode || "Not specified",
+          duration: item.duration || "Not specified",
+          stipend: item.stipend || "Not specified",
+          description: item.description || "No description provided.",
+          skills: Array.isArray(item.tags) ? item.tags : [],
+          posted: getPostedDate(item.createdAt),
+          saved: Boolean(item.saved),
+          registered: Boolean(item.registered),
+          match:
+            typeof item.match === "number" ? item.match : null,
+          recommended: Boolean(item.recommended),
+        }));
+
+      setInternships(internshipItems);
+      setRecommendationAvailable(
+        Boolean(response.data.recommendationAvailable)
+      );
+      setRecommendationMessage(
+        response.data.recommendationMessage || ""
+      );
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInternships();
+  }, []);
 
   const filteredInternships = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
-    return internshipData.filter((internship) => {
+    return internships.filter((item) => {
       const matchesSearch =
         !search ||
-        internship.company.toLowerCase().includes(search) ||
-        internship.role.toLowerCase().includes(search) ||
-        internship.domain.toLowerCase().includes(search) ||
-        internship.skills.some((skill) =>
-          skill.toLowerCase().includes(search)
-        );
+        [
+          item.company,
+          item.role,
+          item.domain,
+          item.description,
+          ...item.skills,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(search);
 
       const matchesDomain =
-        domainFilter === "All Domains" ||
-        internship.domain === domainFilter;
+        domainFilter === "All Domains" || item.domain === domainFilter;
 
       const matchesMode =
-        modeFilter === "All Modes" ||
-        internship.mode === modeFilter;
+        modeFilter === "All Modes" || item.mode === modeFilter;
 
       const matchesDuration =
         durationFilter === "All Durations" ||
-        internship.duration === durationFilter;
+        item.duration === durationFilter;
 
       const matchesLocation =
         locationFilter === "All Locations" ||
-        internship.location.toLowerCase().includes(
-          locationFilter.toLowerCase()
-        ) ||
-        (locationFilter === "Remote" && internship.mode === "Remote");
+        item.location.toLowerCase().includes(locationFilter.toLowerCase()) ||
+        (locationFilter === "Remote" && item.mode === "Online");
 
       return (
         matchesSearch &&
@@ -189,27 +145,89 @@ function StudentInternships() {
       );
     });
   }, [
+    internships,
     searchTerm,
     domainFilter,
     modeFilter,
     durationFilter,
-    locationFilter
+    locationFilter,
   ]);
 
-  const toggleSave = (internshipId) => {
-    setSavedInternships((current) =>
-      current.includes(internshipId)
-        ? current.filter((id) => id !== internshipId)
-        : [...current, internshipId]
-    );
+  const recommendedInternships = useMemo(
+    () =>
+      filteredInternships
+        .filter((item) => item.recommended)
+        .sort((a, b) => (b.match ?? -1) - (a.match ?? -1))
+        .slice(0, 5),
+    [filteredInternships]
+  );
+
+  const recommendedIds = useMemo(
+    () => new Set(recommendedInternships.map((item) => item.id)),
+    [recommendedInternships]
+  );
+
+  const remainingInternships = useMemo(
+    () => filteredInternships.filter((item) => !recommendedIds.has(item.id)),
+    [filteredInternships, recommendedIds]
+  );
+
+  const savedCount = internships.filter((item) => item.saved).length;
+  const appliedCount = internships.filter((item) => item.registered).length;
+
+  const toggleSave = async (internship) => {
+    try {
+      setBusyId(internship.id);
+      setError("");
+
+      await axios.post(
+        `${API_URL}/${internship.id}/save`,
+        {},
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+
+      await fetchInternships();
+
+      setSelectedInternship((current) =>
+        current?.id === internship.id
+          ? {
+              ...current,
+              saved: !current.saved,
+            }
+          : current
+      );
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const handleApply = (internshipId) => {
-    setAppliedInternships((current) =>
-      current.includes(internshipId)
-        ? current
-        : [...current, internshipId]
-    );
+  const handleApply = async (internship) => {
+    if (internship.registered) return;
+
+    try {
+      setBusyId(internship.id);
+      setError("");
+
+      await axios.post(
+        `${API_URL}/${internship.id}/register`,
+        {},
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+
+      await fetchInternships();
+
+      setSelectedInternship((current) =>
+        current?.id === internship.id
+          ? { ...current, registered: true }
+          : current
+      );
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const clearFilters = () => {
@@ -220,6 +238,135 @@ function StudentInternships() {
     setLocationFilter("All Locations");
   };
 
+  const domains = [
+    "All Domains",
+    ...new Set(internships.map((item) => item.domain).filter(Boolean)),
+  ];
+
+  const modes = [
+    "All Modes",
+    ...new Set(internships.map((item) => item.mode).filter(Boolean)),
+  ];
+
+  const durations = [
+    "All Durations",
+    ...new Set(internships.map((item) => item.duration).filter(Boolean)),
+  ];
+
+  const locations = [
+    "All Locations",
+    ...new Set(
+      internships.map((item) =>
+        item.mode === "Online" ? "Remote" : item.location
+      )
+    ),
+  ];
+
+  const renderInternshipCard = (internship, isRecommended = false) => (
+    <article className="student-internship-card" key={internship.id}>
+      <div className="student-internship-card-top">
+        <div className="student-company-logo">
+          {internship.company.charAt(0).toUpperCase()}
+        </div>
+
+        <button
+          type="button"
+          className={`student-save-button ${
+            internship.saved ? "student-save-active" : ""
+          }`}
+          onClick={() => toggleSave(internship)}
+          disabled={busyId === internship.id}
+          aria-label={internship.saved ? "Unsave internship" : "Save internship"}
+        >
+          <Bookmark
+            size={19}
+            fill={internship.saved ? "currentColor" : "none"}
+          />
+        </button>
+      </div>
+
+      {isRecommended && (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            margin: "8px 0",
+            padding: "5px 9px",
+            borderRadius: 6,
+            background: "#ecfdf5",
+            color: "#047857",
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          <Check size={14} />
+          AI Recommended
+          {typeof internship.match === "number" &&
+            ` · ${internship.match.toFixed(1)}% similarity`}
+        </div>
+      )}
+
+      <h4>{internship.role}</h4>
+      <p className="student-internship-company">{internship.company}</p>
+
+      <div className="student-internship-meta">
+        <span>
+          <MapPin size={15} />
+          {internship.location}
+        </span>
+        <span>
+          <BriefcaseBusiness size={15} />
+          {internship.mode}
+        </span>
+        <span>
+          <Clock3 size={15} />
+          {internship.duration}
+        </span>
+      </div>
+
+      <div className="student-internship-skills">
+        {internship.skills.map((skill) => (
+          <span key={skill}>{skill}</span>
+        ))}
+      </div>
+
+      <div className="student-internship-card-footer">
+        <span className="student-internship-posted">
+          <CalendarDays size={14} />
+          {internship.posted}
+        </span>
+      </div>
+
+      <div className="student-internship-actions">
+        <button
+          type="button"
+          className="student-view-button"
+          onClick={() => setSelectedInternship(internship)}
+        >
+          View Details
+        </button>
+
+        <button
+          type="button"
+          className={`student-apply-button ${
+            internship.registered ? "student-apply-completed" : ""
+          }`}
+          disabled={internship.registered || busyId === internship.id}
+          onClick={() => handleApply(internship)}
+        >
+          {internship.registered ? (
+            <>
+              <Check size={16} /> Applied
+            </>
+          ) : (
+            "Apply"
+          )}
+        </button>
+      </div>
+    </article>
+  );
+
   return (
     <section className="student-internships-page">
       <div className="student-internships-header">
@@ -228,12 +375,9 @@ function StudentInternships() {
             <BriefcaseBusiness size={15} />
             Internship Opportunities
           </span>
-
           <h2>Find Your Next Internship</h2>
-
           <p>
-            Discover internships that match your skills,
-            interests and career goals.
+            Discover internship opportunities published on StartupSync.
           </p>
         </div>
 
@@ -242,14 +386,12 @@ function StudentInternships() {
             <strong>{filteredInternships.length}</strong>
             <span>Opportunities</span>
           </div>
-
           <div>
-            <strong>{savedInternships.length}</strong>
+            <strong>{savedCount}</strong>
             <span>Saved</span>
           </div>
-
           <div>
-            <strong>{appliedInternships.length}</strong>
+            <strong>{appliedCount}</strong>
             <span>Applied</span>
           </div>
         </div>
@@ -258,7 +400,6 @@ function StudentInternships() {
       <div className="student-internship-search-panel">
         <div className="student-internship-search">
           <Search size={19} />
-
           <input
             type="text"
             placeholder="Search by role, company, domain or skill..."
@@ -277,7 +418,7 @@ function StudentInternships() {
             value={domainFilter}
             onChange={(event) => setDomainFilter(event.target.value)}
           >
-            {filterOptions.domain.map((option) => (
+            {domains.map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -286,7 +427,7 @@ function StudentInternships() {
             value={modeFilter}
             onChange={(event) => setModeFilter(event.target.value)}
           >
-            {filterOptions.mode.map((option) => (
+            {modes.map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -295,7 +436,7 @@ function StudentInternships() {
             value={durationFilter}
             onChange={(event) => setDurationFilter(event.target.value)}
           >
-            {filterOptions.duration.map((option) => (
+            {durations.map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -304,7 +445,7 @@ function StudentInternships() {
             value={locationFilter}
             onChange={(event) => setLocationFilter(event.target.value)}
           >
-            {filterOptions.location.map((option) => (
+            {locations.map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -319,164 +460,115 @@ function StudentInternships() {
         </div>
       </div>
 
-      <div className="student-internship-results-header">
-        <div>
-          <h3>Recommended Internships</h3>
-          <p>
-            Opportunities are currently shown using demo
-            recommendation data.
-          </p>
-        </div>
-
-        <span>
-          {filteredInternships.length} results
-        </span>
-      </div>
-
-      {filteredInternships.length > 0 ? (
-        <div className="student-internship-grid">
-          {filteredInternships.map((internship) => {
-            const isSaved = savedInternships.includes(internship.id);
-            const isApplied = appliedInternships.includes(internship.id);
-
-            return (
-              <article
-                className="student-internship-card"
-                key={internship.id}
-              >
-                <div className="student-internship-card-top">
-                  <div className="student-company-logo">
-                    {internship.company.charAt(0)}
-                  </div>
-
-                  <button
-                    type="button"
-                    className={`student-save-button ${
-                      isSaved ? "student-save-active" : ""
-                    }`}
-                    onClick={() => toggleSave(internship.id)}
-                    aria-label={
-                      isSaved
-                        ? "Remove saved internship"
-                        : "Save internship"
-                    }
-                  >
-                    <Bookmark
-                      size={19}
-                      fill={isSaved ? "currentColor" : "none"}
-                    />
-                  </button>
-                </div>
-
-                <div className="student-internship-match">
-                  {internship.match}% Match
-                </div>
-
-                <h4>{internship.role}</h4>
-
-                <p className="student-internship-company">
-                  {internship.company}
-                </p>
-
-                <div className="student-internship-meta">
-                  <span>
-                    <MapPin size={15} />
-                    {internship.location}
-                  </span>
-
-                  <span>
-                    <BriefcaseBusiness size={15} />
-                    {internship.mode}
-                  </span>
-
-                  <span>
-                    <Clock3 size={15} />
-                    {internship.duration}
-                  </span>
-
-                  <span>
-                    <IndianRupee size={15} />
-                    {internship.stipend}
-                  </span>
-                </div>
-
-                <div className="student-internship-skills">
-                  {internship.skills.map((skill) => (
-                    <span key={skill}>{skill}</span>
-                  ))}
-                </div>
-
-                <div className="student-internship-card-footer">
-                  <span className="student-internship-posted">
-                    <CalendarDays size={14} />
-                    {internship.posted}
-                  </span>
-
-                  <span className="student-internship-applicants">
-                    <UsersRound size={14} />
-                    {internship.applicants} applicants
-                  </span>
-                </div>
-
-                <div className="student-internship-actions">
-                  <button
-                    type="button"
-                    className="student-view-button"
-                    onClick={() =>
-                      setSelectedInternship(internship)
-                    }
-                  >
-                    View Details
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`student-apply-button ${
-                      isApplied
-                        ? "student-apply-completed"
-                        : ""
-                    }`}
-                    onClick={() => handleApply(internship.id)}
-                    disabled={isApplied}
-                  >
-                    {isApplied ? (
-                      <>
-                        <Check size={16} />
-                        Applied
-                      </>
-                    ) : (
-                      <>
-                        Apply
-                        <ExternalLink size={15} />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="student-internship-empty">
-          <div className="student-internship-empty-icon">
-            <Search size={25} />
-          </div>
-
-          <h3>No internships found</h3>
-
-          <p>
-            Try changing your search or clearing some filters
-            to discover more opportunities.
-          </p>
-
+      {error && (
+        <div role="alert" style={{ color: "#b91c1c", marginBottom: 16 }}>
+          {error}
           <button
             type="button"
-            className="student-empty-clear-button"
-            onClick={clearFilters}
+            onClick={fetchInternships}
+            style={{ marginLeft: 12 }}
           >
-            Clear Filters
+            Retry
           </button>
         </div>
+      )}
+
+      {loading ? (
+        <div className="student-internship-empty">
+          <h3>Loading internships...</h3>
+        </div>
+      ) : (
+        <>
+          {recommendationAvailable && recommendedInternships.length > 0 && (
+            <section style={{ marginBottom: 32 }}>
+              <div className="student-internship-results-header">
+                <div>
+                  <h3>Top 5 AI Recommended Internships</h3>
+                  <p>
+                    Ranked using your profile and internship details with
+                    TF-IDF and Cosine Similarity.
+                  </p>
+                </div>
+                <span>{recommendedInternships.length} recommended</span>
+              </div>
+
+              <div className="student-internship-grid">
+                {recommendedInternships.map((internship) =>
+                  renderInternshipCard(internship, true)
+                )}
+              </div>
+            </section>
+          )}
+
+          {!recommendationAvailable && recommendationMessage && (
+            <div
+              role="status"
+              style={{
+                padding: 12,
+                marginBottom: 20,
+                borderRadius: 8,
+                background: "#fffbeb",
+                color: "#92400e",
+              }}
+            >
+              {recommendationMessage}
+            </div>
+          )}
+
+          <section>
+            <div className="student-internship-results-header">
+              <div>
+                <h3>
+                  {recommendationAvailable
+                    ? "All Other Internships"
+                    : "Internship Opportunities"}
+                </h3>
+                <p>
+                  {recommendationAvailable
+                    ? "Explore the remaining listings below."
+                    : "Browse all available internships. AI rankings appear when recommendations are available."}
+                </p>
+              </div>
+              <span>{remainingInternships.length} results</span>
+            </div>
+
+            {remainingInternships.length > 0 ? (
+              <div className="student-internship-grid">
+                {remainingInternships.map((internship) =>
+                  renderInternshipCard(internship)
+                )}
+              </div>
+            ) : filteredInternships.length === 0 ? (
+              <div className="student-internship-empty">
+                <div className="student-internship-empty-icon">
+                  <Search size={25} />
+                </div>
+                <h3>
+                  {internships.length
+                    ? "No internships found"
+                    : "No internships available"}
+                </h3>
+                <p>
+                  {internships.length
+                    ? "Try changing your search or filters."
+                    : "Internships will appear here when an authorized user publishes them."}
+                </p>
+                <button
+                  type="button"
+                  className="student-empty-clear-button"
+                  onClick={clearFilters}
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : !recommendationAvailable &&
+              recommendedInternships.length === 0 ? (
+              <div className="student-internship-empty">
+                <p>All matching internships are shown above.</p>
+              </div>
+            ) : null}
+          </section>
+        </>
       )}
 
       {selectedInternship && (
@@ -490,15 +582,9 @@ function StudentInternships() {
           >
             <div className="student-internship-modal-header">
               <div>
-                <span className="student-internship-modal-badge">
-                  {selectedInternship.match}% Match
-                </span>
-
                 <h3>{selectedInternship.role}</h3>
-
                 <p>{selectedInternship.company}</p>
               </div>
-
               <button
                 type="button"
                 className="student-modal-close"
@@ -514,20 +600,13 @@ function StudentInternships() {
                 <MapPin size={17} />
                 <span>{selectedInternship.location}</span>
               </div>
-
               <div>
                 <BriefcaseBusiness size={17} />
                 <span>{selectedInternship.mode}</span>
               </div>
-
               <div>
                 <Clock3 size={17} />
                 <span>{selectedInternship.duration}</span>
-              </div>
-
-              <div>
-                <IndianRupee size={17} />
-                <span>{selectedInternship.stipend}</span>
               </div>
             </div>
 
@@ -538,36 +617,35 @@ function StudentInternships() {
 
             <div className="student-modal-section">
               <h4>Required Skills</h4>
-
               <div className="student-modal-skills">
-                {selectedInternship.skills.map((skill) => (
-                  <span key={skill}>{skill}</span>
-                ))}
+                {selectedInternship.skills.length ? (
+                  selectedInternship.skills.map((skill) => (
+                    <span key={skill}>{skill}</span>
+                  ))
+                ) : (
+                  <p>No specific skills listed.</p>
+                )}
               </div>
             </div>
 
             <div className="student-modal-section">
               <h4>Opportunity Details</h4>
-
               <div className="student-modal-opportunity-grid">
                 <div>
                   <span>Domain</span>
                   <strong>{selectedInternship.domain}</strong>
                 </div>
-
-                <div>
-                  <span>Applicants</span>
-                  <strong>{selectedInternship.applicants}</strong>
-                </div>
-
                 <div>
                   <span>Posted</span>
                   <strong>{selectedInternship.posted}</strong>
                 </div>
-
                 <div>
                   <span>Duration</span>
                   <strong>{selectedInternship.duration}</strong>
+                </div>
+                <div>
+                  <span>Stipend</span>
+                  <strong>{selectedInternship.stipend}</strong>
                 </div>
               </div>
             </div>
@@ -576,44 +654,40 @@ function StudentInternships() {
               <button
                 type="button"
                 className="student-modal-save"
-                onClick={() =>
-                  toggleSave(selectedInternship.id)
-                }
+                onClick={() => toggleSave(selectedInternship)}
+                disabled={busyId === selectedInternship.id}
               >
                 <Bookmark
                   size={17}
-                  fill={
-                    savedInternships.includes(
-                      selectedInternship.id
-                    )
-                      ? "currentColor"
-                      : "none"
-                  }
+                  fill={selectedInternship.saved ? "currentColor" : "none"}
                 />
-
-                {savedInternships.includes(
-                  selectedInternship.id
-                )
-                  ? "Saved"
-                  : "Save Internship"}
+                {selectedInternship.saved ? "Saved" : "Save Internship"}
               </button>
 
-              <button
-                type="button"
-                className="student-modal-apply"
-                disabled={appliedInternships.includes(
-                  selectedInternship.id
-                )}
-                onClick={() =>
-                  handleApply(selectedInternship.id)
-                }
-              >
-                {appliedInternships.includes(
-                  selectedInternship.id
-                )
-                  ? "Application Submitted"
-                  : "Apply Now"}
-              </button>
+              {selectedInternship.registrationUrl ? (
+                <a
+                  href={selectedInternship.registrationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="student-modal-apply"
+                >
+                  External Application <ExternalLink size={16} />
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className="student-modal-apply"
+                  disabled={
+                    selectedInternship.registered ||
+                    busyId === selectedInternship.id
+                  }
+                  onClick={() => handleApply(selectedInternship)}
+                >
+                  {selectedInternship.registered
+                    ? "Application Submitted"
+                    : "Apply Now"}
+                </button>
+              )}
             </div>
           </div>
         </div>
