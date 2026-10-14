@@ -1,3 +1,4 @@
+
 import {
   ArrowUpRight,
   BarChart3,
@@ -10,151 +11,232 @@ import {
   TrendingUp,
   X
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import { useEffect, useMemo, useState } from "react";
+import api from "../../../services/api";
 import "./InvestorInvestments.css";
 
-const initialInvestments = [
-  {
-    id: 1,
-    startup: "FinFlow Technologies",
-    initials: "FT",
-    industry: "FinTech",
-    stage: "Seed",
-    investedAmount: 1500000,
-    currentValue: 2100000,
-    ownership: "3.5%",
-    investedDate: "12 March 2026",
-    status: "Active",
-    growth: 40,
-    description:
-      "Digital financial infrastructure platform helping small businesses manage payments, cash flow and business finance.",
-    location: "Bengaluru, India",
-    founders: "Arjun Mehta & Team",
-    nextMilestone: "Series A preparation"
-  },
-  {
-    id: 2,
-    startup: "AgriNova Labs",
-    initials: "AL",
-    industry: "AgriTech",
-    stage: "Pre-Seed",
-    investedAmount: 800000,
-    currentValue: 1120000,
-    ownership: "5.0%",
-    investedDate: "24 February 2026",
-    status: "Active",
-    growth: 40,
-    description:
-      "Technology platform connecting farmers with data-driven crop planning and agricultural resources.",
-    location: "Pune, India",
-    founders: "Rohan Kulkarni & Team",
-    nextMilestone: "Pilot expansion"
-  },
-  {
-    id: 3,
-    startup: "HealthNest Innovations",
-    initials: "HI",
-    industry: "HealthTech",
-    stage: "Seed",
-    investedAmount: 2000000,
-    currentValue: 2640000,
-    ownership: "4.2%",
-    investedDate: "08 January 2026",
-    status: "Active",
-    growth: 32,
-    description:
-      "Digital healthcare platform focused on simplifying access to preventive health services.",
-    location: "Mumbai, India",
-    founders: "Neha Shah & Team",
-    nextMilestone: "Market expansion"
-  },
-  {
-    id: 4,
-    startup: "GreenGrid Systems",
-    initials: "GS",
-    industry: "CleanTech",
-    stage: "Growth",
-    investedAmount: 3000000,
-    currentValue: 4200000,
-    ownership: "2.8%",
-    investedDate: "18 November 2025",
-    status: "Active",
-    growth: 40,
-    description:
-      "Clean energy technology company building intelligent energy monitoring and optimization solutions.",
-    location: "Hyderabad, India",
-    founders: "Vikram Deshmukh & Team",
-    nextMilestone: "International expansion"
-  },
-  {
-    id: 5,
-    startup: "EduBridge",
-    initials: "EB",
-    industry: "EdTech",
-    stage: "Seed",
-    investedAmount: 1000000,
-    currentValue: 920000,
-    ownership: "3.0%",
-    investedDate: "02 September 2025",
-    status: "Monitoring",
-    growth: -8,
-    description:
-      "Career development platform connecting students with learning, internship and employment opportunities.",
-    location: "Delhi, India",
-    founders: "Ananya Kulkarni & Team",
-    nextMilestone: "Product restructuring"
-  },
-  {
-    id: 6,
-    startup: "CloudMesh Solutions",
-    initials: "CM",
-    industry: "SaaS",
-    stage: "Pre-Seed",
-    investedAmount: 600000,
-    currentValue: 810000,
-    ownership: "4.5%",
-    investedDate: "14 July 2025",
-    status: "Exited",
-    growth: 35,
-    description:
-      "Cloud infrastructure management platform designed for growing technology teams.",
-    location: "Noida, India",
-    founders: "Karan Malhotra & Team",
-    nextMilestone: "Investment exited"
+const filterOptions = ["All", "Active", "Monitoring", "Exited"];
+
+const formatCurrency = (amount = 0) => {
+  const value = Number(amount) || 0;
+
+  if (value >= 10000000) {
+    return `₹${(value / 10000000).toFixed(2)}Cr`;
   }
-];
 
-const filterOptions = [
-  "All",
-  "Active",
-  "Monitoring",
-  "Exited"
-];
+  if (value >= 100000) {
+    return `₹${(value / 100000).toFixed(1)}L`;
+  }
 
-function formatCurrency(amount) {
-  return `₹${(amount / 100000).toFixed(1)}L`;
-}
+  return `₹${value.toLocaleString("en-IN")}`;
+};
 
-function InvestorInvestments() {
-  const [investments, setInvestments] = useState(
-    initialInvestments
+const formatDate = (value) => {
+  if (!value) return "Not provided";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+};
+
+const getArray = (value) => {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+};
+
+const getRecords = (responseData) => {
+  if (Array.isArray(responseData)) return responseData;
+
+  return (
+    responseData?.investments ||
+    responseData?.data?.investments ||
+    responseData?.data ||
+    responseData?.records ||
+    []
+  );
+};
+
+const normalizeInvestment = (record) => {
+  const startupProfile =
+    record.startup ||
+    record.founder ||
+    record.startupProfile ||
+    {};
+
+  const investedAmount = Number(
+    record.investedAmount ??
+    record.amountInvested ??
+    record.amount ??
+    record.investmentAmount ??
+    0
   );
 
+  const currentValue = Number(
+    record.currentValue ??
+    record.currentValuation ??
+    record.valuation ??
+    investedAmount
+  );
+
+  const growth =
+    investedAmount > 0
+      ? ((currentValue - investedAmount) / investedAmount) * 100
+      : 0;
+
+  const name =
+    typeof startupProfile === "string"
+      ? startupProfile
+      : startupProfile.startupName ||
+        startupProfile.name ||
+        startupProfile.companyName ||
+        record.startupName ||
+        record.companyName ||
+        record.name ||
+        "Startup";
+
+  const statusValue = String(record.status || "Active");
+  const normalizedStatus = {
+    active: "Active",
+    monitoring: "Monitoring",
+    exited: "Exited"
+  }[statusValue.toLowerCase()] || statusValue;
+
+  const id =
+    record._id ||
+    record.id ||
+    record.investmentId ||
+    `${name}-${record.createdAt || record.investedDate || ""}`;
+
+  const founder =
+    typeof startupProfile === "object"
+      ? startupProfile.founder ||
+        startupProfile.founderName ||
+        startupProfile.ownerName ||
+        ""
+      : "";
+
+  return {
+    id,
+    startup: name,
+    initials: name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase(),
+    industry:
+      record.industry ||
+      startupProfile.industry ||
+      startupProfile.domain ||
+      "Not specified",
+    stage:
+      record.stage ||
+      startupProfile.stage ||
+      startupProfile.fundingStage ||
+      "Not specified",
+    investedAmount,
+    currentValue,
+    ownership:
+      record.ownershipPercentage != null
+        ? `${record.ownershipPercentage}%`
+        : record.ownership != null
+          ? String(record.ownership).includes("%")
+            ? String(record.ownership)
+            : `${record.ownership}%`
+          : "Not provided",
+    investedDate: formatDate(
+      record.investedDate ||
+      record.investmentDate ||
+      record.createdAt
+    ),
+    status: normalizedStatus,
+    growth: Number.isFinite(growth) ? growth : 0,
+    description:
+      record.description ||
+      startupProfile.description ||
+      startupProfile.problemStatement ||
+      "No startup description has been provided.",
+    location:
+      record.location ||
+      startupProfile.location ||
+      startupProfile.city ||
+      "Not provided",
+    founders:
+      typeof founder === "string"
+        ? founder
+        : founder?.name || "Not provided",
+    nextMilestone:
+      record.nextMilestone ||
+      startupProfile.nextMilestone ||
+      "Not provided"
+  };
+};
+
+function InvestorInvestments() {
+  const [investments, setInvestments] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [selectedInvestment, setSelectedInvestment] =
-    useState(null);
+  const [selectedInvestment, setSelectedInvestment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadInvestments = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("startupsync_token");
+
+      if (!token) {
+        throw new Error("Please log in to view your investments.");
+      }
+
+      const response = await api.get("/investments/mine", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const records = getRecords(response.data);
+
+      if (!Array.isArray(records)) {
+        throw new Error(
+          "The investment API returned an unexpected response."
+        );
+      }
+
+      setInvestments(records.map(normalizeInvestment));
+    } catch (err) {
+      console.error("Unable to load investments:", err);
+      setInvestments([]);
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        "Unable to load investments. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInvestments();
+  }, []);
 
   const totalInvested = investments.reduce(
-    (total, investment) =>
-      total + investment.investedAmount,
+    (total, investment) => total + investment.investedAmount,
     0
   );
 
   const currentValue = investments.reduce(
-    (total, investment) =>
-      total + investment.currentValue,
+    (total, investment) => total + investment.currentValue,
     0
   );
 
@@ -164,7 +246,7 @@ function InvestorInvestments() {
       : 0;
 
   const activeInvestments = investments.filter(
-    (investment) => investment.status === "Active"
+    (investment) => investment.status.toLowerCase() === "active"
   ).length;
 
   const filteredInvestments = useMemo(() => {
@@ -173,21 +255,19 @@ function InvestorInvestments() {
     return investments.filter((investment) => {
       const matchesFilter =
         activeFilter === "All" ||
-        investment.status === activeFilter;
+        investment.status.toLowerCase() === activeFilter.toLowerCase();
 
-      const matchesSearch =
-        !search ||
-        investment.startup
-          .toLowerCase()
-          .includes(search) ||
-        investment.industry
-          .toLowerCase()
-          .includes(search) ||
-        investment.stage
-          .toLowerCase()
-          .includes(search);
+      const searchableText = [
+        investment.startup,
+        investment.industry,
+        investment.stage,
+        investment.location,
+        investment.status
+      ]
+        .join(" ")
+        .toLowerCase();
 
-      return matchesFilter && matchesSearch;
+      return matchesFilter && (!search || searchableText.includes(search));
     });
   }, [investments, searchTerm, activeFilter]);
 
@@ -195,20 +275,13 @@ function InvestorInvestments() {
     setSelectedInvestment(investment);
   };
 
-  const handleRemoveInvestment = (id) => {
-    setInvestments((current) =>
-      current.filter(
-        (investment) => investment.id !== id
-      )
-    );
-
-    setSelectedInvestment(null);
+  const clearFilters = () => {
+    setSearchTerm("");
+    setActiveFilter("All");
   };
 
   return (
     <section className="investor-investments-page">
-      {/* Header */}
-
       <div className="investor-investments-header">
         <div>
           <span className="investor-investments-badge">
@@ -224,14 +297,11 @@ function InvestorInvestments() {
         </div>
       </div>
 
-      {/* Portfolio Stats */}
-
       <div className="investor-portfolio-stats">
         <div className="investor-portfolio-stat-card">
           <div className="investor-portfolio-stat-icon">
             <IndianRupee size={19} />
           </div>
-
           <div>
             <span>Total Invested</span>
             <strong>{formatCurrency(totalInvested)}</strong>
@@ -242,7 +312,6 @@ function InvestorInvestments() {
           <div className="investor-portfolio-stat-icon">
             <TrendingUp size={19} />
           </div>
-
           <div>
             <span>Current Value</span>
             <strong>{formatCurrency(currentValue)}</strong>
@@ -253,11 +322,17 @@ function InvestorInvestments() {
           <div className="investor-portfolio-stat-icon">
             <BarChart3 size={19} />
           </div>
-
           <div>
             <span>Portfolio Growth</span>
-            <strong className="investor-growth-positive">
-              +{totalGrowth.toFixed(1)}%
+            <strong
+              className={
+                totalGrowth >= 0
+                  ? "investor-growth-positive"
+                  : "investor-growth-negative"
+              }
+            >
+              {totalGrowth > 0 ? "+" : ""}
+              {totalGrowth.toFixed(1)}%
             </strong>
           </div>
         </div>
@@ -266,7 +341,6 @@ function InvestorInvestments() {
           <div className="investor-portfolio-stat-icon">
             <Building2 size={19} />
           </div>
-
           <div>
             <span>Active Investments</span>
             <strong>{activeInvestments}</strong>
@@ -274,19 +348,14 @@ function InvestorInvestments() {
         </div>
       </div>
 
-      {/* Toolbar */}
-
       <div className="investor-investments-toolbar">
         <div className="investor-investment-search">
           <Search size={16} />
-
           <input
             type="text"
             placeholder="Search startups, industries or stages..."
             value={searchTerm}
-            onChange={(event) =>
-              setSearchTerm(event.target.value)
-            }
+            onChange={(event) => setSearchTerm(event.target.value)}
           />
 
           {searchTerm && (
@@ -318,169 +387,165 @@ function InvestorInvestments() {
         </div>
       </div>
 
-      {/* Result Heading */}
-
-      <div className="investor-investments-result-heading">
-        <div>
-          <h3>Investment Portfolio</h3>
-
-          <p>
-            {filteredInvestments.length} investment
-            {filteredInvestments.length !== 1
-              ? "s"
-              : ""}{" "}
-            displayed
-          </p>
-        </div>
-      </div>
-
-      {/* Investment Cards */}
-
-      {filteredInvestments.length > 0 ? (
-        <div className="investor-investments-grid">
-          {filteredInvestments.map((investment) => {
-            const isPositive = investment.growth >= 0;
-
-            return (
-              <article
-                key={investment.id}
-                className="investor-investment-card"
-              >
-                <div className="investor-investment-card-header">
-                  <div className="investor-investment-startup">
-                    <div className="investor-investment-logo">
-                      {investment.initials}
-                    </div>
-
-                    <div>
-                      <h4>{investment.startup}</h4>
-
-                      <span>
-                        {investment.industry}
-                      </span>
-                    </div>
-                  </div>
-
-                  <span
-                    className={`investor-investment-status investor-status-${investment.status.toLowerCase()}`}
-                  >
-                    {investment.status}
-                  </span>
-                </div>
-
-                <div className="investor-investment-stage">
-                  <span>Stage</span>
-                  <strong>{investment.stage}</strong>
-                </div>
-
-                <div className="investor-investment-values">
-                  <div>
-                    <span>Invested</span>
-                    <strong>
-                      {formatCurrency(
-                        investment.investedAmount
-                      )}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Current Value</span>
-                    <strong>
-                      {formatCurrency(
-                        investment.currentValue
-                      )}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Ownership</span>
-                    <strong>{investment.ownership}</strong>
-                  </div>
-                </div>
-
-                <div className="investor-investment-performance">
-                  <div>
-                    <span>Performance</span>
-
-                    <strong
-                      className={
-                        isPositive
-                          ? "investor-growth-positive"
-                          : "investor-growth-negative"
-                      }
-                    >
-                      {isPositive ? "+" : ""}
-                      {investment.growth}%
-                    </strong>
-                  </div>
-
-                  <div className="investor-performance-track">
-                    <span
-                      style={{
-                        width: `${Math.min(
-                          Math.max(
-                            Math.abs(investment.growth),
-                            8
-                          ),
-                          100
-                        )}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="investor-investment-meta">
-                  <span>
-                    <CalendarDays size={13} />
-                    {investment.investedDate}
-                  </span>
-
-                  <span>
-                    <CircleDollarSign size={13} />
-                    {investment.ownership}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  className="investor-investment-view-button"
-                  onClick={() =>
-                    handleViewInvestment(investment)
-                  }
-                >
-                  View Investment
-                  <ChevronRight size={15} />
-                </button>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="investor-investments-empty">
-          <div className="investor-investments-empty-icon">
-            <Search size={22} />
-          </div>
-
-          <h3>No investments found</h3>
-
-          <p>
-            Try changing your search term or investment status
-            filter.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSearchTerm("");
-              setActiveFilter("All");
-            }}
-          >
-            View all investments
-          </button>
+      {(error || loading) && (
+        <div role="status" aria-live="polite">
+          {loading ? (
+            <p>Loading your investments...</p>
+          ) : (
+            <>
+              <p>{error}</p>
+              <button type="button" onClick={loadInvestments}>
+                Retry
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {/* Investment Modal */}
+      {!loading && !error && (
+        <>
+          <div className="investor-investments-result-heading">
+            <div>
+              <h3>Investment Portfolio</h3>
+              <p>
+                {filteredInvestments.length} investment
+                {filteredInvestments.length !== 1 ? "s" : ""} displayed
+              </p>
+            </div>
+          </div>
+
+          {filteredInvestments.length > 0 ? (
+            <div className="investor-investments-grid">
+              {filteredInvestments.map((investment) => {
+                const isPositive = investment.growth >= 0;
+
+                return (
+                  <article
+                    key={investment.id}
+                    className="investor-investment-card"
+                  >
+                    <div className="investor-investment-card-header">
+                      <div className="investor-investment-startup">
+                        <div className="investor-investment-logo">
+                          {investment.initials || "S"}
+                        </div>
+
+                        <div>
+                          <h4>{investment.startup}</h4>
+                          <span>{investment.industry}</span>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`investor-investment-status investor-status-${investment.status.toLowerCase()}`}
+                      >
+                        {investment.status}
+                      </span>
+                    </div>
+
+                    <div className="investor-investment-stage">
+                      <span>Stage</span>
+                      <strong>{investment.stage}</strong>
+                    </div>
+
+                    <div className="investor-investment-values">
+                      <div>
+                        <span>Invested</span>
+                        <strong>
+                          {formatCurrency(investment.investedAmount)}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Current Value</span>
+                        <strong>
+                          {formatCurrency(investment.currentValue)}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Ownership</span>
+                        <strong>{investment.ownership}</strong>
+                      </div>
+                    </div>
+
+                    <div className="investor-investment-performance">
+                      <div>
+                        <span>Performance</span>
+                        <strong
+                          className={
+                            isPositive
+                              ? "investor-growth-positive"
+                              : "investor-growth-negative"
+                          }
+                        >
+                          {isPositive ? "+" : ""}
+                          {investment.growth.toFixed(1)}%
+                        </strong>
+                      </div>
+
+                      <div className="investor-performance-track">
+                        <span
+                          style={{
+                            width: `${Math.min(
+                              Math.max(Math.abs(investment.growth), 8),
+                              100
+                            )}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="investor-investment-meta">
+                      <span>
+                        <CalendarDays size={13} />
+                        {investment.investedDate}
+                      </span>
+                      <span>
+                        <CircleDollarSign size={13} />
+                        {investment.ownership}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="investor-investment-view-button"
+                      onClick={() => handleViewInvestment(investment)}
+                    >
+                      View Investment
+                      <ChevronRight size={15} />
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="investor-investments-empty">
+              <div className="investor-investments-empty-icon">
+                <Search size={22} />
+              </div>
+
+              <h3>
+                {investments.length
+                  ? "No investments found"
+                  : "No investments available"}
+              </h3>
+
+              <p>
+                {investments.length
+                  ? "Try changing your search term or investment status filter."
+                  : "Your investment records will appear here when available."}
+              </p>
+
+              {investments.length > 0 && (
+                <button type="button" onClick={clearFilters}>
+                  View all investments
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {selectedInvestment && (
         <div
@@ -489,21 +554,18 @@ function InvestorInvestments() {
         >
           <div
             className="investor-investment-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="investor-investment-modal-header">
               <div className="investor-investment-modal-title">
                 <div className="investor-investment-logo">
-                  {selectedInvestment.initials}
+                  {selectedInvestment.initials || "S"}
                 </div>
 
                 <div>
                   <h3>{selectedInvestment.startup}</h3>
                   <span>
-                    {selectedInvestment.industry} ·{" "}
-                    {selectedInvestment.stage}
+                    {selectedInvestment.industry} · {selectedInvestment.stage}
                   </span>
                 </div>
               </div>
@@ -511,9 +573,7 @@ function InvestorInvestments() {
               <button
                 type="button"
                 className="investor-investment-modal-close"
-                onClick={() =>
-                  setSelectedInvestment(null)
-                }
+                onClick={() => setSelectedInvestment(null)}
                 aria-label="Close"
               >
                 <X size={17} />
@@ -529,26 +589,20 @@ function InvestorInvestments() {
                 <div>
                   <span>Invested Amount</span>
                   <strong>
-                    {formatCurrency(
-                      selectedInvestment.investedAmount
-                    )}
+                    {formatCurrency(selectedInvestment.investedAmount)}
                   </strong>
                 </div>
 
                 <div>
                   <span>Current Value</span>
                   <strong>
-                    {formatCurrency(
-                      selectedInvestment.currentValue
-                    )}
+                    {formatCurrency(selectedInvestment.currentValue)}
                   </strong>
                 </div>
 
                 <div>
                   <span>Ownership</span>
-                  <strong>
-                    {selectedInvestment.ownership}
-                  </strong>
+                  <strong>{selectedInvestment.ownership}</strong>
                 </div>
 
                 <div>
@@ -560,33 +614,25 @@ function InvestorInvestments() {
                         : "investor-growth-negative"
                     }
                   >
-                    {selectedInvestment.growth >= 0
-                      ? "+"
-                      : ""}
-                    {selectedInvestment.growth}%
+                    {selectedInvestment.growth > 0 ? "+" : ""}
+                    {selectedInvestment.growth.toFixed(1)}%
                   </strong>
                 </div>
 
                 <div>
                   <span>Location</span>
-                  <strong>
-                    {selectedInvestment.location}
-                  </strong>
+                  <strong>{selectedInvestment.location}</strong>
                 </div>
 
                 <div>
                   <span>Founders</span>
-                  <strong>
-                    {selectedInvestment.founders}
-                  </strong>
+                  <strong>{selectedInvestment.founders}</strong>
                 </div>
               </div>
 
               <div className="investor-investment-milestone">
                 <span>Next Milestone</span>
-                <strong>
-                  {selectedInvestment.nextMilestone}
-                </strong>
+                <strong>{selectedInvestment.nextMilestone}</strong>
               </div>
             </div>
 
@@ -594,9 +640,7 @@ function InvestorInvestments() {
               <button
                 type="button"
                 className="investor-modal-close-button"
-                onClick={() =>
-                  setSelectedInvestment(null)
-                }
+                onClick={() => setSelectedInvestment(null)}
               >
                 Close
               </button>
@@ -606,7 +650,7 @@ function InvestorInvestments() {
                 className="investor-modal-details-button"
                 onClick={() =>
                   window.alert(
-                    "Detailed investment analytics will be connected with the backend later."
+                    "Detailed investment analytics are not connected yet."
                   )
                 }
               >
