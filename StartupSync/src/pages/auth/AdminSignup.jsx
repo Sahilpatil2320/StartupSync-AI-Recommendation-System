@@ -1024,7 +1024,6 @@ function AdminSignup() {
                       "Investor Profiles",
                       "Mentor Profiles",
                       "Student Profiles",
-                      "Incubator Profiles",
                       "Internships & Opportunities",
                       "Reports",
                       "Notifications",

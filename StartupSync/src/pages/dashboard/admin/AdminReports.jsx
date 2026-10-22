@@ -29,7 +29,6 @@ const roleDistribution = [
   { role: "Founders", value: 22 },
   { role: "Mentors", value: 14 },
   { role: "Investors", value: 9 },
-  { role: "Incubators", value: 7 },
   { role: "Admins", value: 2 },
   { role: "Other", value: 4 }
 ];

@@ -196,51 +196,6 @@ const roleContent = {
     ]
   },
 
-  incubator: {
-    title: "Welcome back, Incubator",
-    description:
-      "Manage your startup programs and connect founders with the right ecosystem resources.",
-    stats: [
-      {
-        label: "Supported Startups",
-        value: "32",
-        icon: Rocket
-      },
-      {
-        label: "Active Programs",
-        value: "6",
-        icon: Building2
-      },
-      {
-        label: "Mentor Network",
-        value: "28",
-        icon: Handshake
-      },
-      {
-        label: "New Applications",
-        value: "13",
-        icon: FileText
-      }
-    ],
-    actions: [
-      {
-        title: "Manage Startups",
-        description: "Review supported startups",
-        icon: Rocket
-      },
-      {
-        title: "Manage Programs",
-        description: "Organize incubation programs",
-        icon: Building2
-      },
-      {
-        title: "Mentor Network",
-        description: "Connect mentors with founders",
-        icon: Handshake
-      }
-    ]
-  },
-
   admin: {
     title: "Welcome back, Administrator",
     description:
@@ -309,7 +264,6 @@ function DashboardOverview({ role }) {
           {role === "investor" && <TrendingUp size={32} />}
           {role === "mentor" && <Lightbulb size={32} />}
           {role === "student" && <GraduationCap size={32} />}
-          {role === "incubator" && <Building2 size={32} />}
           {role === "admin" && <ShieldCheck size={32} />}
         </div>
       </section>
