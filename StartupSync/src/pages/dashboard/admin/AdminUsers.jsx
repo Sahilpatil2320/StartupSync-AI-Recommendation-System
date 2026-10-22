@@ -61,17 +61,6 @@ const initialUsers = [
     verified: false
   },
   {
-    id: 5,
-    name: "Meera Joshi",
-    email: "meera.joshi@example.com",
-    role: "Incubator",
-    organization: "Innovation Hub",
-    location: "Nashik, Maharashtra",
-    status: "Active",
-    joined: "05 Sep 2026",
-    verified: true
-  },
-  {
     id: 6,
     name: "Vikram Deshmukh",
     email: "vikram.deshmukh@example.com",
@@ -112,7 +101,6 @@ const roleFilters = [
   "Investor",
   "Mentor",
   "Student",
-  "Incubator",
   "Admin"
 ];
 

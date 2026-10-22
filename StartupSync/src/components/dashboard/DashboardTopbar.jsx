@@ -13,7 +13,6 @@ const roleTitles = {
   investor: "Investor Workspace",
   mentor: "Mentor Workspace",
   student: "Student Workspace",
-  incubator: "Incubator Workspace",
   admin: "Administration"
 };
 

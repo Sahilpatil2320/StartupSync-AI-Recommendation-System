@@ -1,7 +1,6 @@
 import {
   Bell,
   BriefcaseBusiness,
-  Building2,
   ChartNoAxesCombined,
   CircleUserRound,
   FileText,
@@ -153,39 +152,6 @@ const roleNavigation = {
     }
   ],
 
-  incubator: [
-    {
-      label: "Dashboard",
-      path: "/dashboard/incubator",
-      icon: LayoutDashboard
-    },
-    {
-      label: "Startups",
-      path: "/dashboard/incubator/startups",
-      icon: Rocket
-    },
-    {
-      label: "Programs",
-      path: "/dashboard/incubator/programs",
-      icon: Building2
-    },
-    {
-      label: "Mentors",
-      path: "/dashboard/incubator/mentors",
-      icon: UsersRound
-    },
-    {
-      label: "Messages",
-      path: "/dashboard/incubator/messages",
-      icon: MessageSquare
-    },
-    {
-      label: "Notifications",
-      path: "/dashboard/incubator/notifications",
-      icon: Bell
-    }
-  ],
-
   admin: [
     {
       label: "Dashboard",
@@ -225,7 +191,6 @@ const roleNames = {
   investor: "Investor",
   mentor: "Mentor",
   student: "Student",
-  incubator: "Incubator",
   admin: "Administrator"
 };
 

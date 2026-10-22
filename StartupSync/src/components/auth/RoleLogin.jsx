@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ArrowRight,
-  Building2,
   GraduationCap,
   Lightbulb,
   LockKeyhole,
@@ -22,8 +21,7 @@ const roleIcons = {
   investor: TrendingUp,
   mentor: Lightbulb,
   student: GraduationCap,
-  incubator: Building2,
-  admin: ShieldCheck
+admin: ShieldCheck
 };
 
 const roleInformation = {
@@ -56,14 +54,6 @@ const roleInformation = {
     badge: "Student",
     description:
       "Sign in to discover internships, startup opportunities, mentors and career connections.",
-    signup: true
-  },
-
-  incubator: {
-    name: "Incubator",
-    badge: "Incubator",
-    description:
-      "Sign in to manage your incubation programs, support startups and connect with founders.",
     signup: true
   },
 

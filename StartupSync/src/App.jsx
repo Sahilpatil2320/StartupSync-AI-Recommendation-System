@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+﻿import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import LandingIntro from "./components/LandingIntro";
@@ -14,7 +14,6 @@ import FounderLogin from "./pages/auth/FounderLogin";
 import InvestorLogin from "./pages/auth/InvestorLogin";
 import MentorLogin from "./pages/auth/MentorLogin";
 import StudentLogin from "./pages/auth/StudentLogin";
-import IncubatorLogin from "./pages/auth/IncubatorLogin";
 import AdminLogin from "./pages/auth/AdminLogin";
 
 import SignupRoleSelection from "./pages/auth/SignupRoleSelection";
@@ -22,14 +21,12 @@ import FounderSignup from "./pages/auth/FounderSignup";
 import InvestorSignup from "./pages/auth/InvestorSignup";
 import MentorSignup from "./pages/auth/MentorSignup";
 import StudentSignup from "./pages/auth/StudentSignup";
-import IncubatorSignup from "./pages/auth/IncubatorSignup";
 import AdminSignup from "./pages/auth/AdminSignup";
 
 import FounderDashboard from "./pages/dashboard/FounderDashboard";
 import InvestorDashboard from "./pages/dashboard/InvestorDashboard";
 import MentorDashboard from "./pages/dashboard/MentorDashboard";
 import StudentDashboard from "./pages/dashboard/StudentDashboard";
-import IncubatorDashboard from "./pages/dashboard/IncubatorDashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -57,13 +54,6 @@ import StudentOpportunities from "./pages/dashboard/student/StudentOpportunities
 import StudentApplications from "./pages/dashboard/student/StudentApplications";
 import StudentMessages from "./pages/dashboard/student/StudentMessages";
 import StudentNotifications from "./pages/dashboard/student/StudentNotifications";
-
-import IncubatorStartups from "./pages/dashboard/incubator/IncubatorStartups";
-import IncubatorPrograms from "./pages/dashboard/incubator/IncubatorPrograms";
-import IncubatorMentors from "./pages/dashboard/incubator/IncubatorMentors";
-import IncubatorMessages from "./pages/dashboard/incubator/IncubatorMessages";
-import IncubatorNotifications from "./pages/dashboard/incubator/IncubatorNotifications";
-
 import AdminUsers from "./pages/dashboard/admin/AdminUsers";
 import AdminStartups from "./pages/dashboard/admin/AdminStartups";
 import AdminReports from "./pages/dashboard/admin/AdminReports";
@@ -118,11 +108,6 @@ function App() {
                 />
 
                 <Route
-                    path="/login/incubator"
-                    element={<IncubatorLogin />}
-                />
-
-                <Route
                     path="/login/admin"
                     element={<AdminLogin />}
                 />
@@ -158,11 +143,6 @@ function App() {
                 />
 
                 <Route
-                    path="/signup/incubator"
-                    element={<IncubatorSignup />}
-                />
-
-                <Route
                     path="/signup/admin"
                     element={<AdminSignup />}
                 />
@@ -185,11 +165,6 @@ function App() {
                 <Route
                     path="/dashboard/student"
                     element={<StudentDashboard />}
-                />
-
-                <Route
-                    path="/dashboard/incubator"
-                    element={<IncubatorDashboard />}
                 />
 
                 <Route
@@ -360,47 +335,6 @@ function App() {
                         </DashboardLayout>
                     }
                 />
-                <Route
-                    path="/dashboard/incubator/startups"
-                    element={
-                        <DashboardLayout role="incubator">
-                            <IncubatorStartups />
-                        </DashboardLayout>
-                    }
-                />
-                <Route
-                    path="/dashboard/incubator/programs"
-                    element={
-                        <DashboardLayout role="incubator">
-                            <IncubatorPrograms />
-                        </DashboardLayout>
-                    }
-                />
-                <Route
-                    path="/dashboard/incubator/mentors"
-                    element={
-                        <DashboardLayout role="incubator">
-                            <IncubatorMentors />
-                        </DashboardLayout>
-                    }
-                />
-                <Route
-                    path="/dashboard/incubator/messages"
-                    element={
-                        <DashboardLayout role="incubator">
-                            <IncubatorMessages />
-                        </DashboardLayout>
-                    }
-                />
-                <Route
-                    path="/dashboard/incubator/notifications"
-                    element={
-                        <DashboardLayout role="incubator">
-                            <IncubatorNotifications />
-                        </DashboardLayout>
-                    }
-                />
-
                 <Route
                     path="/dashboard/admin/users"
                     element={
