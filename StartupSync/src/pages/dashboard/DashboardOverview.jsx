@@ -1,7 +1,6 @@
 import {
   Bell,
   BriefcaseBusiness,
-  Building2,
   FileText,
   GraduationCap,
   Handshake,

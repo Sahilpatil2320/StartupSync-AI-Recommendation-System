@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import LandingIntro from "./components/LandingIntro";
@@ -37,6 +37,8 @@ import FounderMentors from "./pages/dashboard/founder/FounderMentors";
 import FounderTeam from "./pages/dashboard/founder/FounderTeam";
 import FounderMessages from "./pages/dashboard/founder/FounderMessages";
 import FounderNotifications from "./pages/dashboard/founder/FounderNotifications";
+import FounderProfile from "./pages/dashboard/founder/FounderProfile";
+import FounderSettings from "./pages/dashboard/founder/FounderSettings";
 
 import InvestorDiscoverStartups from "./pages/dashboard/investor/InvestorDiscoverStartups";
 import InvestorInvestments from "./pages/dashboard/investor/InvestorInvestments";
@@ -172,6 +174,23 @@ function App() {
                     element={<AdminDashboard />}
                 />
 
+                <Route
+                    path="/dashboard/founder/profile"
+                    element={
+                        <DashboardLayout role="founder">
+                            <FounderProfile />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
+                    path="/dashboard/founder/settings"
+                    element={
+                        <DashboardLayout role="founder">
+                            <FounderSettings />
+                        </DashboardLayout>
+                    }
+                />
                 <Route
                     path="/dashboard/founder/startup"
                     element={

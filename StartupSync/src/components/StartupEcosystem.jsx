@@ -4,7 +4,6 @@ import {
   GraduationCap,
   Lightbulb,
   Building2,
-  Users,
   Sparkles
 } from "lucide-react";
 

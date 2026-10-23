@@ -1,0 +1,165 @@
+
+.founder-profile-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px;
+  color: #14213d;
+}
+
+.founder-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.founder-profile-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+  color: #2563eb;
+  background: #eaf2ff;
+  border-radius: 16px;
+}
+
+.founder-profile-eyebrow {
+  margin: 0 0 5px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.founder-profile-header h1 {
+  margin: 0 0 5px;
+  font-size: clamp(25px, 3vw, 32px);
+}
+
+.founder-profile-header p:last-child {
+  margin: 0;
+  color: #64748b;
+}
+
+.founder-profile-card {
+  padding: 25px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+}
+
+.founder-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.founder-profile-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.founder-profile-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.founder-profile-grid input,
+.founder-profile-grid textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 13px;
+  color: #172033;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 9px;
+  font: inherit;
+  font-weight: 400;
+  outline: none;
+}
+
+.founder-profile-grid input:focus,
+.founder-profile-grid textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.founder-profile-grid textarea {
+  resize: vertical;
+}
+
+.founder-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.founder-profile-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 17px;
+  border: 1px solid #2563eb;
+  border-radius: 9px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.founder-profile-actions button.secondary {
+  color: #334155;
+  background: #fff;
+  border-color: #dbe3ef;
+}
+
+.founder-profile-actions button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.founder-profile-alert {
+  margin-bottom: 16px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.founder-profile-alert.error {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.founder-profile-alert.success {
+  color: #166534;
+  background: #f0fdf4;
+}
+
+@media (max-width: 700px) {
+  .founder-profile-page {
+    padding: 18px;
+  }
+
+  .founder-profile-card {
+    padding: 17px;
+  }
+
+  .founder-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .founder-profile-grid .full-width {
+    grid-column: auto;
+  }
+}

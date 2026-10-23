@@ -1,4 +1,3 @@
-import { Rocket } from "lucide-react";
 import { Link } from "react-router-dom";
 import BrandLogo from "./BrandLogo";
 import "./SiteFooter.css";

@@ -82,7 +82,7 @@ const openPositions = [
 ];
 
 function FounderTeam() {
-  const [members, setMembers] = useState(initialMembers);
+  const [members] = useState(initialMembers);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("All Roles");
 

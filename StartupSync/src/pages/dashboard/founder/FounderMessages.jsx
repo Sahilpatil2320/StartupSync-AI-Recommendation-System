@@ -6,8 +6,7 @@ import {
   Search,
   Send,
   Smile,
-  Video,
-  X
+  Video
 } from "lucide-react";
 import { useMemo, useState } from "react";
 

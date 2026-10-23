@@ -11,7 +11,7 @@ import {
   TrendingUp,
   X
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../../../services/api";
 import "./InvestorInvestments.css";
 
@@ -43,11 +43,6 @@ const formatDate = (value) => {
     month: "short",
     year: "numeric"
   });
-};
-
-const getArray = (value) => {
-  if (Array.isArray(value)) return value;
-  return value ? [value] : [];
 };
 
 const getRecords = (responseData) => {
@@ -249,7 +244,7 @@ function InvestorInvestments() {
     (investment) => investment.status.toLowerCase() === "active"
   ).length;
 
-  const filteredInvestments = useMemo(() => {
+  const filteredInvestments = (() => {
     const search = searchTerm.trim().toLowerCase();
 
     return investments.filter((investment) => {
@@ -269,7 +264,7 @@ function InvestorInvestments() {
 
       return matchesFilter && (!search || searchableText.includes(search));
     });
-  }, [investments, searchTerm, activeFilter]);
+  })();
 
   const handleViewInvestment = (investment) => {
     setSelectedInvestment(investment);

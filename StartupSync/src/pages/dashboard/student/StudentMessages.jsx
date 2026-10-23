@@ -82,7 +82,6 @@ function StudentMessages() {
   const messagesEndRef = useRef(null);
   const requestIdRef = useRef(0);
 
-  const token = localStorage.getItem("startupsync_token");
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("startupsync_user") || "{}");

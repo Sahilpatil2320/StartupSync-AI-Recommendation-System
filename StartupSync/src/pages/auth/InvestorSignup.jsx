@@ -303,18 +303,7 @@ function InvestorSignup() {
                 };
 
             // Normalize stages for the profile API.
-            const stageMap = {
-                "Pre-Seed": "pre_seed",
-                Seed: "seed",
-                "Series A": "series_a",
-                "Series B+": "series_b",
-            };
-
-            const preferredStages = formData.investmentStages.map(
-                (stage) => stageMap[stage] || stage.toLowerCase()
-            );
-
-            const preferredStartupStages = formData.preferredStartupStage
+const preferredStartupStages = formData.preferredStartupStage
                 ? [formData.preferredStartupStage.replace(/-/g, "_")]
                 : [];
 

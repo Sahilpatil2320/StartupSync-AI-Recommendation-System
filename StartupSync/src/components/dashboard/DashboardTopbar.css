@@ -180,3 +180,136 @@
     display: none;
   }
 }
+
+
+/* Navbar search and user menu */
+.dashboard-topbar-search,
+.dashboard-user-menu {
+  position: relative;
+}
+
+.dashboard-topbar-search {
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-topbar-profile {
+  cursor: pointer;
+  gap: 10px;
+}
+
+.dashboard-search-popover,
+.dashboard-user-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 1000;
+  width: 280px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.16);
+  color: #172033;
+}
+
+.dashboard-search-popover input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 9px;
+  outline: none;
+  font: inherit;
+}
+
+.dashboard-search-popover input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.dashboard-search-results {
+  display: grid;
+  gap: 3px;
+  max-height: 300px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+
+.dashboard-search-results button,
+.dashboard-user-popover > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.dashboard-search-results button:hover,
+.dashboard-user-popover > button:hover {
+  background: #f1f5f9;
+}
+
+.dashboard-search-empty {
+  margin: 12px 6px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.dashboard-user-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 14px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dashboard-user-popover-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.dashboard-user-popover-header strong,
+.dashboard-user-popover-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-user-popover-header strong {
+  font-size: 14px;
+}
+
+.dashboard-user-popover-header > div > span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.dashboard-user-signout {
+  margin-top: 5px;
+  border-top: 1px solid #e2e8f0 !important;
+  color: #dc2626 !important;
+}
+
+@media (max-width: 520px) {
+  .dashboard-profile-name {
+    display: none;
+  }
+
+  .dashboard-search-popover,
+  .dashboard-user-popover {
+    position: fixed;
+    top: 78px;
+    right: 12px;
+    width: min(300px, calc(100vw - 24px));
+  }
+}
