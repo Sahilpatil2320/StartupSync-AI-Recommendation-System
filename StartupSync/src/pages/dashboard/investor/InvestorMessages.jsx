@@ -1,5 +1,6 @@
 
 import {
+  ArrowLeft,
   CheckCheck,
   Paperclip,
   Phone,
@@ -7,16 +8,42 @@ import {
   Send,
   Smile,
   Video,
-  X
+  X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import api from "../../../services/api";
+import { connectSocket } from "../../../services/socket";
 import "./InvestorMessages.css";
 
 const getId = (value) => {
   if (!value) return "";
   if (typeof value === "string") return value;
-  return String(value._id || value.id || value.userId || "");
+  return String(value._id || value.id || value.userId || value.sub || "");
+};
+
+const getCurrentUserId = () => {
+  try {
+    const user = JSON.parse(
+      localStorage.getItem("startupsync_user") || "{}"
+    );
+
+    const userId = getId(user);
+    if (userId) return userId;
+
+    const token = localStorage.getItem("startupsync_token");
+    if (!token) return "";
+
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return getId(payload.userId || payload.id || payload._id || payload.sub);
+  } catch {
+    return "";
+  }
 };
 
 const getName = (user) =>
@@ -31,53 +58,58 @@ const getInitials = (name = "") =>
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase() || "U";
+    .map((part) => part[0].toUpperCase())
+    .join("") || "U";
 
-const formatTime = (date) => {
-  if (!date) return "";
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return String(date);
+const formatTime = (value) => {
+  if (!value) return "";
 
-  return parsed.toLocaleTimeString([], {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleTimeString([], {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
   });
 };
 
 const getList = (response) => {
   const data = response?.data;
-  if (Array.isArray(data)) return data;
 
-  return (
-    data?.conversations ||
-    data?.users ||
-    data?.messages ||
-    data?.data?.conversations ||
-    data?.data?.users ||
-    data?.data?.messages ||
-    data?.data ||
-    []
-  );
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.conversations)) return data.conversations;
+  if (Array.isArray(data?.users)) return data.users;
+  if (Array.isArray(data?.messages)) return data.messages;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.conversations)) {
+    return data.data.conversations;
+  }
+  if (Array.isArray(data?.data?.messages)) {
+    return data.data.messages;
+  }
+
+  return [];
 };
 
 const normalizeMessage = (message, currentUserId) => {
   const senderId = getId(message.senderId || message.sender || message.from);
+
   const sentByMe =
     message.sender === "me" ||
     message.senderRole === "me" ||
-    (senderId && senderId === currentUserId);
+    (senderId && currentUserId && senderId === currentUserId);
 
   return {
-    id: getId(message) || `${Date.now()}-${Math.random()}`,
+    id: getId(message) || `${message.createdAt || ""}-${senderId}`,
     sender: sentByMe ? "me" : "them",
+    senderId,
     text: message.text || message.content || message.message || "",
-    time: formatTime(message.createdAt || message.timestamp || message.time)
+    time: formatTime(message.createdAt || message.timestamp || message.time),
+    createdAt: message.createdAt || message.timestamp || null,
   };
 };
 
-const normalizeConversation = (item, currentUserId) => {
+const normalizeConversation = (item) => {
   const person =
     item.otherUser ||
     item.participant ||
@@ -87,18 +119,11 @@ const normalizeConversation = (item, currentUserId) => {
     item;
 
   const name = getName(person);
-  const messages = Array.isArray(item.messages)
-    ? item.messages.map((message) =>
-        normalizeMessage(message, currentUserId)
-      )
-    : [];
-
-  const lastMessage =
-    item.lastMessage?.text ||
-    item.lastMessage?.content ||
-    item.lastMessage ||
-    messages[messages.length - 1]?.text ||
-    "";
+  const lastMessage = item.lastMessage || {};
+  const lastMessageText =
+    typeof lastMessage === "string"
+      ? lastMessage
+      : lastMessage.text || lastMessage.content || "";
 
   return {
     id: getId(person) || getId(item),
@@ -107,17 +132,13 @@ const normalizeConversation = (item, currentUserId) => {
     initials: getInitials(name),
     online: Boolean(person.online || person.isOnline),
     unread: Number(item.unreadCount || item.unread || 0),
-    lastMessage:
-      typeof lastMessage === "string"
-        ? lastMessage
-        : lastMessage?.text || "",
+    lastMessage: lastMessageText,
     time: formatTime(
       item.lastMessageAt ||
         item.updatedAt ||
-        item.lastMessage?.createdAt ||
-        messages[messages.length - 1]?.time
+        lastMessage.createdAt
     ),
-    messages
+    messages: [],
   };
 };
 
@@ -128,63 +149,227 @@ function InvestorMessages() {
   const [messageText, setMessageText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [messageError, setMessageError] = useState("");
 
-  const currentUserId = useMemo(() => {
-    try {
-      const token = localStorage.getItem("startupsync_token");
-      if (!token) return "";
-      return getId(JSON.parse(atob(token.split(".")[1])));
-    } catch {
-      return "";
-    }
-  }, []);
+  const messagesEndRef = useRef(null);
+  const selectedIdRef = useRef("");
+  const currentUserId = useMemo(() => getCurrentUserId(), []);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const token = localStorage.getItem("startupsync_token");
-      if (!token) throw new Error("Please log in to view your messages.");
+      const response = await api.get("/messages/conversations");
 
-      const response = await api.get("/messages/conversations", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const records = getList(response);
-      if (!Array.isArray(records)) {
-        throw new Error("Unexpected conversations response from the server.");
-      }
-
-      const normalized = records
-        .map((item) => normalizeConversation(item, currentUserId))
+      const normalized = getList(response)
+        .map(normalizeConversation)
         .filter((item) => item.id);
 
-      setConversations(normalized);
-      setSelectedId((current) =>
-        normalized.some((item) => item.id === current)
-          ? current
-          : normalized[0]?.id || ""
-      );
+      setConversations((previous) => {
+        const oldById = new Map(previous.map((item) => [item.id, item]));
+
+        return normalized.map((item) => {
+          const old = oldById.get(item.id);
+
+          return {
+            ...item,
+            messages: old?.messages || [],
+          };
+        });
+      });
+
+      setSelectedId((current) => {
+        if (normalized.some((item) => item.id === current)) return current;
+        return normalized[0]?.id || "";
+      });
     } catch (err) {
-      console.error("Unable to load conversations:", err);
       setError(
         err.response?.data?.message ||
-          err.message ||
           "Unable to load conversations."
       );
-      setConversations([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUserId]);
+  }, []);
+
+  const loadMessages = useCallback(
+    async (conversationId) => {
+      if (!conversationId) return;
+
+      setLoadingMessages(true);
+      setMessageError("");
+
+      try {
+        const response = await api.get(
+          `/messages/${encodeURIComponent(conversationId)}`
+        );
+
+        const messages = getList(response).map((message) =>
+          normalizeMessage(message, currentUserId)
+        );
+
+        setConversations((previous) =>
+          previous.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  unread: 0,
+                  messages,
+                  lastMessage:
+                    messages[messages.length - 1]?.text ||
+                    conversation.lastMessage,
+                }
+              : conversation
+          )
+        );
+      } catch (err) {
+        setMessageError(
+          err.response?.data?.message ||
+            "Unable to load this conversation."
+        );
+      } finally {
+        setLoadingMessages(false);
+      }
+    },
+    [currentUserId]
+  );
 
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  useEffect(() => {
+    if (selectedId) {
+      loadMessages(selectedId);
+    } else {
+      setLoadingMessages(false);
+    }
+  }, [selectedId, loadMessages]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    if (!socket) return undefined;
+
+    const handleIncomingMessage = (message) => {
+      const senderId = getId(message.sender);
+      const receiverId = getId(message.receiver);
+
+      const otherUserId =
+        senderId === currentUserId ? receiverId : senderId;
+
+      if (!otherUserId) return;
+
+      const activeId = selectedIdRef.current;
+      const isFromCurrentUser = senderId === currentUserId;
+      const normalizedMessage = normalizeMessage(message, currentUserId);
+
+      setConversations((previous) => {
+        const existing = previous.find(
+          (item) => item.id === otherUserId
+        );
+
+        const name = isFromCurrentUser
+          ? existing?.name || "StartupSync Member"
+          : message.sender?.name || existing?.name || "StartupSync Member";
+
+        const role = isFromCurrentUser
+          ? existing?.role || "StartupSync Member"
+          : message.sender?.role || existing?.role || "StartupSync Member";
+
+        const conversation = {
+          ...(existing || {}),
+          id: otherUserId,
+          name,
+          role,
+          initials: getInitials(name),
+          lastMessage: normalizedMessage.text,
+          time: normalizedMessage.time,
+          online: existing?.online || false,
+          unread:
+            otherUserId === activeId || isFromCurrentUser
+              ? existing?.unread || 0
+              : (existing?.unread || 0) + 1,
+          messages: existing?.messages || [],
+        };
+
+        const messages = conversation.messages;
+        const alreadyExists = messages.some(
+          (item) => item.id === normalizedMessage.id
+        );
+
+        return [
+          {
+            ...conversation,
+            messages:
+              otherUserId === activeId && !alreadyExists
+                ? [...messages, normalizedMessage]
+                : messages,
+          },
+          ...previous.filter((item) => item.id !== otherUserId),
+        ];
+      });
+
+      if (otherUserId === activeId) {
+        setMessageError("");
+      }
+    };
+
+    const handleSentMessage = (message) => {
+      const receiverId = getId(message.receiver);
+      const senderId = getId(message.sender);
+      const otherUserId =
+        receiverId || (senderId === currentUserId ? "" : senderId);
+
+      const normalizedMessage = normalizeMessage(message, currentUserId);
+
+      if (otherUserId && otherUserId !== selectedIdRef.current) {
+        fetchConversations();
+        return;
+      }
+
+      setConversations((previous) =>
+        previous.map((conversation) => {
+          if (conversation.id !== selectedIdRef.current) return conversation;
+
+          const exists = conversation.messages.some(
+            (item) => item.id === normalizedMessage.id
+          );
+
+          return {
+            ...conversation,
+            lastMessage: normalizedMessage.text,
+            time: normalizedMessage.time,
+            messages: exists
+              ? conversation.messages
+              : [...conversation.messages, normalizedMessage],
+          };
+        })
+      );
+    };
+
+    socket.on("message:new", handleIncomingMessage);
+    socket.on("message:sent", handleSentMessage);
+
+    return () => {
+      socket.off("message:new", handleIncomingMessage);
+      socket.off("message:sent", handleSentMessage);
+    };
+  }, [currentUserId, fetchConversations]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [conversations, selectedId, loadingMessages]);
 
   const selectedConversation = conversations.find(
     (conversation) => conversation.id === selectedId
@@ -199,7 +384,7 @@ function InvestorMessages() {
       [
         conversation.name,
         conversation.role,
-        conversation.lastMessage
+        conversation.lastMessage,
       ]
         .join(" ")
         .toLowerCase()
@@ -207,69 +392,41 @@ function InvestorMessages() {
     );
   }, [conversations, searchTerm]);
 
-  const openConversation = async (conversationId) => {
+  const openConversation = (conversationId) => {
     setSelectedId(conversationId);
+    selectedIdRef.current = conversationId;
     setMobileChatOpen(true);
     setMessageError("");
 
-    try {
-      const token = localStorage.getItem("startupsync_token");
-
-      const response = await api.get(
-        `/messages/${encodeURIComponent(conversationId)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      const messages = getList(response).map((message) =>
-        normalizeMessage(message, currentUserId)
-      );
-
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                unread: 0,
-                messages,
-                lastMessage:
-                  messages[messages.length - 1]?.text ||
-                  conversation.lastMessage
-              }
-            : conversation
-        )
-      );
-    } catch (err) {
-      console.error("Unable to load messages:", err);
-      setMessageError(
-        err.response?.data?.message || "Unable to load this conversation."
-      );
-    }
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, unread: 0 }
+          : conversation
+      )
+    );
   };
 
-  const sendMessage = async () => {
+  const sendMessage = async (event) => {
+    event?.preventDefault();
+
     const text = messageText.trim();
 
     if (!text || !selectedConversation || sending) return;
 
+    setSending(true);
+    setMessageError("");
+
     try {
-      setSending(true);
-      setMessageError("");
-
-      const token = localStorage.getItem("startupsync_token");
-
       const response = await api.post(
         `/messages/${encodeURIComponent(selectedConversation.id)}`,
-        { text },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        { text }
       );
 
       const returnedMessage =
-        response.data?.messageRecord ||
         response.data?.data?.message ||
+        response.data?.messageRecord ||
+        response.data?.data ||
         response.data?.message;
 
       setMessageText("");
@@ -277,25 +434,30 @@ function InvestorMessages() {
       if (returnedMessage && typeof returnedMessage === "object") {
         const message = normalizeMessage(returnedMessage, currentUserId);
 
-        setConversations((current) =>
-          current.map((conversation) =>
-            conversation.id === selectedConversation.id
-              ? {
-                  ...conversation,
-                  lastMessage: message.text,
-                  time: message.time,
-                  messages: [...conversation.messages, message]
-                }
-              : conversation
-          )
+        setConversations((previous) =>
+          previous.map((conversation) => {
+            if (conversation.id !== selectedConversation.id) {
+              return conversation;
+            }
+
+            const exists = conversation.messages.some(
+              (item) => item.id === message.id
+            );
+
+            return {
+              ...conversation,
+              lastMessage: message.text,
+              time: message.time,
+              messages: exists
+                ? conversation.messages
+                : [...conversation.messages, message],
+            };
+          })
         );
-      } else {
-        await openConversation(selectedConversation.id);
       }
 
       await fetchConversations();
     } catch (err) {
-      console.error("Unable to send message:", err);
       setMessageError(
         err.response?.data?.message ||
           "Message could not be sent. Please try again."
@@ -307,8 +469,7 @@ function InvestorMessages() {
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      sendMessage();
+      sendMessage(event);
     }
   };
 
@@ -329,6 +490,15 @@ function InvestorMessages() {
         </div>
       </section>
 
+      {error && (
+        <div role="alert" className="investor-message-error">
+          {error}
+          <button type="button" onClick={fetchConversations}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <section
         className={`investor-chat-container ${
           mobileChatOpen ? "investor-mobile-chat-open" : ""
@@ -338,8 +508,11 @@ function InvestorMessages() {
           <div className="investor-conversation-header">
             <h3>Conversations</h3>
             <span>
-              {conversations.filter((conversation) => conversation.unread > 0)
-                .length}{" "}
+              {
+                conversations.filter(
+                  (conversation) => conversation.unread > 0
+                ).length
+              }{" "}
               unread
             </span>
           </div>
@@ -351,6 +524,7 @@ function InvestorMessages() {
               placeholder="Search conversations..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
+              aria-label="Search conversations"
             />
 
             {searchTerm && (
@@ -369,14 +543,7 @@ function InvestorMessages() {
               <div className="investor-no-conversations">
                 <p>Loading conversations...</p>
               </div>
-            ) : error ? (
-              <div className="investor-no-conversations">
-                <p>{error}</p>
-                <button type="button" onClick={fetchConversations}>
-                  Retry
-                </button>
-              </div>
-            ) : filteredConversations.length > 0 ? (
+            ) : filteredConversations.length ? (
               filteredConversations.map((conversation) => (
                 <button
                   type="button"
@@ -436,7 +603,7 @@ function InvestorMessages() {
                 onClick={() => setMobileChatOpen(false)}
                 aria-label="Back to conversations"
               >
-                <X size={20} />
+                <ArrowLeft size={20} />
               </button>
 
               <div className="investor-chat-avatar">
@@ -478,38 +645,52 @@ function InvestorMessages() {
                 <span>Messages</span>
               </div>
 
-              {selectedConversation.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`investor-message-row ${
-                    message.sender === "me"
-                      ? "investor-message-sent"
-                      : "investor-message-received"
-                  }`}
-                >
-                  <div className="investor-message-bubble">
-                    <p>{message.text}</p>
-                    <div className="investor-message-meta">
-                      <span>{message.time}</span>
-                      {message.sender === "me" && <CheckCheck size={14} />}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {selectedConversation.messages.length === 0 && (
+              {loadingMessages ? (
                 <div className="investor-no-chat-selected">
-                  <h3>No messages yet</h3>
-                  <p>Send a message to start the conversation.</p>
+                  <p>Loading messages...</p>
                 </div>
+              ) : (
+                <>
+                  {selectedConversation.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`investor-message-row ${
+                        message.sender === "me"
+                          ? "investor-message-sent"
+                          : "investor-message-received"
+                      }`}
+                    >
+                      <div className="investor-message-bubble">
+                        <p>{message.text}</p>
+                        <div className="investor-message-meta">
+                          <span>{message.time}</span>
+                          {message.sender === "me" && (
+                            <CheckCheck size={14} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {selectedConversation.messages.length === 0 && (
+                    <div className="investor-no-chat-selected">
+                      <h3>No messages yet</h3>
+                      <p>Send a message to start the conversation.</p>
+                    </div>
+                  )}
+                </>
               )}
+
+              <div ref={messagesEndRef} />
             </div>
 
             {messageError && (
-              <p role="alert">{messageError}</p>
+              <p role="alert" className="investor-message-error">
+                {messageError}
+              </p>
             )}
 
-            <div className="investor-message-composer">
+            <form className="investor-message-composer" onSubmit={sendMessage}>
               <button
                 type="button"
                 onClick={() => showPlaceholder("File attachment")}
@@ -524,12 +705,15 @@ function InvestorMessages() {
                 value={messageText}
                 onChange={(event) => setMessageText(event.target.value)}
                 onKeyDown={handleKeyDown}
+                maxLength={5000}
+                disabled={sending}
+                aria-label="Type your message"
               />
 
               <button
                 type="button"
                 onClick={() =>
-                  setMessageText((current) => `${current} 😊`)
+                  setMessageText((current) => `${current}😊`)
                 }
                 aria-label="Add emoji"
               >
@@ -537,15 +721,14 @@ function InvestorMessages() {
               </button>
 
               <button
-                type="button"
+                type="submit"
                 className="investor-send-button"
-                onClick={sendMessage}
                 disabled={!messageText.trim() || sending}
                 aria-label="Send message"
               >
                 <Send size={18} />
               </button>
-            </div>
+            </form>
           </div>
         ) : (
           <div className="investor-no-chat-selected">
