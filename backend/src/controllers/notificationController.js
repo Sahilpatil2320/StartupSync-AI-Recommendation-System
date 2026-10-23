@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 
@@ -26,6 +27,14 @@ const getNotifications = async (req, res) => {
   }
 };
 
+const emitNotificationUpdate = (req, event, payload = {}) => {
+  const io = req.app.get("io");
+
+  if (io) {
+    io.to(`user:${req.user.userId}`).emit(event, payload);
+  }
+};
+
 const markNotificationRead = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -36,7 +45,10 @@ const markNotificationRead = async (req, res) => {
     }
 
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, user: req.user.userId },
+      {
+        _id: req.params.id,
+        user: req.user.userId,
+      },
       { $set: { isRead: true } },
       { new: true }
     );
@@ -48,9 +60,18 @@ const markNotificationRead = async (req, res) => {
       });
     }
 
+    const data = {
+      ...notification.toObject(),
+      read: notification.isRead,
+    };
+
+    emitNotificationUpdate(req, "notification:updated", {
+      notification: data,
+    });
+
     return res.json({
       success: true,
-      data: { ...notification.toObject(), read: notification.isRead },
+      data,
     });
   } catch (error) {
     console.error("Mark notification read error:", error.message);
@@ -64,9 +85,14 @@ const markNotificationRead = async (req, res) => {
 const markAllNotificationsRead = async (req, res) => {
   try {
     await Notification.updateMany(
-      { user: req.user.userId, isRead: false },
+      {
+        user: req.user.userId,
+        isRead: false,
+      },
       { $set: { isRead: true } }
     );
+
+    emitNotificationUpdate(req, "notification:read-all");
 
     return res.json({
       success: true,
@@ -101,6 +127,10 @@ const deleteNotification = async (req, res) => {
         message: "Notification not found",
       });
     }
+
+    emitNotificationUpdate(req, "notification:deleted", {
+      notificationId: String(notification._id),
+    });
 
     return res.json({
       success: true,

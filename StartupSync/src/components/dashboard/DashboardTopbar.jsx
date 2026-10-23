@@ -104,6 +104,7 @@ function DashboardTopbar({ role, onMenuClick }) {
     loadNotifications();
   }, [loadNotifications]);
 
+
   useEffect(() => {
     const socket = connectSocket();
     if (!socket) return undefined;
@@ -120,12 +121,47 @@ function DashboardTopbar({ role, onMenuClick }) {
       });
     };
 
+    const handleNotificationUpdated = (payload) => {
+      const updated = payload?.notification;
+      if (!getId(updated)) return;
+
+      setNotifications((previous) =>
+        previous.map((item) =>
+          getId(item) === getId(updated)
+            ? { ...item, ...updated, isRead: updated.isRead, read: updated.isRead }
+            : item
+        )
+      );
+    };
+
+    const handleAllNotificationsRead = () => {
+      setNotifications((previous) =>
+        previous.map((item) => ({ ...item, isRead: true, read: true }))
+      );
+    };
+
+    const handleNotificationDeleted = (payload) => {
+      const deletedId = String(payload?.notificationId || "");
+      if (!deletedId) return;
+
+      setNotifications((previous) =>
+        previous.filter((item) => getId(item) !== deletedId)
+      );
+    };
+
     socket.on("notification:new", handleNewNotification);
+    socket.on("notification:updated", handleNotificationUpdated);
+    socket.on("notification:read-all", handleAllNotificationsRead);
+    socket.on("notification:deleted", handleNotificationDeleted);
 
     return () => {
       socket.off("notification:new", handleNewNotification);
+      socket.off("notification:updated", handleNotificationUpdated);
+      socket.off("notification:read-all", handleAllNotificationsRead);
+      socket.off("notification:deleted", handleNotificationDeleted);
     };
   }, []);
+
 
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -219,37 +255,37 @@ function DashboardTopbar({ role, onMenuClick }) {
     { label: "Notifications", page: "notifications", keywords: "alerts activity" },
     ...(role === "founder"
       ? [
-          { label: "My Startup", page: "startup", keywords: "company business" },
-          { label: "Investors", page: "investors", keywords: "funding capital" },
-          { label: "Mentors", page: "mentors", keywords: "guidance expertise" },
-          { label: "Team", page: "team", keywords: "members invitations" },
-        ]
+        { label: "My Startup", page: "startup", keywords: "company business" },
+        { label: "Investors", page: "investors", keywords: "funding capital" },
+        { label: "Mentors", page: "mentors", keywords: "guidance expertise" },
+        { label: "Team", page: "team", keywords: "members invitations" },
+      ]
       : []),
     ...(role === "investor"
       ? [
-          { label: "Discover Startups", page: "startups", keywords: "companies founders" },
-          { label: "My Investments", page: "investments", keywords: "portfolio funding" },
-        ]
+        { label: "Discover Startups", page: "startups", keywords: "companies founders" },
+        { label: "My Investments", page: "investments", keywords: "portfolio funding" },
+      ]
       : []),
     ...(role === "mentor"
       ? [
-          { label: "Startups", page: "startups", keywords: "founders companies" },
-          { label: "Mentorships", page: "mentorships", keywords: "guidance requests" },
-        ]
+        { label: "Startups", page: "startups", keywords: "founders companies" },
+        { label: "Mentorships", page: "mentorships", keywords: "guidance requests" },
+      ]
       : []),
     ...(role === "student"
       ? [
-          { label: "Internships", page: "internships", keywords: "jobs career" },
-          { label: "Opportunities", page: "opportunities", keywords: "events programs" },
-          { label: "Applications", page: "applications", keywords: "submitted status" },
-        ]
+        { label: "Internships", page: "internships", keywords: "jobs career" },
+        { label: "Opportunities", page: "opportunities", keywords: "events programs" },
+        { label: "Applications", page: "applications", keywords: "submitted status" },
+      ]
       : []),
     ...(role === "admin"
       ? [
-          { label: "Users", page: "users", keywords: "accounts" },
-          { label: "Startups", page: "startups", keywords: "companies" },
-          { label: "Reports", page: "reports", keywords: "analytics" },
-        ]
+        { label: "Users", page: "users", keywords: "accounts" },
+        { label: "Startups", page: "startups", keywords: "companies" },
+        { label: "Reports", page: "reports", keywords: "analytics" },
+      ]
       : []),
   ];
 
@@ -382,9 +418,8 @@ function DashboardTopbar({ role, onMenuClick }) {
                       <button
                         type="button"
                         key={getId(notification)}
-                        className={`dashboard-notification-entry ${
-                          !isRead ? "dashboard-notification-entry-unread" : ""
-                        }`}
+                        className={`dashboard-notification-entry ${!isRead ? "dashboard-notification-entry-unread" : ""
+                          }`}
                         onClick={() => openNotification(notification)}
                       >
                         <span className="dashboard-notification-entry-icon">
