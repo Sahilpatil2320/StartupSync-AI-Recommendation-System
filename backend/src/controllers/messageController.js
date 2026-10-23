@@ -1,6 +1,8 @@
+
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 
 const getConversations = async (req, res) => {
   try {
@@ -14,6 +16,17 @@ const getConversations = async (req, res) => {
       .populate("receiver", "name role")
       .lean();
 
+    const unreadCounts = new Map();
+
+    for (const item of messages) {
+      const senderId = String(item.sender?._id || item.sender);
+      const receiverId = String(item.receiver?._id || item.receiver);
+
+      if (receiverId === String(userId) && senderId !== String(userId) && !item.readAt) {
+        unreadCounts.set(senderId, (unreadCounts.get(senderId) || 0) + 1);
+      }
+    }
+
     const conversations = new Map();
 
     for (const message of messages) {
@@ -23,10 +36,8 @@ const getConversations = async (req, res) => {
 
       if (otherId === String(userId) || conversations.has(otherId)) continue;
 
-      const otherUser =
-        senderId === otherId ? message.sender : message.receiver;
-
-      if (!otherUser || !otherUser._id) continue;
+      const otherUser = senderId === otherId ? message.sender : message.receiver;
+      if (!otherUser?._id) continue;
 
       conversations.set(otherId, {
         user: otherUser,
@@ -36,12 +47,7 @@ const getConversations = async (req, res) => {
           createdAt: message.createdAt,
           senderId,
         },
-        unreadCount: messages.filter(
-          (item) =>
-            String(item.sender?._id || item.sender) === otherId &&
-            String(item.receiver?._id || item.receiver) === String(userId) &&
-            !item.readAt
-        ).length,
+        unreadCount: unreadCounts.get(otherId) || 0,
       });
     }
 
@@ -104,6 +110,13 @@ const getMessages = async (req, res) => {
       { $set: { readAt: new Date() } }
     );
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${currentUserId}`).emit("messages:read", {
+        conversationUserId: String(otherUserId),
+      });
+    }
+
     return res.json({
       success: true,
       user: otherUser,
@@ -145,7 +158,17 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    const receiver = await User.findById(receiverId).select("_id name role");
+    const [sender, receiver] = await Promise.all([
+      User.findById(senderId).select("_id name role"),
+      User.findById(receiverId).select("_id name role"),
+    ]);
+
+    if (!sender) {
+      return res.status(401).json({
+        success: false,
+        message: "Sender account not found",
+      });
+    }
 
     if (!receiver) {
       return res.status(404).json({
@@ -160,10 +183,68 @@ const sendMessage = async (req, res) => {
       text,
     });
 
+    const messageData = {
+      _id: String(message._id),
+      sender: String(senderId),
+      receiver: String(receiverId),
+      text: message.text,
+      readAt: message.readAt,
+      createdAt: message.createdAt,
+      updatedAt: message.updatedAt,
+    };
+
+    let notificationData = null;
+
+    try {
+      const notification = await Notification.create({
+        user: receiverId,
+        type: "message",
+        title: `New message from ${sender.name}`,
+        message: text.length > 180
+          ? `${text.slice(0, 177)}...`
+          : text,
+        link: "/dashboard/messages",
+      });
+
+      notificationData = {
+        _id: String(notification._id),
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        link: notification.link,
+        isRead: notification.isRead,
+        createdAt: notification.createdAt,
+      };
+    } catch (notificationError) {
+      // The message is already saved; don't report it as failed
+      // just because notification creation failed.
+      console.error("Create message notification error:", notificationError.message);
+    }
+
+    const io = req.app.get("io");
+
+    if (io) {
+      io.to(`user:${receiverId}`).emit("message:new", {
+        ...messageData,
+        sender: {
+          _id: String(sender._id),
+          name: sender.name,
+          role: sender.role,
+        },
+      });
+
+      io.to(`user:${senderId}`).emit("message:sent", messageData);
+
+      if (notificationData) {
+        io.to(`user:${receiverId}`).emit("notification:new", notificationData);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Message sent successfully",
-      data: message,
+      data: messageData,
+      notification: notificationData,
     });
   } catch (error) {
     console.error("Send message error:", error.message);
@@ -182,9 +263,11 @@ const searchUsers = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     const users = await User.find({
       _id: { $ne: req.user.userId },
-      name: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
+      name: { $regex: escapedSearch, $options: "i" },
     })
       .select("name role")
       .limit(20)

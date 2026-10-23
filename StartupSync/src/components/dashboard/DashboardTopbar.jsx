@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
   ChevronDown,
@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import { connectSocket } from "../../services/socket";
 import "./DashboardTopbar.css";
 
 const roleTitles = {
@@ -22,14 +24,39 @@ const roleTitles = {
   admin: "Administration",
 };
 
+const getId = (item) => String(item?._id || item?.id || "");
+
+const formatTime = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const diff = Date.now() - date.getTime();
+
+  if (diff < 60_000) return "Just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+
+  return date.toLocaleDateString([], {
+    day: "numeric",
+    month: "short",
+  });
+};
+
 function DashboardTopbar({ role, onMenuClick }) {
   const navigate = useNavigate();
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+  const notificationRef = useRef(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
 
   const storedUser = (() => {
     try {
@@ -53,6 +80,53 @@ function DashboardTopbar({ role, onMenuClick }) {
     .map((part) => part[0].toUpperCase())
     .join("");
 
+  const unreadCount = notifications.filter(
+    (item) => !(item.isRead ?? item.read ?? false)
+  ).length;
+
+  const loadNotifications = useCallback(async () => {
+    setNotificationLoading(true);
+
+    try {
+      const response = await api.get("/notifications");
+      setNotifications(response.data?.data || []);
+      setNotificationError("");
+    } catch (error) {
+      setNotificationError(
+        error.response?.data?.message || "Could not load notifications."
+      );
+    } finally {
+      setNotificationLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    if (!socket) return undefined;
+
+    const handleNewNotification = (notification) => {
+      if (!getId(notification)) return;
+
+      setNotifications((previous) => {
+        if (previous.some((item) => getId(item) === getId(notification))) {
+          return previous;
+        }
+
+        return [notification, ...previous].slice(0, 50);
+      });
+    };
+
+    socket.on("notification:new", handleNewNotification);
+
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+    };
+  }, []);
+
   useEffect(() => {
     function handleOutsideClick(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -62,12 +136,20 @@ function DashboardTopbar({ role, onMenuClick }) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setSearchOpen(false);
       }
+
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setNotificationOpen(false);
+      }
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
         setMenuOpen(false);
         setSearchOpen(false);
+        setNotificationOpen(false);
       }
     }
 
@@ -83,7 +165,8 @@ function DashboardTopbar({ role, onMenuClick }) {
   const goTo = (page) => {
     setMenuOpen(false);
     setSearchOpen(false);
-    navigate(`/dashboard/${role}/${page}`);
+    setNotificationOpen(false);
+    navigate(page ? `/dashboard/${role}/${page}` : `/dashboard/${role}`);
   };
 
   const handleSignOut = () => {
@@ -91,6 +174,41 @@ function DashboardTopbar({ role, onMenuClick }) {
     localStorage.removeItem("startupsync_token");
     localStorage.removeItem("startupsync_user");
     navigate("/login", { replace: true });
+  };
+
+  const markNotificationRead = async (notification) => {
+    if (notification.isRead ?? notification.read ?? false) return;
+
+    try {
+      await api.patch(`/notifications/${getId(notification)}/read`);
+
+      setNotifications((previous) =>
+        previous.map((item) =>
+          getId(item) === getId(notification)
+            ? { ...item, isRead: true, read: true }
+            : item
+        )
+      );
+    } catch (error) {
+      setNotificationError(
+        error.response?.data?.message || "Could not mark as read."
+      );
+    }
+  };
+
+  const openNotification = async (notification) => {
+    await markNotificationRead(notification);
+    setNotificationOpen(false);
+
+    if (notification.link) {
+      if (notification.link.startsWith("/")) {
+        navigate(notification.link);
+      } else {
+        navigate(`/dashboard/${role}/notifications`);
+      }
+    } else {
+      navigate(`/dashboard/${role}/notifications`);
+    }
   };
 
   const searchPages = [
@@ -169,6 +287,7 @@ function DashboardTopbar({ role, onMenuClick }) {
             onClick={() => {
               setSearchOpen((open) => !open);
               setMenuOpen(false);
+              setNotificationOpen(false);
               setSearchTerm("");
             }}
           >
@@ -192,36 +311,117 @@ function DashboardTopbar({ role, onMenuClick }) {
                     <button
                       type="button"
                       key={`${item.label}-${item.page}`}
-                      onClick={() => {
-                        if (item.page) {
-                          goTo(item.page);
-                        } else {
-                          setSearchOpen(false);
-                          navigate(`/dashboard/${role}`);
-                        }
-                      }}
+                      onClick={() => goTo(item.page)}
                     >
                       <Search size={15} />
                       <span>{item.label}</span>
                     </button>
                   ))
                 ) : (
-                  <p className="dashboard-search-empty">No matching pages found.</p>
+                  <p className="dashboard-search-empty">
+                    No matching pages found.
+                  </p>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        <button
-          type="button"
-          className="dashboard-topbar-icon dashboard-notification-button"
-          onClick={() => goTo("notifications")}
-          aria-label="Notifications"
+        <div
+          className="dashboard-topbar-search dashboard-notification-wrapper"
+          ref={notificationRef}
         >
-          <Bell size={19} />
-          <span className="dashboard-notification-dot" />
-        </button>
+          <button
+            type="button"
+            className="dashboard-topbar-icon dashboard-notification-button"
+            onClick={() => {
+              setNotificationOpen((open) => !open);
+              setSearchOpen(false);
+              setMenuOpen(false);
+
+              if (!notificationOpen) loadNotifications();
+            }}
+            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+            aria-expanded={notificationOpen}
+          >
+            <Bell size={19} />
+            {unreadCount > 0 && (
+              <span className="dashboard-notification-dot">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notificationOpen && (
+            <div className="dashboard-search-popover dashboard-notification-popover">
+              <div className="dashboard-notification-popover-header">
+                <strong>Notifications</strong>
+                <button
+                  type="button"
+                  onClick={() => goTo("notifications")}
+                >
+                  View all
+                </button>
+              </div>
+
+              {notificationError && (
+                <p className="dashboard-search-empty">
+                  {notificationError}
+                </p>
+              )}
+
+              {notificationLoading ? (
+                <p className="dashboard-search-empty">Loading notifications...</p>
+              ) : notifications.length ? (
+                <div className="dashboard-search-results">
+                  {notifications.slice(0, 6).map((notification) => {
+                    const isRead =
+                      notification.isRead ?? notification.read ?? false;
+
+                    return (
+                      <button
+                        type="button"
+                        key={getId(notification)}
+                        className={`dashboard-notification-entry ${
+                          !isRead ? "dashboard-notification-entry-unread" : ""
+                        }`}
+                        onClick={() => openNotification(notification)}
+                      >
+                        <span className="dashboard-notification-entry-icon">
+                          <Bell size={16} />
+                        </span>
+                        <span className="dashboard-notification-entry-content">
+                          <strong>{notification.title || "Notification"}</strong>
+                          <span>{notification.message || ""}</span>
+                          <small>
+                            {formatTime(
+                              notification.createdAt || notification.updatedAt
+                            )}
+                          </small>
+                        </span>
+                        {!isRead && (
+                          <span className="dashboard-notification-entry-dot" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="dashboard-search-empty">
+                  No notifications yet.
+                </p>
+              )}
+
+              <button
+                type="button"
+                className="dashboard-notification-view-all"
+                onClick={() => goTo("notifications")}
+              >
+                Open notification center
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="dashboard-user-menu" ref={menuRef}>
           <button
@@ -230,6 +430,7 @@ function DashboardTopbar({ role, onMenuClick }) {
             onClick={() => {
               setMenuOpen((open) => !open);
               setSearchOpen(false);
+              setNotificationOpen(false);
             }}
             aria-expanded={menuOpen}
             aria-haspopup="menu"

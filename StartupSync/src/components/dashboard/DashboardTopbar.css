@@ -313,3 +313,142 @@
     width: min(300px, calc(100vw - 24px));
   }
 }
+
+
+.dashboard-notification-wrapper {
+  position: relative;
+}
+
+.dashboard-notification-button {
+  position: relative;
+}
+
+.dashboard-notification-dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dashboard-notification-popover {
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.dashboard-notification-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dashboard-notification-popover-header strong {
+  font-size: 15px;
+}
+
+.dashboard-notification-popover-header button,
+.dashboard-notification-view-all {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-notification-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid #eef0f4;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard-notification-entry:hover {
+  background: #f8fafc;
+}
+
+.dashboard-notification-entry-unread {
+  background: #eff6ff;
+}
+
+.dashboard-notification-entry-icon {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.dashboard-notification-entry-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-notification-entry-content strong {
+  font-size: 13px;
+  color: #111827;
+}
+
+.dashboard-notification-entry-content > span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-notification-entry-content small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.dashboard-notification-entry-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.dashboard-notification-view-all {
+  width: 100%;
+  padding: 13px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dashboard-notification-view-all:hover {
+  background: #f8fafc;
+}
+
+.dashboard-notification-popover .dashboard-search-empty {
+  padding: 18px 14px;
+  margin: 0;
+}

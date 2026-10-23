@@ -1,3 +1,4 @@
+
 import {
   ArrowLeft,
   MoreVertical,
@@ -6,176 +7,370 @@ import {
   Search,
   Send,
   Smile,
-  Video
+  Video,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import api from "../../../services/api";
+import { connectSocket } from "../../../services/socket";
 import "./FounderMessages.css";
 
-const initialConversations = [
-  {
-    id: 1,
-    name: "Arjun Capital",
-    role: "Investor",
-    initials: "AC",
-    lastMessage: "Please share the updated pitch deck.",
-    time: "10:42 AM",
-    unread: 2,
-    online: true
-  },
-  {
-    id: 2,
-    name: "Ananya Sharma",
-    role: "Mentor",
-    initials: "AS",
-    lastMessage: "Let's discuss your product strategy.",
-    time: "9:35 AM",
-    unread: 0,
-    online: true
-  },
-  {
-    id: 3,
-    name: "Aarav Patil",
-    role: "Co-Founder",
-    initials: "AP",
-    lastMessage: "The new dashboard design is ready.",
-    time: "Yesterday",
-    unread: 1,
-    online: false
-  },
-  {
-    id: 4,
-    name: "NextWave Ventures",
-    role: "Investor",
-    initials: "NV",
-    lastMessage: "We would like to know more about your team.",
-    time: "Yesterday",
-    unread: 0,
-    online: false
-  },
-  {
-    id: 5,
-    name: "Sneha Kulkarni",
-    role: "Designer",
-    initials: "SK",
-    lastMessage: "I have uploaded the latest prototype.",
-    time: "Mon",
-    unread: 0,
-    online: true
-  }
-];
+const getId = (value) =>
+  String(value?._id || value?.id || value || "");
 
-const initialMessages = {
-  1: [
-    {
-      id: 1,
-      sender: "other",
-      text: "Hello! We reviewed your startup profile.",
-      time: "10:30 AM"
-    },
-    {
-      id: 2,
-      sender: "me",
-      text: "Thank you. I would be happy to share more details.",
-      time: "10:34 AM"
-    },
-    {
-      id: 3,
-      sender: "other",
-      text: "Please share the updated pitch deck.",
-      time: "10:42 AM"
-    }
-  ],
-  2: [
-    {
-      id: 4,
-      sender: "other",
-      text: "How is the product validation going?",
-      time: "9:20 AM"
-    },
-    {
-      id: 5,
-      sender: "me",
-      text: "We have completed the first round of user interviews.",
-      time: "9:28 AM"
-    },
-    {
-      id: 6,
-      sender: "other",
-      text: "Let's discuss your product strategy.",
-      time: "9:35 AM"
-    }
-  ],
-  3: [
-    {
-      id: 7,
-      sender: "other",
-      text: "The new dashboard design is ready.",
-      time: "Yesterday"
-    }
-  ],
-  4: [
-    {
-      id: 8,
-      sender: "other",
-      text: "We would like to know more about your team.",
-      time: "Yesterday"
-    }
-  ],
-  5: [
-    {
-      id: 9,
-      sender: "other",
-      text: "I have uploaded the latest prototype.",
-      time: "Mon"
-    }
-  ]
+const formatTime = (value) => {
+  if (!value) return "";
+  return new Date(value).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getInitials = (name = "User") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || "")
+    .join("")
+    .toUpperCase();
+
+const getCurrentUserId = () => {
+  try {
+    const user = JSON.parse(
+      localStorage.getItem("startupsync_user") || "{}"
+    );
+    return getId(user);
+  } catch {
+    return "";
+  }
 };
 
 function FounderMessages() {
-  const [conversations, setConversations] = useState(
-    initialConversations
-  );
-
-  const [messages, setMessages] = useState(initialMessages);
-
+  const [conversations, setConversations] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [selectedConversationId, setSelectedConversationId] =
-    useState(1);
-
+    useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
   const [messageText, setMessageText] = useState("");
-
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [loadingConversations, setLoadingConversations] =
+    useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  const messagesEndRef = useRef(null);
+  const selectedIdRef = useRef("");
+  const searchRequestRef = useRef(0);
+
+  const currentUserId = getCurrentUserId();
+
+  useEffect(() => {
+    selectedIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const response = await api.get("/messages/conversations");
+      const data = response.data?.data || [];
+
+      setConversations(
+        data.map((item) => {
+          const user = item.user || {};
+          const lastMessage = item.lastMessage || {};
+
+          return {
+            id: getId(user),
+            name: user.name || "User",
+            role: user.role || "Member",
+            initials: getInitials(user.name),
+            lastMessage:
+              lastMessage.text || "Start a conversation",
+            time: formatTime(lastMessage.createdAt),
+            unread: Number(item.unreadCount || 0),
+            online: false,
+          };
+        })
+      );
+
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not load conversations."
+      );
+    } finally {
+      setLoadingConversations(false);
+    }
+  }, []);
+
+  const loadMessages = useCallback(async (userId) => {
+    if (!userId) return;
+
+    setLoadingMessages(true);
+
+    try {
+      const response = await api.get(`/messages/${userId}`);
+      const data = response.data?.data || [];
+
+      setMessages(
+        data.map((message) => ({
+          id: getId(message),
+          sender:
+            getId(message.sender) === getCurrentUserId(),
+          senderId: getId(message.sender),
+          text: message.text,
+          time: formatTime(message.createdAt),
+          createdAt: message.createdAt,
+        }))
+      );
+
+      setConversations((previous) =>
+        previous.map((conversation) =>
+          conversation.id === userId
+            ? { ...conversation, unread: 0 }
+            : conversation
+        )
+      );
+
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not load messages."
+      );
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  useEffect(() => {
+    if (selectedConversationId) {
+      loadMessages(selectedConversationId);
+    } else {
+      setMessages([]);
+    }
+  }, [selectedConversationId, loadMessages]);
+
+  // Search registered users through the existing backend endpoint.
+  useEffect(() => {
+    const query = searchTerm.trim();
+
+    if (query.length < 2) {
+      searchRequestRef.current += 1;
+      setSearchResults([]);
+      setSearchingUsers(false);
+      return undefined;
+    }
+
+    const requestId = ++searchRequestRef.current;
+    setSearchingUsers(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api.get("/messages/users", {
+          params: { search: query },
+        });
+
+        if (requestId !== searchRequestRef.current) return;
+
+        const users = response.data?.data || [];
+
+        setSearchResults(
+          users
+            .filter((user) => getId(user) !== currentUserId)
+            .map((user) => ({
+              id: getId(user),
+              name: user.name || "User",
+              role: user.role || "Member",
+              initials: getInitials(user.name),
+            }))
+        );
+      } catch (err) {
+        if (requestId === searchRequestRef.current) {
+          setSearchResults([]);
+          setError(
+            err.response?.data?.message ||
+              "Could not search users."
+          );
+        }
+      } finally {
+        if (requestId === searchRequestRef.current) {
+          setSearchingUsers(false);
+        }
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, currentUserId]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+
+    if (!socket) {
+      setError("Please sign in again to use messages.");
+      return undefined;
+    }
+
+    const handleNewMessage = (message) => {
+      const senderId = getId(message.sender);
+      const receiverId = getId(message.receiver);
+      const otherUserId =
+        senderId === currentUserId ? receiverId : senderId;
+      const activeId = selectedIdRef.current;
+
+      setConversations((previous) => {
+        const existing = previous.find(
+          (item) => item.id === otherUserId
+        );
+
+        const senderIsCurrentUser =
+          senderId === currentUserId;
+
+        const name = senderIsCurrentUser
+          ? existing?.name || "User"
+          : message.sender?.name || existing?.name || "User";
+
+        const role = senderIsCurrentUser
+          ? existing?.role || "Member"
+          : message.sender?.role || existing?.role || "Member";
+
+        const updated = {
+          id: otherUserId,
+          name,
+          role,
+          initials: getInitials(name),
+          lastMessage: message.text,
+          time: formatTime(message.createdAt),
+          unread:
+            otherUserId === activeId
+              ? 0
+              : (existing?.unread || 0) + 1,
+          online: false,
+        };
+
+        return [
+          updated,
+          ...previous.filter(
+            (item) => item.id !== otherUserId
+          ),
+        ];
+      });
+
+      if (otherUserId === activeId) {
+        setMessages((previous) => {
+          if (
+            previous.some(
+              (item) => item.id === getId(message)
+            )
+          ) {
+            return previous;
+          }
+
+          return [
+            ...previous,
+            {
+              id: getId(message),
+              sender: senderId === currentUserId,
+              senderId,
+              text: message.text,
+              time: formatTime(message.createdAt),
+              createdAt: message.createdAt,
+            },
+          ];
+        });
+      }
+
+      loadConversations();
+    };
+
+    const handleSentMessage = (message) => {
+      if (getId(message.receiver) !== selectedIdRef.current) {
+        loadConversations();
+        return;
+      }
+
+      setMessages((previous) => {
+        if (
+          previous.some(
+            (item) => item.id === getId(message)
+          )
+        ) {
+          return previous;
+        }
+
+        return [
+          ...previous,
+          {
+            id: getId(message),
+            sender: true,
+            senderId: getId(message.sender),
+            text: message.text,
+            time: formatTime(message.createdAt),
+            createdAt: message.createdAt,
+          },
+        ];
+      });
+
+      loadConversations();
+    };
+
+    socket.on("message:new", handleNewMessage);
+    socket.on("message:sent", handleSentMessage);
+
+    return () => {
+      socket.off("message:new", handleNewMessage);
+      socket.off("message:sent", handleSentMessage);
+    };
+  }, [currentUserId, loadConversations]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages]);
 
   const selectedConversation = conversations.find(
     (conversation) =>
       conversation.id === selectedConversationId
   );
 
-  const currentMessages =
-    messages[selectedConversationId] || [];
-
   const filteredConversations = useMemo(() => {
     const value = searchTerm.toLowerCase().trim();
 
-    if (!value) {
-      return conversations;
-    }
+    if (!value) return conversations;
 
     return conversations.filter(
       (conversation) =>
         conversation.name.toLowerCase().includes(value) ||
         conversation.role.toLowerCase().includes(value) ||
-        conversation.lastMessage
-          .toLowerCase()
-          .includes(value)
+        conversation.lastMessage.toLowerCase().includes(value)
     );
   }, [conversations, searchTerm]);
 
+  const existingConversationIds = useMemo(
+    () => new Set(conversations.map((item) => item.id)),
+    [conversations]
+  );
+
   const handleConversationSelect = (id) => {
     setSelectedConversationId(id);
+    selectedIdRef.current = id;
     setMobileChatOpen(true);
+    setShowUserSearch(false);
 
     setConversations((previous) =>
       previous.map((conversation) =>
@@ -186,73 +381,125 @@ function FounderMessages() {
     );
   };
 
-  const handleSendMessage = (event) => {
+  const handleUserSelect = async (user) => {
+    if (!user?.id) return;
+
+    const existing = conversations.find(
+      (conversation) => conversation.id === user.id
+    );
+
+    if (!existing) {
+      setConversations((previous) => [
+        {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          initials: user.initials,
+          lastMessage: "Start a conversation",
+          time: "",
+          unread: 0,
+          online: false,
+        },
+        ...previous.filter((item) => item.id !== user.id),
+      ]);
+    }
+
+    setSelectedConversationId(user.id);
+    selectedIdRef.current = user.id;
+    setMobileChatOpen(true);
+    setShowUserSearch(false);
+    setSearchTerm("");
+    setSearchResults([]);
+    setError("");
+
+    await loadMessages(user.id);
+  };
+
+  const handleSendMessage = async (event) => {
     event.preventDefault();
 
     const text = messageText.trim();
 
-    if (!text) {
-      return;
+    if (!text || !selectedConversationId || sending) return;
+
+    setSending(true);
+    setError("");
+
+    try {
+      const response = await api.post(
+        `/messages/${selectedConversationId}`,
+        { text }
+      );
+
+      const message = response.data?.data;
+
+      if (message) {
+        setMessages((previous) => {
+          if (
+            previous.some(
+              (item) => item.id === getId(message)
+            )
+          ) {
+            return previous;
+          }
+
+          return [
+            ...previous,
+            {
+              id: getId(message),
+              sender: true,
+              senderId: getId(message.sender),
+              text: message.text,
+              time: formatTime(message.createdAt),
+              createdAt: message.createdAt,
+            },
+          ];
+        });
+      }
+
+      setMessageText("");
+      await loadConversations();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Message could not be sent."
+      );
+    } finally {
+      setSending(false);
     }
-
-    const newMessage = {
-      id: Date.now(),
-      sender: "me",
-      text,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-      })
-    };
-
-    setMessages((previous) => ({
-      ...previous,
-      [selectedConversationId]: [
-        ...(previous[selectedConversationId] || []),
-        newMessage
-      ]
-    }));
-
-    setConversations((previous) =>
-      previous.map((conversation) =>
-        conversation.id === selectedConversationId
-          ? {
-              ...conversation,
-              lastMessage: text,
-              time: "Just now"
-            }
-          : conversation
-      )
-    );
-
-    setMessageText("");
   };
 
-  const handleBackToConversations = () => {
+  const handleBackToConversations = () =>
     setMobileChatOpen(false);
-  };
+
+  const showSearchResults =
+    searchTerm.trim().length >= 2 &&
+    (searchingUsers ||
+      searchResults.length > 0 ||
+      !filteredConversations.length);
 
   return (
     <div className="founder-messages-page">
-      {/* Page Header */}
       <div className="founder-messages-page-header">
         <div>
           <span className="founder-messages-badge">
             Communication
           </span>
-
           <h2>Messages</h2>
-
           <p>
-            Connect and communicate with investors, mentors
-            and your startup team.
+            Connect and communicate with investors, mentors and
+            your startup team.
           </p>
         </div>
       </div>
 
-      {/* Messaging Workspace */}
+      {error && (
+        <div role="alert" className="founder-message-error">
+          {error}
+        </div>
+      )}
+
       <section className="founder-messages-workspace">
-        {/* Conversation Sidebar */}
         <aside
           className={`founder-conversation-sidebar ${
             mobileChatOpen
@@ -263,14 +510,13 @@ function FounderMessages() {
           <div className="founder-conversation-header">
             <div>
               <h3>Conversations</h3>
-              <span>
-                {conversations.length} active chats
-              </span>
+              <span>{conversations.length} chats</span>
             </div>
 
             <button
               type="button"
-              aria-label="More conversation options"
+              aria-label="Conversation options"
+              title="Conversation options"
             >
               <MoreVertical size={18} />
             </button>
@@ -278,11 +524,15 @@ function FounderMessages() {
 
           <div className="founder-conversation-search">
             <Search size={17} />
-
             <input
               type="text"
-              placeholder="Search conversations..."
+              placeholder={
+                showUserSearch
+                  ? "Search registered users..."
+                  : "Search conversations or users..."
+              }
               value={searchTerm}
+              onFocus={() => setShowUserSearch(true)}
               onChange={(event) =>
                 setSearchTerm(event.target.value)
               }
@@ -290,26 +540,73 @@ function FounderMessages() {
           </div>
 
           <div className="founder-conversation-list">
-            {filteredConversations.length > 0 ? (
+            {showSearchResults ? (
+              searchingUsers ? (
+                <div className="founder-message-empty">
+                  Searching users...
+                </div>
+              ) : searchResults.length ? (
+                <>
+                  <div className="founder-message-empty">
+                    <small>Registered users</small>
+                  </div>
+
+                  {searchResults.map((user) => (
+                    <button
+                      type="button"
+                      key={user.id}
+                      className="founder-conversation-item"
+                      onClick={() => handleUserSelect(user)}
+                    >
+                      <div className="founder-conversation-avatar">
+                        {user.initials}
+                      </div>
+
+                      <div className="founder-conversation-details">
+                        <div className="founder-conversation-name-row">
+                          <strong>{user.name}</strong>
+                        </div>
+                        <div className="founder-conversation-message-row">
+                          <p>
+                            {existingConversationIds.has(user.id)
+                              ? "Open conversation"
+                              : "Start a new conversation"}
+                          </p>
+                        </div>
+                        <small>{user.role}</small>
+                      </div>
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <div className="founder-message-empty">
+                  <Search size={25} />
+                  <p>No matching users found.</p>
+                  <small>
+                    Try another name with at least two characters.
+                  </small>
+                </div>
+              )
+            ) : loadingConversations ? (
+              <div className="founder-message-empty">
+                Loading conversations...
+              </div>
+            ) : filteredConversations.length ? (
               filteredConversations.map((conversation) => (
                 <button
                   type="button"
                   key={conversation.id}
                   className={`founder-conversation-item ${
-                    selectedConversationId ===
-                    conversation.id
+                    selectedConversationId === conversation.id
                       ? "founder-conversation-item-active"
                       : ""
                   }`}
                   onClick={() =>
-                    handleConversationSelect(
-                      conversation.id
-                    )
+                    handleConversationSelect(conversation.id)
                   }
                 >
                   <div className="founder-conversation-avatar">
                     {conversation.initials}
-
                     {conversation.online && (
                       <span className="founder-online-dot" />
                     )}
@@ -317,20 +614,12 @@ function FounderMessages() {
 
                   <div className="founder-conversation-details">
                     <div className="founder-conversation-name-row">
-                      <strong>
-                        {conversation.name}
-                      </strong>
-
-                      <span>
-                        {conversation.time}
-                      </span>
+                      <strong>{conversation.name}</strong>
+                      <span>{conversation.time}</span>
                     </div>
 
                     <div className="founder-conversation-message-row">
-                      <p>
-                        {conversation.lastMessage}
-                      </p>
-
+                      <p>{conversation.lastMessage}</p>
                       {conversation.unread > 0 && (
                         <span className="founder-unread-count">
                           {conversation.unread}
@@ -338,23 +627,22 @@ function FounderMessages() {
                       )}
                     </div>
 
-                    <small>
-                      {conversation.role}
-                    </small>
+                    <small>{conversation.role}</small>
                   </div>
                 </button>
               ))
             ) : (
               <div className="founder-message-empty">
                 <Search size={25} />
-
-                <p>No conversations found.</p>
+                <p>No conversations yet.</p>
+                <small>
+                  Search for a registered user above to start a chat.
+                </small>
               </div>
             )}
           </div>
         </aside>
 
-        {/* Chat Area */}
         {selectedConversation ? (
           <section
             className={`founder-chat-panel ${
@@ -363,7 +651,6 @@ function FounderMessages() {
                 : ""
             }`}
           >
-            {/* Chat Header */}
             <header className="founder-chat-header">
               <div className="founder-chat-person">
                 <button
@@ -377,36 +664,22 @@ function FounderMessages() {
 
                 <div className="founder-chat-avatar">
                   {selectedConversation.initials}
-
-                  {selectedConversation.online && (
-                    <span className="founder-online-dot" />
-                  )}
                 </div>
 
                 <div>
                   <h3>{selectedConversation.name}</h3>
-
-                  <span>
-                    <i
-                      className={
-                        selectedConversation.online
-                          ? "online"
-                          : ""
-                      }
-                    />
-                    {selectedConversation.online
-                      ? "Online"
-                      : selectedConversation.role}
-                  </span>
+                  <span>{selectedConversation.role}</span>
                 </div>
               </div>
 
               <div className="founder-chat-actions">
                 <button
                   type="button"
-                  aria-label="Start voice call"
+                  aria-label="Voice call"
                   onClick={() =>
-                    alert("Voice calling will be connected later.")
+                    window.alert(
+                      "Voice calling is not implemented yet."
+                    )
                   }
                 >
                   <Phone size={18} />
@@ -414,9 +687,11 @@ function FounderMessages() {
 
                 <button
                   type="button"
-                  aria-label="Start video call"
+                  aria-label="Video call"
                   onClick={() =>
-                    alert("Video calling will be connected later.")
+                    window.alert(
+                      "Video calling is not implemented yet."
+                    )
                   }
                 >
                   <Video size={19} />
@@ -431,40 +706,49 @@ function FounderMessages() {
               </div>
             </header>
 
-            {/* Messages */}
             <div className="founder-chat-messages">
               <div className="founder-chat-date">
-                <span>Today</span>
+                <span>Conversation</span>
               </div>
 
-              {currentMessages.map((message) => (
-                <div
-                  className={`founder-message-row ${
-                    message.sender === "me"
-                      ? "founder-message-row-own"
-                      : ""
-                  }`}
-                  key={message.id}
-                >
-                  <div className="founder-message-bubble">
-                    <p>{message.text}</p>
-
-                    <span>{message.time}</span>
+              {loadingMessages ? (
+                <p>Loading messages...</p>
+              ) : messages.length ? (
+                messages.map((message) => (
+                  <div
+                    className={`founder-message-row ${
+                      message.sender
+                        ? "founder-message-row-own"
+                        : ""
+                    }`}
+                    key={message.id}
+                  >
+                    <div className="founder-message-bubble">
+                      <p>{message.text}</p>
+                      <span>{message.time}</span>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="founder-message-empty">
+                  <p>No messages yet. Say hello!</p>
                 </div>
-              ))}
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Composer */}
             <form
               className="founder-message-composer"
               onSubmit={handleSendMessage}
             >
               <button
                 type="button"
-                aria-label="Attach file"
+                aria-label="File attachment"
                 onClick={() =>
-                  alert("File attachment will be connected later.")
+                  window.alert(
+                    "File attachments are not implemented yet."
+                  )
                 }
               >
                 <Paperclip size={19} />
@@ -477,15 +761,15 @@ function FounderMessages() {
                   setMessageText(event.target.value)
                 }
                 placeholder="Write a message..."
+                maxLength={5000}
+                disabled={sending}
               />
 
               <button
                 type="button"
-                aria-label="Add emoji"
+                aria-label="Add smile"
                 onClick={() =>
-                  setMessageText((previous) =>
-                    `${previous} 😊`
-                  )
+                  setMessageText((previous) => `${previous} 😊`)
                 }
               >
                 <Smile size={19} />
@@ -495,7 +779,7 @@ function FounderMessages() {
                 type="submit"
                 className="founder-send-button"
                 aria-label="Send message"
-                disabled={!messageText.trim()}
+                disabled={!messageText.trim() || sending}
               >
                 <Send size={18} />
               </button>
@@ -506,9 +790,7 @@ function FounderMessages() {
             <div>
               <Search size={30} />
               <h3>Select a conversation</h3>
-              <p>
-                Choose a conversation to start messaging.
-              </p>
+              <p>Choose a conversation to view messages.</p>
             </div>
           </section>
         )}

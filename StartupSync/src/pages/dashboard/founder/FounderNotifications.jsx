@@ -1,207 +1,281 @@
+
 import {
   Bell,
   Check,
   CheckCheck,
-  FileText,
   Handshake,
+  MessageCircle,
   MoreVertical,
   Rocket,
   Trash2,
   UserRound,
   UsersRound,
-  X
+  X,
+  FileText,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import api from "../../../services/api";
+import { connectSocket } from "../../../services/socket";
 import "./FounderNotifications.css";
-
-const initialNotifications = [
-  {
-    id: 1,
-    type: "investor",
-    title: "New investor interest",
-    message:
-      "Arjun Capital viewed your startup profile and expressed interest in learning more.",
-    time: "12 minutes ago",
-    unread: true
-  },
-  {
-    id: 2,
-    type: "mentor",
-    title: "Mentorship request accepted",
-    message:
-      "Ananya Sharma accepted your mentorship request.",
-    time: "1 hour ago",
-    unread: true
-  },
-  {
-    id: 3,
-    type: "team",
-    title: "New team invitation response",
-    message:
-      "Kunal Shah has accepted your invitation to join the team.",
-    time: "3 hours ago",
-    unread: true
-  },
-  {
-    id: 4,
-    type: "startup",
-    title: "Startup profile update",
-    message:
-      "Your startup profile is now 82% complete. Add remaining information to improve your profile.",
-    time: "Yesterday",
-    unread: false
-  },
-  {
-    id: 5,
-    type: "document",
-    title: "Pitch deck uploaded",
-    message:
-      "Your latest pitch deck has been successfully added to your startup documents.",
-    time: "Yesterday",
-    unread: false
-  },
-  {
-    id: 6,
-    type: "investor",
-    title: "New investor match",
-    message:
-      "StartupSync found a new investor match based on your startup profile.",
-    time: "2 days ago",
-    unread: false
-  },
-  {
-    id: 7,
-    type: "system",
-    title: "Welcome to StartupSync",
-    message:
-      "Your founder workspace is ready. Explore investors, mentors and team opportunities.",
-    time: "3 days ago",
-    unread: false
-  }
-];
 
 const notificationTypes = [
   "All",
-  "Investor",
-  "Mentor",
-  "Team",
-  "Startup",
-  "System"
+  "Application",
+  "Interview",
+  "Message",
+  "Opportunity",
+  "Profile",
+  "System",
 ];
 
+const formatTime = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  const difference = Date.now() - date.getTime();
+
+  if (difference < 60_000) return "Just now";
+  if (difference < 3_600_000) {
+    return `${Math.floor(difference / 60_000)} minutes ago`;
+  }
+  if (difference < 86_400_000) {
+    return `${Math.floor(difference / 3_600_000)} hours ago`;
+  }
+  if (difference < 172_800_000) return "Yesterday";
+
+  return date.toLocaleDateString([], {
+    day: "numeric",
+    month: "short",
+    year:
+      date.getFullYear() !== new Date().getFullYear()
+        ? "numeric"
+        : undefined,
+  });
+};
+
+const mapNotification = (item) => ({
+  id: String(item._id || item.id),
+  type: String(item.type || "system").toLowerCase(),
+  title: item.title || "Notification",
+  message: item.message || "",
+  time: formatTime(item.createdAt || item.updatedAt),
+  createdAt: item.createdAt || item.updatedAt || new Date().toISOString(),
+  unread: !(item.isRead ?? item.read ?? false),
+  link: item.link || "",
+});
+
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "application":
+      return <FileText size={19} />;
+    case "interview":
+      return <UsersRound size={19} />;
+    case "message":
+      return <MessageCircle size={19} />;
+    case "opportunity":
+      return <Handshake size={19} />;
+    case "profile":
+      return <UserRound size={19} />;
+    case "startup":
+      return <Rocket size={19} />;
+    default:
+      return <Bell size={19} />;
+  }
+};
+
+const getNotificationLabel = (type) => {
+  const labels = {
+    application: "Application",
+    interview: "Interview",
+    message: "Message",
+    opportunity: "Opportunity",
+    profile: "Profile",
+    startup: "Startup",
+    document: "Document",
+    investor: "Investor",
+    mentor: "Mentor",
+    team: "Team",
+    system: "System",
+  };
+
+  return labels[type] || "System";
+};
+
 function FounderNotifications() {
-  const [notifications, setNotifications] = useState(
-    initialNotifications
-  );
-
+  const [notifications, setNotifications] = useState([]);
   const [activeFilter, setActiveFilter] = useState("All");
-
   const [selectedNotification, setSelectedNotification] =
     useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [actionId, setActionId] = useState("");
 
   const unreadCount = notifications.filter(
     (notification) => notification.unread
   ).length;
 
-  const filteredNotifications = useMemo(() => {
-    if (activeFilter === "All") {
-      return notifications;
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await api.get("/notifications");
+      const data = response.data?.data || [];
+
+      setNotifications(data.map(mapNotification));
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not load notifications. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // Receive notifications instantly through the authenticated socket.
+  useEffect(() => {
+    const socket = connectSocket();
+
+    if (!socket) return undefined;
+
+    const handleNewNotification = (notification) => {
+      if (!notification?._id && !notification?.id) return;
+
+      const mapped = mapNotification(notification);
+
+      setNotifications((previous) => {
+        if (previous.some((item) => item.id === mapped.id)) {
+          return previous;
+        }
+
+        return [mapped, ...previous];
+      });
+    };
+
+    socket.on("notification:new", handleNewNotification);
+
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+    };
+  }, []);
+
+  const filteredNotifications = useMemo(() => {
+    if (activeFilter === "All") return notifications;
 
     return notifications.filter(
       (notification) =>
-        notification.type.toLowerCase() ===
-        activeFilter.toLowerCase()
+        notification.type === activeFilter.toLowerCase()
     );
   }, [notifications, activeFilter]);
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case "investor":
-        return <Handshake size={19} />;
+  const handleMarkAsRead = async (id) => {
+    const notification = notifications.find((item) => item.id === id);
 
-      case "mentor":
-        return <UserRound size={19} />;
+    if (!notification || !notification.unread) return;
 
-      case "team":
-        return <UsersRound size={19} />;
+    setActionId(id);
 
-      case "startup":
-        return <Rocket size={19} />;
+    try {
+      await api.patch(`/notifications/${id}/read`);
 
-      case "document":
-        return <FileText size={19} />;
+      setNotifications((previous) =>
+        previous.map((item) =>
+          item.id === id ? { ...item, unread: false } : item
+        )
+      );
 
-      default:
-        return <Bell size={19} />;
+      setSelectedNotification((previous) =>
+        previous?.id === id
+          ? { ...previous, unread: false }
+          : previous
+      );
+
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not mark notification as read."
+      );
+    } finally {
+      setActionId("");
     }
   };
 
-  const getNotificationLabel = (type) => {
-    switch (type) {
-      case "investor":
-        return "Investor";
+  const handleMarkAllAsRead = async () => {
+    if (!unreadCount) return;
 
-      case "mentor":
-        return "Mentor";
+    setActionId("all");
 
-      case "team":
-        return "Team";
+    try {
+      await api.patch("/notifications/read-all");
 
-      case "startup":
-        return "Startup";
+      setNotifications((previous) =>
+        previous.map((item) => ({ ...item, unread: false }))
+      );
 
-      case "document":
-        return "Document";
+      setSelectedNotification((previous) =>
+        previous ? { ...previous, unread: false } : previous
+      );
 
-      default:
-        return "System";
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not mark all notifications as read."
+      );
+    } finally {
+      setActionId("");
     }
   };
 
-  const handleMarkAsRead = (id) => {
-    setNotifications((previous) =>
-      previous.map((notification) =>
-        notification.id === id
-          ? { ...notification, unread: false }
-          : notification
-      )
-    );
-  };
+  const handleDelete = async (id) => {
+    setActionId(id);
 
-  const handleMarkAllAsRead = () => {
-    setNotifications((previous) =>
-      previous.map((notification) => ({
-        ...notification,
-        unread: false
-      }))
-    );
-  };
+    try {
+      await api.delete(`/notifications/${id}`);
 
-  const handleDelete = (id) => {
-    setNotifications((previous) =>
-      previous.filter(
-        (notification) => notification.id !== id
-      )
-    );
+      setNotifications((previous) =>
+        previous.filter((item) => item.id !== id)
+      );
 
-    if (selectedNotification?.id === id) {
-      setSelectedNotification(null);
+      setSelectedNotification((previous) =>
+        previous?.id === id ? null : previous
+      );
+
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not delete notification."
+      );
+    } finally {
+      setActionId("");
     }
   };
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     setSelectedNotification(notification);
 
     if (notification.unread) {
-      handleMarkAsRead(notification.id);
+      await handleMarkAsRead(notification.id);
     }
+  };
+
+  const handleOpenLink = (notification) => {
+    if (!notification.link) return;
+
+    setSelectedNotification(null);
+    window.location.href = notification.link;
   };
 
   return (
     <div className="founder-notifications-page">
-      {/* Header */}
       <section className="founder-notifications-header">
         <div>
           <span className="founder-notifications-badge">
@@ -222,20 +296,32 @@ function FounderNotifications() {
             type="button"
             className="founder-mark-all-button"
             onClick={handleMarkAllAsRead}
+            disabled={actionId === "all"}
           >
             <CheckCheck size={17} />
-            Mark all as read
+            {actionId === "all" ? "Updating..." : "Mark all as read"}
           </button>
         )}
       </section>
 
-      {/* Summary */}
+      {error && (
+        <div role="alert" className="founder-message-error">
+          {error}
+          <button
+            type="button"
+            onClick={() => setError("")}
+            aria-label="Dismiss error"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <section className="founder-notification-summary">
         <div className="founder-notification-summary-card">
           <div className="founder-notification-summary-icon">
             <Bell size={20} />
           </div>
-
           <div>
             <span>Total Notifications</span>
             <strong>{notifications.length}</strong>
@@ -246,7 +332,6 @@ function FounderNotifications() {
           <div className="founder-notification-summary-icon unread-icon">
             <Check size={20} />
           </div>
-
           <div>
             <span>Unread</span>
             <strong>{unreadCount}</strong>
@@ -257,14 +342,14 @@ function FounderNotifications() {
           <div className="founder-notification-summary-icon">
             <Rocket size={20} />
           </div>
-
           <div>
             <span>Startup Activity</span>
             <strong>
               {
                 notifications.filter(
-                  (notification) =>
-                    notification.type === "startup"
+                  (item) =>
+                    item.type === "opportunity" ||
+                    item.type === "profile"
                 ).length
               }
             </strong>
@@ -272,15 +357,11 @@ function FounderNotifications() {
         </div>
       </section>
 
-      {/* Notification Content */}
       <section className="founder-notifications-section">
-        {/* Filters */}
         <div className="founder-notifications-toolbar">
           <div>
             <h3>Recent Activity</h3>
-            <p>
-              Review updates from your StartupSync workspace.
-            </p>
+            <p>Review updates from your StartupSync workspace.</p>
           </div>
 
           <div className="founder-notification-filters">
@@ -301,8 +382,12 @@ function FounderNotifications() {
           </div>
         </div>
 
-        {/* Notifications */}
-        {filteredNotifications.length > 0 ? (
+        {loading ? (
+          <div className="founder-notifications-empty">
+            <Bell size={34} />
+            <h4>Loading notifications...</h4>
+          </div>
+        ) : filteredNotifications.length > 0 ? (
           <div className="founder-notification-list">
             {filteredNotifications.map((notification) => (
               <article
@@ -321,9 +406,7 @@ function FounderNotifications() {
                   }
                 >
                   <div className="founder-notification-icon">
-                    {getNotificationIcon(
-                      notification.type
-                    )}
+                    {getNotificationIcon(notification.type)}
                   </div>
 
                   <div className="founder-notification-content">
@@ -341,13 +424,9 @@ function FounderNotifications() {
 
                     <div className="founder-notification-meta">
                       <span>
-                        {getNotificationLabel(
-                          notification.type
-                        )}
+                        {getNotificationLabel(notification.type)}
                       </span>
-
                       <span>•</span>
-
                       <span>{notification.time}</span>
                     </div>
                   </div>
@@ -359,6 +438,7 @@ function FounderNotifications() {
                       type="button"
                       title="Mark as read"
                       aria-label="Mark notification as read"
+                      disabled={actionId === notification.id}
                       onClick={() =>
                         handleMarkAsRead(notification.id)
                       }
@@ -371,9 +451,8 @@ function FounderNotifications() {
                     type="button"
                     title="Delete notification"
                     aria-label="Delete notification"
-                    onClick={() =>
-                      handleDelete(notification.id)
-                    }
+                    disabled={actionId === notification.id}
+                    onClick={() => handleDelete(notification.id)}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -382,6 +461,9 @@ function FounderNotifications() {
                     type="button"
                     title="More options"
                     aria-label="More notification options"
+                    onClick={() =>
+                      handleNotificationClick(notification)
+                    }
                   >
                     <MoreVertical size={16} />
                   </button>
@@ -392,17 +474,20 @@ function FounderNotifications() {
         ) : (
           <div className="founder-notifications-empty">
             <Bell size={34} />
-
-            <h4>No notifications</h4>
-
+            <h4>
+              {notifications.length
+                ? "No notifications in this category"
+                : "No notifications yet"}
+            </h4>
             <p>
-              There are no notifications in this category.
+              {notifications.length
+                ? "Choose another category to view notifications."
+                : "New updates will appear here when they are generated."}
             </p>
           </div>
         )}
       </section>
 
-      {/* Detail Panel */}
       {selectedNotification && (
         <div
           className="founder-notification-modal-overlay"
@@ -415,16 +500,12 @@ function FounderNotifications() {
           <div className="founder-notification-modal">
             <div className="founder-notification-modal-header">
               <div className="founder-notification-modal-icon">
-                {getNotificationIcon(
-                  selectedNotification.type
-                )}
+                {getNotificationIcon(selectedNotification.type)}
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  setSelectedNotification(null)
-                }
+                onClick={() => setSelectedNotification(null)}
                 aria-label="Close notification details"
               >
                 <X size={18} />
@@ -432,13 +513,10 @@ function FounderNotifications() {
             </div>
 
             <span className="founder-notification-modal-type">
-              {getNotificationLabel(
-                selectedNotification.type
-              )}
+              {getNotificationLabel(selectedNotification.type)}
             </span>
 
             <h3>{selectedNotification.title}</h3>
-
             <p>{selectedNotification.message}</p>
 
             <span className="founder-notification-modal-time">
@@ -448,20 +526,26 @@ function FounderNotifications() {
             <div className="founder-notification-modal-actions">
               <button
                 type="button"
-                onClick={() =>
-                  handleDelete(selectedNotification.id)
-                }
+                onClick={() => handleDelete(selectedNotification.id)}
+                disabled={actionId === selectedNotification.id}
               >
                 <Trash2 size={16} />
                 Delete
               </button>
 
+              {selectedNotification.link && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenLink(selectedNotification)}
+                >
+                  Open
+                </button>
+              )}
+
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() =>
-                  setSelectedNotification(null)
-                }
+                onClick={() => setSelectedNotification(null)}
               >
                 Close
               </button>
