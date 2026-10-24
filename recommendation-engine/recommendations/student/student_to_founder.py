@@ -565,9 +565,15 @@ class StudentFounderEngine:
 
         for index, founder in self.founders.iterrows():
 
-            founder_text = (
-                self.founder_text[index]
-            )
+            founder_text = " ".join([
+                self.founder_text[index],
+                clean_text(founder.get("company", "")),
+                clean_text(founder.get("name", "")),
+                clean_text(founder.get("funding_stage", "")),
+                clean_text(founder.get("domain_features", "")),
+                clean_text(founder.get("competitor_features", "")),
+                clean_text(founder.get("ecosystem_features", "")),
+            ])
 
             # ------------------------------------------------
             # Individual scores
@@ -691,9 +697,8 @@ class StudentFounderEngine:
         )
 
         # ----------------------------------------------------
-        # Only meaningful candidates
-        #
-        # At least TWO compatibility signals.
+        # Prioritize qualified candidates, then fill remaining
+        # slots with the next-best distinct companies.
         # ----------------------------------------------------
 
         qualified = [
@@ -705,50 +710,45 @@ class StudentFounderEngine:
             )
         ]
 
-        # ----------------------------------------------------
-        # Remove duplicate companies
-        # ----------------------------------------------------
+        # Keep the strongest matches first, then use the remaining
+        # ranked candidates to return up to top_n distinct companies.
+        qualified_indexes = {candidate["index"] for candidate in qualified}
+        ordered_candidates = qualified + [
+            candidate
+            for candidate in candidates
+            if candidate["index"] not in qualified_indexes
+        ]
 
         final = []
-
         seen_companies = set()
 
-        for candidate in qualified:
+        for candidate in ordered_candidates:
+            founder = candidate["founder"]
 
-            founder = candidate[
-                "founder"
-            ]
-
-            company = clean_text(
-                founder.get(
-                    "company",
-                    ""
-                )
-            )
-
+            company = clean_text(founder.get("company", ""))
             if not company:
-
-                company = (
-                    "founder_"
-                    + str(
-                        founder.get(
-                            "id",
-                            ""
-                        )
-                    )
-                )
+                company = "founder_" + str(founder.get("id", ""))
 
             if company in seen_companies:
                 continue
 
-            seen_companies.add(
-                company
-            )
+            seen_companies.add(company)
 
-            final.append(
-                candidate
-            )
+            # Convert the Pandas Series to a JSON-friendly dictionary
+            # and replace missing values with None.
+            safe_candidate = candidate.copy()
+            founder_data = founder.to_dict() if isinstance(founder, pd.Series) else dict(founder)
+            safe_founder = {}
+            for key, value in founder_data.items():
+                if pd.isna(value):
+                    safe_founder[key] = None
+                elif hasattr(value, "item"):
+                    safe_founder[key] = value.item()
+                else:
+                    safe_founder[key] = value
+            safe_candidate["founder"] = safe_founder
 
+            final.append(safe_candidate)
             if len(final) >= top_n:
                 break
 
@@ -962,4 +962,3 @@ if __name__ == "__main__":
         test_student_id,
         recommendations
     )
-

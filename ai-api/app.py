@@ -192,7 +192,21 @@ def run_recommendation(module_path, source_id, top_n=5):
             f"No recommend method found in {module_path}"
         )
 
-    method_name, method = methods[0]
+    
+    method_map = {
+        "recommendations.founder.founder_to_investor":
+            "recommend_investors",
+
+        "recommendations.founder.founder_to_mentor":
+            "recommend_mentors",
+    }
+
+    if module_path in method_map:
+        method_name = method_map[module_path]
+        method = getattr(engine, method_name)
+    else:
+        method_name, method = methods[0]
+
 
     signature = inspect.signature(method)
 

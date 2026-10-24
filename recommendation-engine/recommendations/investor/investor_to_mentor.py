@@ -293,6 +293,16 @@ class InvestorMentorEngine:
                 self.investors[column] = ""
 
 
+        # Map the actual processed_mentors.csv columns to the names
+        # expected by this engine. The dataset uses "id" and "name",
+        # while the recommendation output expects "mentor_id" and
+        # "mentor_name".
+        if "mentor_id" not in self.mentors.columns and "id" in self.mentors.columns:
+            self.mentors["mentor_id"] = self.mentors["id"]
+
+        if "mentor_name" not in self.mentors.columns and "name" in self.mentors.columns:
+            self.mentors["mentor_name"] = self.mentors["name"]
+
         mentor_columns = [
             "mentor_id",
             "mentor_name",
@@ -306,14 +316,10 @@ class InvestorMentorEngine:
         ]
 
         for column in mentor_columns:
-
             if column not in self.mentors.columns:
-
                 self.mentors[column] = ""
 
-
         for column in investor_columns:
-
             self.investors[column] = (
                 self.investors[column]
                 .fillna("")
@@ -321,9 +327,7 @@ class InvestorMentorEngine:
                 .apply(clean_text)
             )
 
-
         for column in mentor_columns:
-
             self.mentors[column] = (
                 self.mentors[column]
                 .fillna("")
@@ -1234,5 +1238,3 @@ if __name__ == "__main__":
         test_investor_id,
         top_n=5
     )
-
-

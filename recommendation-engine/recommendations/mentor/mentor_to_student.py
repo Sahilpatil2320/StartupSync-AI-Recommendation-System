@@ -806,34 +806,24 @@ class MentorStudentEngine:
             reverse=True
         )
 
-        # ----------------------------------------------------
-        # Only accept reasonably compatible candidates
-        # ----------------------------------------------------
-
-        qualified = [
-
-            candidate
-
-            for candidate in candidates
-
-            if candidate["strong_matches"] >= 2
-
-        ]
-
-        # ----------------------------------------------------
-        # If fewer than top_n qualified students exist,
-        # use candidates with at least one meaningful signal.
-        # ----------------------------------------------------
-
+        # Prefer candidates with at least 2 strong matches.
         qualified = [
             candidate
             for candidate in candidates
             if candidate["strong_matches"] >= 2
         ]
 
-        # ----------------------------------------------------
-        # Remove duplicate IDs
-        # ----------------------------------------------------
+        # Fallback: if none qualify, use the highest-ranked candidates.
+        if not qualified:
+            qualified = [
+                candidate
+                for candidate in candidates
+                if candidate["strong_matches"] >= 1
+            ]
+
+        # Last fallback: return ranked candidates if no strong signals exist.
+        if not qualified:
+            qualified = candidates
 
         final = []
 
@@ -862,9 +852,14 @@ class MentorStudentEngine:
                 student_id
             )
 
-            final.append(
-                candidate
-            )
+            # Convert Pandas Series into a JSON-safe dictionary.
+            safe_candidate = candidate.copy()
+            student = safe_candidate.get("student")
+
+            if isinstance(student, pd.Series):
+                safe_candidate["student"] = student.to_dict()
+
+            final.append(safe_candidate)
 
             if len(final) >= top_n:
                 break
