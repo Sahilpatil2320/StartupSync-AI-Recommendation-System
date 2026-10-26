@@ -346,9 +346,7 @@ function MentorSignup() {
                     },
                 }
             );
-
-            alert("Mentor account and profile created successfully!");
-            navigate("/login/mentor");
+            navigate("/login/mentor", { replace: true, state: { successMessage: "Account created successfully. Please sign in." } });
         } catch (error) {
             alert(
                 error.response?.data?.message ||

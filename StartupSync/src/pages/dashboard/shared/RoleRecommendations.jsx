@@ -70,7 +70,18 @@ const detailsOf = (profile, role) => {
 };
 
 const scoreOf = (profile) => {
-  const raw = profile?.score_percentage ?? profile?.matchPercentage ?? profile?.match_percentage ?? profile?.score ?? profile?.similarity;
+  const raw =
+    profile?.score_percentage ??
+    profile?.scorePercentage ??
+    profile?.matchPercentage ??
+    profile?.match_percentage ??
+    profile?.matchScore ??
+    profile?.match_score ??
+    profile?.similarity_score ??
+    profile?.score ??
+    profile?.similarity ??
+    profile?.confidence ??
+    profile?.match;
   if (raw === undefined || raw === null || raw === "") return null;
   const value = Number(raw);
   if (!Number.isFinite(value)) return null;

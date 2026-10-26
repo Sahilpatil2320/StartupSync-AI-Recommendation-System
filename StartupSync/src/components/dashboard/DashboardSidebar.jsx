@@ -235,7 +235,9 @@ function DashboardSidebar({
     roleNavigation[role] || [];
 
   const handleLogout = () => {
-    navigate("/login");
+    localStorage.removeItem("startupsync_token");
+    localStorage.removeItem("startupsync_user");
+    navigate("/login", { replace: true });
   };
 
   return (

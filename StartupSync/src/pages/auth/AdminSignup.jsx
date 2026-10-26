@@ -56,6 +56,7 @@ function AdminSignup() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
+  const [submissionMessage, setSubmissionMessage] = useState("");
 
   const totalSteps = 7;
 
@@ -256,11 +257,7 @@ function AdminSignup() {
 
     if (!validateStep()) return;
 
-    alert(
-      "Administrator account request submitted successfully."
-    );
-
-    console.log("Administrator Signup Data:", formData);
+    setSubmissionMessage("Administrator request submitted. This demo form does not create an account until an administrator approval workflow is connected.");
   };
 
   const inputClass = (field) =>
@@ -306,7 +303,11 @@ function AdminSignup() {
 
           <SignupProgress currentStep={currentStep} />
 
-          <form
+          {submissionMessage && (
+          <div className="admin-signup-success" role="status">{submissionMessage}</div>
+        )}
+
+        <form
             className="admin-signup-form"
             onSubmit={handleSubmit}
           >

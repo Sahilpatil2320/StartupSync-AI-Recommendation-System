@@ -151,19 +151,24 @@ const getRecommendationName = (item) =>
   "";
 
 const getRecommendationScore = (item) => {
-  const score =
-    item?.matchScore ??
-    item?.match_score ??
-    item?.similarity_score ??
-    item?.similarity ??
-    item?.score ??
-    item?.confidence;
+    const raw =
+        item?.score_percentage ??
+        item?.scorePercentage ??
+        item?.matchPercentage ??
+        item?.match_percentage ??
+        item?.matchScore ??
+        item?.match_score ??
+        item?.similarity_score ??
+        item?.similarity ??
+        item?.score ??
+        item?.confidence ??
+        item?.match;
 
-  if (typeof score !== "number" || !Number.isFinite(score)) return null;
+    if (raw === undefined || raw === null || raw === "") return null;
+    const score = Number(raw);
+    if (!Number.isFinite(score)) return null;
 
-  return Math.round(
-    Math.max(0, Math.min(100, score >= 0 && score <= 1 ? score * 100 : score))
-  );
+    return Math.round(Math.max(0, Math.min(100, score >= 0 && score <= 1 ? score * 100 : score)));
 };
 
 function MentorStartups() {

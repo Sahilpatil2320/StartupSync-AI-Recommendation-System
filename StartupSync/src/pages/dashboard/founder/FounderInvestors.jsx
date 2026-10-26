@@ -67,10 +67,22 @@ const getAiFirm = (investor) =>
     investor.firm_name || investor.company || "Investment firm";
 
 const getAiScore = (investor) => {
-    const score = Number(
-        investor.score_percentage ?? (Number(investor.score) * 100)
-    );
-    return Number.isFinite(score) ? score : null;
+    const raw =
+        investor.score_percentage ??
+        investor.scorePercentage ??
+        investor.matchPercentage ??
+        investor.match_percentage ??
+        investor.matchScore ??
+        investor.match_score ??
+        investor.similarity_score ??
+        investor.score ??
+        investor.similarity ??
+        investor.confidence ??
+        investor.match;
+    if (raw === undefined || raw === null || raw === "") return null;
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric)) return null;
+    return Math.max(0, Math.min(100, Number((numeric >= 0 && numeric <= 1 ? numeric * 100 : numeric).toFixed(1))));
 };
 
 function FounderInvestors() {

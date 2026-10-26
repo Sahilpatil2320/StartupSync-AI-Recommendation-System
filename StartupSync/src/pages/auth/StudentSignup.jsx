@@ -371,9 +371,7 @@ function StudentSignup() {
                     },
                 }
             );
-
-            alert("Student account and profile created successfully!");
-            navigate("/login/student");
+            navigate("/login/student", { replace: true, state: { successMessage: "Account created successfully. Please sign in." } });
         } catch (error) {
             alert(
                 error.response?.data?.message ||

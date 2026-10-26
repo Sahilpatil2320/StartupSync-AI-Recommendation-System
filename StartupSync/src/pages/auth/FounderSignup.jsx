@@ -378,10 +378,7 @@ function FounderSignup() {
             // Save the authentication information for later frontend integration.
             localStorage.setItem("startupsync_token", token);
             localStorage.setItem("startupsync_user", JSON.stringify(user));
-
-            alert("Founder account and startup profile created successfully!");
-
-            navigate("/login/founder");
+            navigate("/login/founder", { replace: true, state: { successMessage: "Account created successfully. Please sign in." } });
         } catch (error) {
             const message =
                 error.response?.data?.message ||

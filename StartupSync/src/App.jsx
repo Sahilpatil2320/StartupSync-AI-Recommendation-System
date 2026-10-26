@@ -38,8 +38,6 @@ import FounderMentors from "./pages/dashboard/founder/FounderMentors";
 import FounderTeam from "./pages/dashboard/founder/FounderTeam";
 import FounderMessages from "./pages/dashboard/founder/FounderMessages";
 import FounderNotifications from "./pages/dashboard/founder/FounderNotifications";
-import FounderProfile from "./pages/dashboard/founder/FounderProfile";
-import FounderSettings from "./pages/dashboard/founder/FounderSettings";
 
 import InvestorDiscoverStartups from "./pages/dashboard/investor/InvestorDiscoverStartups";
 import InvestorInvestments from "./pages/dashboard/investor/InvestorInvestments";
@@ -61,8 +59,9 @@ import AdminUsers from "./pages/dashboard/admin/AdminUsers";
 import AdminStartups from "./pages/dashboard/admin/AdminStartups";
 import AdminReports from "./pages/dashboard/admin/AdminReports";
 import AdminNotifications from "./pages/dashboard/admin/AdminNotifications";
-import AdminSettings from "./pages/dashboard/admin/AdminSettings";
 import RoleRecommendations from "./pages/dashboard/shared/RoleRecommendations";
+import RoleProfile from "./pages/dashboard/shared/RoleProfile";
+import RoleSettings from "./pages/dashboard/shared/RoleSettings";
 
 function Home() {
     const location = useLocation();
@@ -188,23 +187,17 @@ function App() {
                     element={<AdminDashboard />}
                 />
 
-                <Route
-                    path="/dashboard/founder/profile"
-                    element={
-                        <DashboardLayout role="founder">
-                            <FounderProfile />
-                        </DashboardLayout>
-                    }
-                />
+                <Route path="/dashboard/founder/profile" element={<DashboardLayout role="founder"><RoleProfile role="founder" /></DashboardLayout>} />
+                <Route path="/dashboard/founder/settings" element={<DashboardLayout role="founder"><RoleSettings role="founder" /></DashboardLayout>} />
+                <Route path="/dashboard/investor/profile" element={<DashboardLayout role="investor"><RoleProfile role="investor" /></DashboardLayout>} />
+                <Route path="/dashboard/investor/settings" element={<DashboardLayout role="investor"><RoleSettings role="investor" /></DashboardLayout>} />
+                <Route path="/dashboard/mentor/profile" element={<DashboardLayout role="mentor"><RoleProfile role="mentor" /></DashboardLayout>} />
+                <Route path="/dashboard/mentor/settings" element={<DashboardLayout role="mentor"><RoleSettings role="mentor" /></DashboardLayout>} />
+                <Route path="/dashboard/student/profile" element={<DashboardLayout role="student"><RoleProfile role="student" /></DashboardLayout>} />
+                <Route path="/dashboard/student/settings" element={<DashboardLayout role="student"><RoleSettings role="student" /></DashboardLayout>} />
+                <Route path="/dashboard/admin/profile" element={<DashboardLayout role="admin"><RoleProfile role="admin" /></DashboardLayout>} />
+                <Route path="/dashboard/admin/settings" element={<DashboardLayout role="admin"><RoleSettings role="admin" /></DashboardLayout>} />
 
-                <Route
-                    path="/dashboard/founder/settings"
-                    element={
-                        <DashboardLayout role="founder">
-                            <FounderSettings />
-                        </DashboardLayout>
-                    }
-                />
                 <Route
                     path="/dashboard/founder/startup"
                     element={
@@ -400,15 +393,6 @@ function App() {
                         </DashboardLayout>
                     }
                 />
-                <Route
-                    path="/dashboard/admin/settings"
-                    element={
-                        <DashboardLayout role="admin">
-                            <AdminSettings />
-                        </DashboardLayout>
-                    }
-                />
-
                 <Route
                     path="/dashboard/founder/students"
                     element={<DashboardLayout role="founder"><RoleRecommendations role="founder" targetRole="student" /></DashboardLayout>}

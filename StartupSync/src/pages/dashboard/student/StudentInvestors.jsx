@@ -62,11 +62,15 @@ const getStages = (investor) => {
 const getMatchPercentage = (investor) => {
   const raw =
     investor.score_percentage ??
+    investor.scorePercentage ??
     investor.matchPercentage ??
     investor.match_percentage ??
     investor.matchScore ??
+    investor.match_score ??
+    investor.similarity_score ??
     investor.score ??
     investor.similarity ??
+    investor.confidence ??
     investor.match;
 
   if (raw === undefined || raw === null || raw === "") return null;

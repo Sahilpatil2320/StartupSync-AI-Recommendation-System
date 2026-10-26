@@ -63,11 +63,16 @@ const getMatchScore = (mentor) => {
   const raw =
     mentor._aiScore ??
     mentor.score_percentage ??
+    mentor.scorePercentage ??
     mentor.matchPercentage ??
     mentor.match_percentage ??
     mentor.matchScore ??
+    mentor.match_score ??
+    mentor.similarity_score ??
     mentor.score ??
-    mentor.similarity;
+    mentor.similarity ??
+    mentor.confidence ??
+    mentor.match;
 
   if (raw === undefined || raw === null || raw === "") return null;
 

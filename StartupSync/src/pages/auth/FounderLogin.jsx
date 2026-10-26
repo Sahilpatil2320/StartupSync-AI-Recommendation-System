@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import BrandLogo from "../../components/BrandLogo";
 import api from "../../services/api";
@@ -16,6 +16,7 @@ import "./FounderLogin.css";
 
 function FounderLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -132,6 +133,12 @@ const handleSubmit = async (event) => {
             </p>
 
           </div>
+
+          {location.state?.successMessage && (
+            <div className="auth-inline-success" role="status">
+              {location.state.successMessage}
+            </div>
+          )}
 
           <form
             className="founder-login-form"

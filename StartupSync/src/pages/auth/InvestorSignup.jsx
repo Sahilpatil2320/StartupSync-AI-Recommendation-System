@@ -361,9 +361,7 @@ const preferredStartupStages = formData.preferredStartupStage
                     },
                 }
             );
-
-            alert("Investor account and profile created successfully!");
-            navigate("/login/investor");
+            navigate("/login/investor", { replace: true, state: { successMessage: "Account created successfully. Please sign in." } });
         } catch (error) {
             const message =
                 error.response?.data?.message ||
