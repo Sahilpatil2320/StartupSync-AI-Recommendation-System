@@ -62,6 +62,7 @@ import AdminStartups from "./pages/dashboard/admin/AdminStartups";
 import AdminReports from "./pages/dashboard/admin/AdminReports";
 import AdminNotifications from "./pages/dashboard/admin/AdminNotifications";
 import AdminSettings from "./pages/dashboard/admin/AdminSettings";
+import RoleRecommendations from "./pages/dashboard/shared/RoleRecommendations";
 
 function Home() {
     const location = useLocation();
@@ -406,6 +407,31 @@ function App() {
                             <AdminSettings />
                         </DashboardLayout>
                     }
+                />
+
+                <Route
+                    path="/dashboard/founder/students"
+                    element={<DashboardLayout role="founder"><RoleRecommendations role="founder" targetRole="student" /></DashboardLayout>}
+                />
+                <Route
+                    path="/dashboard/investor/mentors"
+                    element={<DashboardLayout role="investor"><RoleRecommendations role="investor" targetRole="mentor" /></DashboardLayout>}
+                />
+                <Route
+                    path="/dashboard/mentor/investors"
+                    element={<DashboardLayout role="mentor"><RoleRecommendations role="mentor" targetRole="investor" /></DashboardLayout>}
+                />
+                <Route
+                    path="/dashboard/mentor/students"
+                    element={<DashboardLayout role="mentor"><RoleRecommendations role="mentor" targetRole="student" /></DashboardLayout>}
+                />
+                <Route
+                    path="/dashboard/student/founders"
+                    element={<DashboardLayout role="student"><RoleRecommendations role="student" targetRole="founder" /></DashboardLayout>}
+                />
+                <Route
+                    path="/dashboard/student/mentors"
+                    element={<DashboardLayout role="student"><RoleRecommendations role="student" targetRole="mentor" /></DashboardLayout>}
                 />
 
             </Routes>

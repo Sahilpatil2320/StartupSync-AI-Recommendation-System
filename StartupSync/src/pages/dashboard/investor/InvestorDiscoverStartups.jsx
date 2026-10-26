@@ -286,9 +286,10 @@ function InvestorDiscoverStartups() {
                             ? String(item.userId?._id || item.userId?.id || "")
                             : String(item.userId || "");
 
+                    const candidateDatasetId = String(item.aiDatasetId || "");
                     const idMatches =
                         recommendationId &&
-                        [profileId, linkedUserId].some(
+                        [profileId, linkedUserId, candidateDatasetId].some(
                             (id) => id && id === recommendationId
                         );
 

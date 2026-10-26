@@ -47,6 +47,11 @@ const roleNavigation = {
       icon: Lightbulb
     },
     {
+      label: "Students",
+      path: "/dashboard/founder/students",
+      icon: GraduationCap
+    },
+    {
       label: "Team",
       path: "/dashboard/founder/team",
       icon: UsersRound
@@ -75,6 +80,11 @@ const roleNavigation = {
       icon: Rocket
     },
     {
+      label: "Discover Mentors",
+      path: "/dashboard/investor/mentors",
+      icon: Lightbulb
+    },
+    {
       label: "My Investments",
       path: "/dashboard/investor/investments",
       icon: TrendingUp
@@ -101,6 +111,16 @@ const roleNavigation = {
       label: "Startups",
       path: "/dashboard/mentor/startups",
       icon: Rocket
+    },
+    {
+      label: "Investors",
+      path: "/dashboard/mentor/investors",
+      icon: TrendingUp
+    },
+    {
+      label: "Students",
+      path: "/dashboard/mentor/students",
+      icon: GraduationCap
     },
     {
       label: "Mentorships",
@@ -134,6 +154,16 @@ const roleNavigation = {
       label: "Opportunities",
       path: "/dashboard/student/opportunities",
       icon: GraduationCap
+    },
+    {
+      label: "Discover Founders",
+      path: "/dashboard/student/founders",
+      icon: Rocket
+    },
+    {
+      label: "Find Mentors",
+      path: "/dashboard/student/mentors",
+      icon: Lightbulb
     },
     {
       label: "Applications",

@@ -371,11 +371,64 @@ const updateMyProfile = async (req, res) => {
     }
 };
 
+// Get registered founder profiles for discovery and recommendation matching.
+const getAllFounders = async (req, res) => {
+    try {
+        const founders = await Founder.find({})
+            .select("-__v")
+            .populate({
+                path: "userId",
+                select: "name profileImage role profileCompleted accountStatus",
+            })
+            .lean();
+
+        const results = founders
+            .filter((item) =>
+                item.userId &&
+                item.userId.role === "founder" &&
+                item.userId.accountStatus === "active" &&
+                item.userId.profileCompleted
+            )
+            .map((item) => ({
+                id: item._id,
+                aiDatasetId: item.aiDatasetId || "",
+                userId: item.userId._id,
+                name: item.startupName || item.userId.name || "Startup",
+                startupName: item.startupName || "",
+                industry: item.industry || "",
+                domain: item.domain || "",
+                description: item.description || "",
+                location: item.location || item.preferredGeography || "Location not specified",
+                startupStage: item.startupStage || item.fundingStage || "",
+                fundingStage: item.fundingStage || "",
+                teamSize: item.teamSize ?? null,
+                technologies: item.technologies || [],
+                lookingFor: item.lookingFor || [],
+                website: item.website || "",
+                linkedin: item.linkedin || "",
+                github: item.github || "",
+                createdAt: item.createdAt || null,
+            }));
+
+        return res.status(200).json({
+            success: true,
+            count: results.length,
+            founders: results,
+        });
+    } catch (error) {
+        console.error("Get founders error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to fetch founder profiles",
+        });
+    }
+};
+
 // Get registered investor profiles for discovery
 const getAllInvestors = async (req, res) => {
     try {
         const investors = await Investor.find({})
-            .select("-aiDatasetId -__v")
+            .select("-__v")
             .populate({
                 path: "userId",
                 select: "name profileImage role profileCompleted accountStatus",
@@ -390,6 +443,7 @@ const getAllInvestors = async (req, res) => {
             )
             .map((item) => ({
                 id: item._id,
+                aiDatasetId: item.aiDatasetId || "",
                 userId: item.userId._id,
                 name: item.firmName || item.userId.name,
                 type: item.investorType || "Investor",
@@ -426,7 +480,7 @@ const getAllInvestors = async (req, res) => {
 const getAllMentors = async (req, res) => {
     try {
         const mentors = await Mentor.find({})
-            .select("-aiDatasetId -__v")
+            .select("-__v")
             .populate({
                 path: "userId",
                 select: "name profileImage role profileCompleted accountStatus",
@@ -441,6 +495,7 @@ const getAllMentors = async (req, res) => {
             )
             .map((item) => ({
                 id: item._id,
+                aiDatasetId: item.aiDatasetId || "",
                 userId: item.userId._id,
                 name: item.userId.name || "Mentor",
                 location: item.location || "Location not provided",
@@ -478,7 +533,7 @@ const getAllMentors = async (req, res) => {
 const getAllStudents = async (req, res) => {
     try {
         const students = await Student.find({})
-            .select("-aiDatasetId -__v")
+            .select("-__v")
             .populate({
                 path: "userId",
                 select: "name profileImage role profileCompleted accountStatus",
@@ -494,6 +549,7 @@ const getAllStudents = async (req, res) => {
             )
             .map((item) => ({
                 id: item._id,
+                aiDatasetId: item.aiDatasetId || "",
                 userId: item.userId._id,
                 name: item.userId.name || "Student",
                 profileImage: item.userId.profileImage || "",
@@ -533,6 +589,7 @@ module.exports = {
     createStudentProfile,
     getMyProfile,
     updateMyProfile,
+    getAllFounders,
     getAllInvestors,
     getAllMentors,
     getAllStudents,

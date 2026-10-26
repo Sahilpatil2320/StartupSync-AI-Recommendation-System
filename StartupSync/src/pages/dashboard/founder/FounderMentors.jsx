@@ -61,6 +61,7 @@ const getExperience = (mentor) => {
 
 const getMatchScore = (mentor) => {
   const raw =
+    mentor._aiScore ??
     mentor.score_percentage ??
     mentor.matchPercentage ??
     mentor.match_percentage ??
@@ -225,9 +226,30 @@ function FounderMentors() {
     });
   }, [mentors, searchTerm, expertiseFilter, industryFilter, formatFilter]);
 
+  const linkedRecommendations = useMemo(() => recommendations.map((recommendation) => {
+    const recommendationDatasetId = String(
+      recommendation?.mentor_id || recommendation?.mentorId ||
+      recommendation?.dataset_id || recommendation?.datasetId || recommendation?.id || recommendation?._id || ""
+    );
+    const recommendationName = getName(recommendation).trim().toLowerCase();
+    const linked = mentors.find((mentor) => {
+      const datasetMatches = recommendationDatasetId &&
+        String(mentor.aiDatasetId || "") === recommendationDatasetId;
+      const nameMatches = recommendationName &&
+        getName(mentor).trim().toLowerCase() === recommendationName;
+      return Boolean(datasetMatches || nameMatches);
+    });
+    if (linked) {
+      return { ...linked, _aiScore: getMatchScore(recommendation), _datasetRecommendation: recommendation };
+    }
+    // Keep unlinked dataset recommendations viewable, but remove IDs so they
+    // can never be mistaken for registered MongoDB profile IDs.
+    return { ...recommendation, id: "", _id: "", mentorId: "", mentor_id: "", _datasetOnly: true, _aiScore: getMatchScore(recommendation) };
+  }), [recommendations, mentors]);
+
   const recommendedIds = useMemo(
-    () => new Set(recommendations.map(getMentorId).filter(Boolean)),
-    [recommendations]
+    () => new Set(linkedRecommendations.map(getMentorId).filter(Boolean)),
+    [linkedRecommendations]
   );
 
   const remainingMentors = useMemo(
@@ -260,10 +282,15 @@ function FounderMentors() {
       window.alert("Mentorship request sent successfully!");
     } catch (err) {
       console.error("Unable to send mentorship request:", err);
-      window.alert(
-        err.response?.data?.message ||
-        "Could not send the mentorship request. Please try again."
-      );
+      const message = err.response?.data?.message || err.message || "";
+      if (err.response?.status === 409 || /already exists|already sent|pending request/i.test(message)) {
+        setRequestedMentors((current) =>
+          current.includes(mentorId) ? current : [...current, mentorId]
+        );
+        window.alert("A mentorship request already exists. This mentor is now marked as Request Sent.");
+      } else {
+        window.alert(message || "Could not send the mentorship request. Please try again.");
+      }
     }
   };
 
@@ -356,7 +383,8 @@ function FounderMentors() {
             type="button"
             className={`founder-mentor-request-button ${requested ? "founder-mentor-requested" : ""}`}
             onClick={() => handleRequest(mentorId)}
-            disabled={!mentorId || requested}
+            disabled={!mentorId || requested || mentor._datasetOnly}
+            title={mentor._datasetOnly ? "This dataset entry is not linked to a registered mentor account." : undefined}
           >
             {requested ? (
               <><CheckCircle2 size={15} /> Request Sent</>
@@ -408,10 +436,10 @@ function FounderMentors() {
               Try Again
             </button>
           </div>
-        ) : recommendations.length ? (
+        ) : linkedRecommendations.length ? (
           <>
             <section className="founder-mentors-grid">
-              {recommendations.map((mentor, index) =>
+              {linkedRecommendations.map((mentor, index) =>
                 renderMentorCard(mentor, true, index)
               )}
             </section>

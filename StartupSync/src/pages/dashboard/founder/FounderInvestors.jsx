@@ -7,6 +7,7 @@ import {
     Search,
     TrendingUp,
     UsersRound,
+    X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import api from "../../../services/api";
@@ -85,6 +86,7 @@ function FounderInvestors() {
     const [aiRecommendations, setAiRecommendations] = useState([]);
     const [aiLoading, setAiLoading] = useState(true);
     const [aiError, setAiError] = useState("");
+    const [selectedProfile, setSelectedProfile] = useState(null);
 
     useEffect(() => {
         const fetchInvestors = async () => {
@@ -166,7 +168,13 @@ function FounderInvestors() {
     const findMongoInvestor = (recommendation) => {
         const recName = normalize(getAiName(recommendation));
         const recFirm = normalize(getAiFirm(recommendation));
+        const recDatasetId = String(
+            recommendation?.investor_id || recommendation?.investorId ||
+            recommendation?.dataset_id || recommendation?.datasetId || recommendation?.id || ""
+        );
         return investors.find((investor) => {
+            const datasetMatch = recDatasetId && String(investor.aiDatasetId || "") === recDatasetId;
+            if (datasetMatch) return true;
             const mongoName = normalize(investor.name);
             const mongoFirm = normalize(investor.firmName || investor.firm_name || "");
             return (
@@ -182,7 +190,9 @@ function FounderInvestors() {
                 .map((rec) => {
                     const recName = normalize(getAiName(rec));
                     const recFirm = normalize(getAiFirm(rec));
+                    const recDatasetId = String(rec?.investor_id || rec?.investorId || rec?.dataset_id || rec?.datasetId || rec?.id || "");
                     const match = investors.find((investor) => {
+                        if (recDatasetId && String(investor.aiDatasetId || "") === recDatasetId) return true;
                         const nameMatch = recName && normalize(investor.name) === recName;
                         const firmMatch =
                             recFirm &&
@@ -247,30 +257,38 @@ function FounderInvestors() {
                 window.alert("Connection request sent successfully!");
             }
         } catch (err) {
-            window.alert(
-                err.response?.data?.message ||
-                "Unable to send connection request. Please try again."
-            );
+            const message = err.response?.data?.message || "";
+            // A duplicate-request response means the request already exists.
+            // Reflect that state in the UI instead of treating it as a failed action.
+            if (/already exists|already sent|pending request|request pending/i.test(message)) {
+                setConnectedInvestors((current) =>
+                    current.includes(investorId) ? current : [...current, investorId]
+                );
+                window.alert("A connection request already exists. This investor is now marked as Request Sent.");
+                return;
+            }
+            window.alert(message || "Unable to send connection request. Please try again.");
         }
     };
 
-    const renderInvestorActions = (mongoInvestor) => {
+    const renderInvestorActions = (mongoInvestor, recommendation = null) => {
         if (!mongoInvestor?.id) {
             return (
                 <div className="founder-investor-actions">
                     <button
                         type="button"
                         className="founder-investor-view-button"
-                        onClick={() =>
-                            window.alert(
-                                "This recommendation comes from the AI dataset and does not have a registered StartupSync investor account yet."
-                            )
-                        }
+                        onClick={() => setSelectedProfile({ type: "dataset", data: recommendation || {} })}
                     >
                         Dataset Profile <ArrowRight size={15} />
                     </button>
-                    <button type="button" className="founder-investor-connect-button" disabled>
-                        Account unavailable
+                    <button
+                        type="button"
+                        className="founder-investor-connect-button"
+                        disabled
+                        title="This AI dataset entry is not linked to a registered StartupSync investor account."
+                    >
+                        No registered account
                     </button>
                 </div>
             );
@@ -282,21 +300,13 @@ function FounderInvestors() {
                 <button
                     type="button"
                     className="founder-investor-view-button"
-                    onClick={() =>
-                        window.alert(
-                            `${mongoInvestor.name}\n\n${mongoInvestor.bio ||
-                            mongoInvestor.investmentThesis ||
-                            "No additional profile description provided."
-                            }`
-                        )
-                    }
+                    onClick={() => setSelectedProfile({ type: "registered", data: mongoInvestor })}
                 >
                     View Profile <ArrowRight size={15} />
                 </button>
                 <button
                     type="button"
-                    className={`founder-investor-connect-button ${isConnected ? "founder-investor-connected" : ""
-                        }`}
+                    className={`founder-investor-connect-button ${isConnected ? "founder-investor-connected" : ""}`}
                     onClick={() => handleConnect(mongoInvestor.id)}
                     disabled={isConnected}
                 >
@@ -381,7 +391,7 @@ function FounderInvestors() {
                                             <MapPin size={14} /> {mongoInvestor.location}
                                         </div>
                                     )}
-                                    {renderInvestorActions(mongoInvestor)}
+                                    {renderInvestorActions(mongoInvestor, investor)}
                                 </article>
                             );
                         })}
@@ -487,7 +497,7 @@ function FounderInvestors() {
                                     <button
                                         type="button"
                                         className="founder-investor-view-button"
-                                        onClick={() => window.alert(`${investor.name}\n\n${investor.bio || investor.investmentThesis || "No additional profile description provided."}`)}
+                                        onClick={() => setSelectedProfile({ type: "registered", data: investor })}
                                     >View Profile <ArrowRight size={15} /></button>
                                     <button
                                         type="button"
@@ -508,6 +518,68 @@ function FounderInvestors() {
                     <h3>No other investors found</h3>
                     <p>{investors.length === 0 ? "No completed investor profiles are currently available." : "Try changing your search or filter criteria."}</p>
                 </section>
+            )}
+
+            {selectedProfile && (
+                <div
+                    className="investor-profile-modal-backdrop"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) setSelectedProfile(null);
+                    }}
+                >
+                    <section
+                        className="investor-profile-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="investor-profile-modal-title"
+                    >
+                        <div className="investor-profile-modal-header">
+                            <div>
+                                <span className="investor-profile-modal-eyebrow">
+                                    {selectedProfile.type === "dataset" ? "AI dataset profile" : "Registered investor profile"}
+                                </span>
+                                <h3 id="investor-profile-modal-title">
+                                    {getAiName(selectedProfile.data) || selectedProfile.data.name || selectedProfile.data.firmName || "Investor profile"}
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                className="investor-profile-modal-close"
+                                onClick={() => setSelectedProfile(null)}
+                                aria-label="Close investor profile"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        {selectedProfile.type === "dataset" && (
+                            <p className="investor-profile-modal-note">
+                                This information comes from the AI recommendation dataset. It is not a registered StartupSync account, so connection requests cannot be sent to this entry.
+                            </p>
+                        )}
+                        <div className="investor-profile-modal-fields">
+                            {Object.entries(selectedProfile.data || {})
+                                .filter(([key, value]) =>
+                                    value !== null && value !== undefined && value !== "" &&
+                                    !["__v", "password", "passwordHash", "token"].includes(key) &&
+                                    typeof value !== "function"
+                                )
+                                .map(([key, value]) => {
+                                    const displayValue = Array.isArray(value)
+                                        ? value.join(", ")
+                                        : typeof value === "object"
+                                            ? JSON.stringify(value, null, 2)
+                                            : String(value);
+                                    return (
+                                        <div className="investor-profile-modal-field" key={key}>
+                                            <span>{key.replace(/([A-Z])/g, " $1").replace(/[_-]/g, " ").replace(/^./, (letter) => letter.toUpperCase())}</span>
+                                            <strong>{displayValue}</strong>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </section>
+                </div>
             )}
         </div>
     );

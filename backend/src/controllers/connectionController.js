@@ -33,7 +33,7 @@ const sendConnectionRequest = async (req, res) => {
             founder: ["investor", "mentor", "student"],
             investor: ["founder", "mentor"],
             mentor: ["founder", "investor", "student"],
-            student: ["founder", "mentor"],
+            student: ["founder", "mentor", "investor"],
         };
 
         if (!allowedTargets[req.user.role]?.includes(targetRole)) {

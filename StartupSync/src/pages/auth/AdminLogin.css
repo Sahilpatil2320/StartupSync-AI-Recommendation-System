@@ -338,3 +338,66 @@
     gap: 3px;
   }
 }
+
+/* StartupSync shared fixed authentication navbar and compact login layout */
+.admin-login-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 88px 20px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+
+.admin-login-brand {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 68px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0 32px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+}
+
+.admin-login-container {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.admin-login-footer {
+  display: none;
+}
+
+/* The role heading and form remain; decorative role icon is removed to save space. */
+.admin-login-icon {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .admin-login-page {
+    padding: 80px 14px 24px;
+    align-items: flex-start;
+  }
+
+  .admin-login-brand {
+    height: 62px;
+    padding: 0 16px;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 701px) {
+  .admin-login-page {
+    padding-top: 78px;
+    padding-bottom: 12px;
+  }
+}

@@ -24,6 +24,7 @@ const recommendationMap = {
     student: {
         founders: "student/founders",
         mentors: "student/mentors",
+        investors: "student/investors",
     },
 };
 
@@ -32,6 +33,147 @@ const profileModels = {
     investor: Investor,
     mentor: Mentor,
     student: Student,
+};
+
+const profileTokens = (value) => {
+    const values = [];
+    const visit = (item) => {
+        if (typeof item === "string" || typeof item === "number") {
+            values.push(String(item));
+        } else if (Array.isArray(item)) {
+            item.forEach(visit);
+        } else if (item && typeof item === "object") {
+            Object.entries(item).forEach(([key, nested]) => {
+                if (!["_id", "id", "userId", "aiDatasetId", "__v", "createdAt", "updatedAt"].includes(key)) {
+                    visit(nested);
+                }
+            });
+        }
+    };
+    visit(value);
+    return new Set(values.join(" ").toLowerCase().match(/[a-z0-9+#.-]{2,}/g) || []);
+};
+
+const serializeRecommendationProfile = (role, profile, score) => {
+    const user = profile.userId && typeof profile.userId === "object"
+        ? profile.userId
+        : null;
+    const common = {
+        id: String(profile._id),
+        aiDatasetId: profile.aiDatasetId || "",
+        score_percentage: score,
+        location: profile.location || "Location not specified",
+    };
+
+    if (role === "founder") {
+        return {
+            ...common,
+            name: profile.startupName || user?.name || "Startup",
+            startupName: profile.startupName || "",
+            industry: profile.industry || "",
+            domain: profile.domain || "",
+            description: profile.description || "",
+            startupStage: profile.startupStage || "",
+            fundingStage: profile.fundingStage || "",
+            teamSize: profile.teamSize ?? null,
+            technologies: profile.technologies || [],
+            lookingFor: profile.lookingFor || [],
+        };
+    }
+    if (role === "investor") {
+        return {
+            ...common,
+            name: profile.firmName || user?.name || "Investor",
+            firmName: profile.firmName || "",
+            type: profile.investorType || "Investor",
+            industries: [
+                ...(profile.investmentIndustries || []),
+                ...(profile.investmentDomains || []),
+                ...(profile.investmentTags || []),
+            ],
+            stages: profile.preferredStartupStages || [],
+            bio: profile.bio || "",
+            investmentThesis: profile.investmentThesis || "",
+        };
+    }
+    if (role === "mentor") {
+        return {
+            ...common,
+            name: user?.name || "Mentor",
+            industry: profile.industry || "",
+            domain: profile.domain || "",
+            expertise: profile.expertise || [],
+            skills: profile.skills || [],
+            experienceYears: profile.experienceYears ?? null,
+            mentoringAreas: profile.mentoringAreas || [],
+            availability: profile.availability || "Not specified",
+            bio: profile.bio || "",
+        };
+    }
+    return {
+        ...common,
+        name: user?.name || "Student",
+        college: profile.college || "",
+        branch: profile.branch || "",
+        graduationYear: profile.graduationYear ?? "",
+        technicalSkills: profile.technicalSkills || [],
+        interestedIndustry: profile.interestedIndustry || [],
+        interestedDomain: profile.interestedDomain || [],
+        careerGoal: profile.careerGoal || "",
+    };
+};
+
+const getRegisteredProfileFallback = async (sourceRole, target, sourceProfile) => {
+    const targetRole = target.endsWith("s") ? target.slice(0, -1) : target;
+    const TargetModel = profileModels[targetRole];
+    if (!TargetModel) return [];
+
+    const candidates = await TargetModel.find({})
+        .populate({
+            path: "userId",
+            select: "name role profileCompleted accountStatus",
+        })
+        .lean();
+
+    const sourceTokens = profileTokens(sourceProfile);
+    const ranked = candidates
+        .filter((candidate) =>
+            candidate.userId &&
+            candidate.userId.role === targetRole &&
+            candidate.userId.accountStatus === "active" &&
+            candidate.userId.profileCompleted &&
+            String(candidate.userId._id) !== String(sourceProfile.userId)
+        )
+        .map((candidate) => {
+            const targetTokens = profileTokens(candidate);
+            let overlap = 0;
+            targetTokens.forEach((token) => {
+                if (sourceTokens.has(token)) overlap += 1;
+            });
+            const union = new Set([...sourceTokens, ...targetTokens]).size || 1;
+            const score = Math.round((overlap / union) * 1000) / 10;
+            return { candidate, score };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(({ candidate, score }) =>
+            serializeRecommendationProfile(targetRole, candidate, score)
+        );
+
+    return ranked;
+};
+
+const fallbackResponse = async (res, role, target, profile, status = 200) => {
+    const recommendations = await getRegisteredProfileFallback(role, target, profile);
+    return res.status(status).json({
+        success: true,
+        source: "Registered-profile matching fallback",
+        recommendationMode: "profile-fallback",
+        data: { recommendations },
+        message: recommendations.length
+            ? "Recommendations were ranked using registered profile similarity because the AI dataset was unavailable."
+            : "No complete registered profiles are available for this recommendation direction yet.",
+    });
 };
 
 const getRecommendations = async (req, res) => {
@@ -91,16 +233,17 @@ const getRecommendations = async (req, res) => {
         }
 
 
+        // Use registered-profile similarity when the account has no AI dataset link.
+        // This keeps recommendations available without confusing dataset IDs with account IDs.
+        if (!hasDatasetId && !(role === "founder" && ["investors", "mentors"].includes(target))) {
+            return await fallbackResponse(res, role, target, {
+                ...profile.toObject(),
+                userId: user._id,
+            });
+        }
+
         // Custom recommendation path for founders without a dataset ID.
         if (!hasDatasetId) {
-            if (role !== "founder" ||
-                !["investors", "mentors"].includes(target)) {
-                return res.status(409).json({
-                    success: false,
-                    message: "This profile is not linked to an AI dataset record.",
-                });
-            }
-
             const customProfile = {
                 startupName: profile.startupName || "",
                 domain: [
@@ -146,10 +289,10 @@ const getRecommendations = async (req, res) => {
             const data = await response.json();
 
             if (!response.ok) {
-                return res.status(502).json({
-                    success: false,
-                    message: "Custom AI recommendation service failed.",
-                    error: data,
+                console.warn("Custom founder recommendation service returned a non-success response; using registered-profile fallback.");
+                return await fallbackResponse(res, role, target, {
+                    ...profile.toObject(),
+                    userId: user._id,
                 });
             }
 
@@ -178,10 +321,10 @@ const getRecommendations = async (req, res) => {
         const data = await response.json();
 
         if (!response.ok) {
-            return res.status(502).json({
-                success: false,
-                message: "AI recommendation service failed.",
-                error: data,
+            console.warn("AI recommendation service returned a non-success response; using registered-profile fallback.");
+            return await fallbackResponse(res, role, target, {
+                ...profile.toObject(),
+                userId: user._id,
             });
         }
 
@@ -193,10 +336,28 @@ const getRecommendations = async (req, res) => {
     } catch (error) {
         console.error("Recommendation error:", error.message);
 
+        try {
+            const { role, target } = req.params;
+            if (req.user?.role === role && recommendationMap[role]?.[target]) {
+                const user = await User.findById(req.user.userId);
+                const Model = profileModels[role];
+                const profile = user && Model
+                    ? await Model.findOne({ userId: user._id })
+                    : null;
+                if (profile) {
+                    return await fallbackResponse(res, role, target, {
+                        ...profile.toObject(),
+                        userId: user._id,
+                    });
+                }
+            }
+        } catch (fallbackError) {
+            console.error("Recommendation fallback error:", fallbackError.message);
+        }
+
         return res.status(500).json({
             success: false,
-            message: "Unable to connect to AI recommendation service.",
-            error: error.message,
+            message: "Unable to load recommendations. Please try again.",
         });
     }
 };

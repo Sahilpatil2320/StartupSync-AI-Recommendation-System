@@ -9,6 +9,7 @@ const {
     createStudentProfile,
     getMyProfile,
     updateMyProfile,
+    getAllFounders,
     getAllInvestors,
     getAllMentors,
     getAllStudents,
@@ -16,6 +17,7 @@ const {
 
 const router = express.Router();
 
+router.get("/founders", protect, getAllFounders);
 router.get("/investors", protect, getAllInvestors);
 router.get("/mentors", protect, getAllMentors);
 router.get("/students", protect, getAllStudents);

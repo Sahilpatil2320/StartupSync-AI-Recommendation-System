@@ -24,14 +24,9 @@ function SignupRoleSelection() {
         <main className="signup-role-page">
             <div className="signup-role-container">
 
-                <button
-                    type="button"
-                    className="signup-role-brand"
-                    onClick={() => navigate("/")}
-                    aria-label="Go to StartupSync home"
-                >
+                <div className="signup-role-brand">
                     <BrandLogo variant="light" />
-                </button>
+                </div>
 
                 <div className="signup-role-header">
 

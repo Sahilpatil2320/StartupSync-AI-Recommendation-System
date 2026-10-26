@@ -308,9 +308,10 @@ function MentorStartups() {
               ? String(item.userId?._id || item.userId?.id || "")
               : String(item.userId || "");
 
+          const candidateDatasetId = String(item.aiDatasetId || "");
           const idMatches =
             recommendationId &&
-            [profileId, linkedUserId].some(
+            [profileId, linkedUserId, candidateDatasetId].some(
               (id) => id && id === recommendationId
             );
 
@@ -434,10 +435,13 @@ function MentorStartups() {
       setRequestedStartups((current) => [...current, id]);
       window.alert("Your mentorship interest has been sent.");
     } catch (err) {
-      window.alert(
-        err.response?.data?.message ||
-          "Unable to send your mentorship interest. Please try again."
-      );
+      const message = err.response?.data?.message || err.message || "";
+      if (err.response?.status === 409 || /already exists|already sent|pending request/i.test(message)) {
+        setRequestedStartups((current) => current.includes(id) ? current : [...current, id]);
+        window.alert("A request already exists. This startup is now marked as Request Sent.");
+      } else {
+        window.alert(message || "Unable to send your mentorship interest. Please try again.");
+      }
     } finally {
       setRequestingId("");
     }
