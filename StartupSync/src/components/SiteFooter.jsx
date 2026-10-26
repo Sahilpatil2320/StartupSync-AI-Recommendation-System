@@ -15,7 +15,7 @@ function SiteFooter() {
 
             <p>
               An AI-driven integrated startup ecosystem connecting
-              entrepreneurs, investors, mentors, students and incubators.
+              entrepreneurs, investors, mentors and students.
             </p>
           </div>
 
@@ -38,7 +38,6 @@ function SiteFooter() {
             <a href="#">Investors</a>
             <a href="#">Mentors</a>
             <a href="#">Students</a>
-            <a href="#">Incubators</a>
 
           </div>
 

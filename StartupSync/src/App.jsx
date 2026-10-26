@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 import Navbar from "./components/Navbar";
 import LandingIntro from "./components/LandingIntro";
@@ -63,6 +64,17 @@ import AdminNotifications from "./pages/dashboard/admin/AdminNotifications";
 import AdminSettings from "./pages/dashboard/admin/AdminSettings";
 
 function Home() {
+    const location = useLocation();
+
+    useEffect(() => {
+        if (!location.hash) return;
+        const targetId = location.hash.slice(1);
+        const timer = window.setTimeout(() => {
+            document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 120);
+        return () => window.clearTimeout(timer);
+    }, [location.hash]);
+
     return (
         <>
             <Navbar />
@@ -83,6 +95,7 @@ function App() {
             <Routes>
 
                 <Route path="/" element={<Home />} />
+                <Route path="/ecosystem" element={<Navigate to="/#ecosystem" replace />} />
 
                 <Route
                     path="/login"

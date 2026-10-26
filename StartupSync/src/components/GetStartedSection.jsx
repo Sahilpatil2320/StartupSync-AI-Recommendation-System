@@ -1,8 +1,17 @@
 import { ArrowRight, Rocket, Users, Lightbulb } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./GetStartedSection.css";
 
 function GetStartedSection() {
+  const navigate = useNavigate();
+
+  const goToEcosystem = () => {
+    navigate("/#ecosystem");
+    window.setTimeout(() => {
+      document.getElementById("ecosystem")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  };
+
   return (
     <section className="get-started-section">
       <div className="container">
@@ -31,9 +40,9 @@ function GetStartedSection() {
               <ArrowRight size={18} />
             </Link>
 
-            <Link to="/ecosystem" className="btn btn-secondary">
+            <button type="button" onClick={goToEcosystem} className="btn btn-secondary">
               Explore Ecosystem
-            </Link>
+            </button>
           </div>
 
           <div className="ecosystem-highlights">
@@ -56,7 +65,7 @@ function GetStartedSection() {
               <div className="highlight-icon">
                 <Rocket size={20} />
               </div>
-              <span>Students & Incubators</span>
+              <span>Students</span>
             </div>
 
           </div>

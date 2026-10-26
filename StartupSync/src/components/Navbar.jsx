@@ -28,6 +28,19 @@ function Navbar() {
         }
     };
 
+
+    const goToSection = (sectionId) => {
+        setMenuOpen(false);
+        if (location.pathname !== "/") {
+            navigate(`/#${sectionId}`);
+            window.setTimeout(() => {
+                document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 180);
+            return;
+        }
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
     return (
         <nav className="navbar">
             <div className="navbar-container">
@@ -44,9 +57,9 @@ function Navbar() {
                     <button type="button" onClick={goToHomeTop}>
                         Home
                     </button>
-                    <a href="#features">Features</a>
-                    <a href="#how-it-works">How It Works</a>
-                    <a href="#ecosystem">Ecosystem</a>
+                    <button type="button" onClick={() => goToSection("features")}>Features</button>
+                    <button type="button" onClick={() => goToSection("how-it-works")}>How It Works</button>
+                    <button type="button" onClick={() => goToSection("ecosystem")}>Ecosystem</button>
                 </div>
 
                 <div className="nav-actions">
@@ -75,17 +88,17 @@ function Navbar() {
                         Home
                     </button>
 
-                    <a href="#features" onClick={() => setMenuOpen(false)}>
+                    <button type="button" onClick={() => goToSection("features")}>
                         Features
-                    </a>
+                    </button>
 
-                    <a href="#how-it-works" onClick={() => setMenuOpen(false)}>
+                    <button type="button" onClick={() => goToSection("how-it-works")}>
                         How It Works
-                    </a>
+                    </button>
 
-                    <a href="#ecosystem" onClick={() => setMenuOpen(false)}>
+                    <button type="button" onClick={() => goToSection("ecosystem")}>
                         Ecosystem
-                    </a>
+                    </button>
 
                     <Link to="/login" onClick={() => setMenuOpen(false)}>
                         Login

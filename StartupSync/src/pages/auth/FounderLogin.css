@@ -370,3 +370,76 @@
     gap: 3px;
   }
 }
+
+/* Keep brand in the upper-left corner */
+.founder-login-page {
+  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 82px 20px 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.founder-login-brand {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  margin: 0;
+  z-index: 5;
+}
+
+.founder-login-container {
+  max-width: 500px;
+}
+
+.founder-login-card {
+  padding: 20px 28px;
+}
+
+.founder-login-header {
+  margin-top: 8px;
+  margin-bottom: 18px;
+}
+
+.founder-login-icon {
+  display: none;
+}
+
+.founder-login-header h1 {
+  font-size: 26px;
+}
+
+.founder-login-form {
+  gap: 12px;
+}
+
+.founder-signup-link {
+  margin-top: 15px;
+  padding-top: 13px;
+}
+
+.founder-login-footer {
+  margin-top: 10px;
+}
+
+/* Allow scrolling on small screens */
+@media (max-width: 600px) {
+  .founder-login-page {
+    height: auto;
+    min-height: 100vh;
+    padding: 88px 14px 24px;
+    display: block;
+  }
+
+  .founder-login-brand {
+    top: 18px;
+    left: 16px;
+  }
+
+  .founder-login-card {
+    padding: 22px 18px;
+  }
+}

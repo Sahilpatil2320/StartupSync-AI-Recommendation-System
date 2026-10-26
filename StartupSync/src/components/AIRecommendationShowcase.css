@@ -110,7 +110,7 @@
 }
 
 .ai-interface {
-  max-width: 570px;
+  max-width: 620px;
 
   width: 100%;
 
@@ -477,42 +477,6 @@
 
 .why-match-list svg {
   color: #16a34a;
-}
-
-.view-recommendation {
-  width: 100%;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 7px;
-
-  margin-top: 15px;
-
-  padding: 11px;
-
-  border: none;
-
-  border-radius: 9px;
-
-  background: #2563eb;
-
-  color: white;
-
-  font-size: 12px;
-
-  font-weight: 600;
-
-  transition: 0.2s;
-}
-
-.view-recommendation:hover {
-  background: #1d4ed8;
-
-  transform: translateY(-1px);
 }
 
 

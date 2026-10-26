@@ -183,3 +183,66 @@
   }
 
 }
+
+/* Authentication branding: upper-left corner */
+.authentication-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 105px 24px 24px;
+  position: relative;
+}
+
+.authentication-brand {
+  position: absolute;
+  top: 22px;
+  left: 32px;
+  margin: 0;
+  z-index: 5;
+}
+
+/* Compact role-selection layout */
+.authentication-container {
+  max-width: 1050px;
+}
+
+.role-selection-header {
+  margin-bottom: 24px;
+}
+
+.role-selection-header h1 {
+  font-size: clamp(28px, 3vw, 36px);
+}
+
+.role-selection-action {
+  margin-top: 20px;
+}
+
+.authentication-footer-text {
+  margin-top: 16px;
+}
+
+/* Fit typical desktop viewports */
+@media (min-width: 701px) {
+  .authentication-page {
+    height: 100vh;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .authentication-page {
+    min-height: 100vh;
+    height: auto;
+    padding: 95px 16px 30px;
+  }
+
+  .authentication-brand {
+    top: 20px;
+    left: 16px;
+  }
+
+  .role-selection-header h1 {
+    font-size: 28px;
+  }
+}

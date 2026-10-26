@@ -3,8 +3,7 @@ import {
   Brain,
   CheckCircle2,
   Target,
-  Zap,
-  ArrowUpRight
+  Zap
 } from "lucide-react";
 
 import "./AIRecommendationShowcase.css";
@@ -263,14 +262,6 @@ function AIRecommendationShowcase() {
             </div>
 
           </div>
-
-          <button className="view-recommendation">
-
-            View Recommendation
-
-            <ArrowUpRight size={16} />
-
-          </button>
 
         </div>
 

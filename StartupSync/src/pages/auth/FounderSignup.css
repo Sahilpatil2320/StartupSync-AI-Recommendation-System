@@ -653,3 +653,88 @@
     padding-left: 58px;
 }
 
+/* Persistent branding on the registration page */
+.founder-signup-page {
+  padding-top: 90px;
+}
+
+.founder-signup-brand {
+  position: fixed;
+  top: 18px;
+  left: 28px;
+  margin: 0;
+  z-index: 20;
+}
+
+@media (max-width: 600px) {
+  .founder-signup-page {
+    padding-top: 82px;
+  }
+
+  .founder-signup-brand {
+    top: 16px;
+    left: 14px;
+  }
+}
+
+/* Persistent full-width StartupSync navbar */
+.founder-signup-brand {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+
+    width: 100%;
+    height: 68px;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+
+    margin: 0;
+    padding: 0 32px;
+
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+}
+
+/* Keep the registration form below the fixed navbar.
+   The document itself remains scrollable for all registration steps. */
+.founder-signup-page {
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: 90px 20px 30px;
+}
+
+/* Keep the form card centered and readable on wide screens */
+.founder-signup-container {
+    width: 100%;
+    max-width: 1140px;
+    margin: 0 auto;
+}
+
+/* Prevent the navbar from covering content on smaller screens */
+@media (max-width: 700px) {
+    .founder-signup-brand {
+        height: 62px;
+        padding: 0 16px;
+    }
+
+    .founder-signup-page {
+        padding: 80px 14px 30px;
+    }
+}
+
+@media (max-width: 480px) {
+    .founder-signup-brand {
+        height: 60px;
+        padding: 0 12px;
+    }
+
+    .founder-signup-page {
+        padding: 76px 10px 25px;
+    }
+}

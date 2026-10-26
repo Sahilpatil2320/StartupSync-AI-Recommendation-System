@@ -1,0 +1,22 @@
+/* Reveal each major landing-page section as it enters the viewport. */
+.landing-page .reveal-on-scroll {
+  opacity: 0;
+  transform: translate3d(0, 34px, 0);
+  transition:
+    opacity 720ms cubic-bezier(.2,.7,.25,1),
+    transform 720ms cubic-bezier(.2,.7,.25,1);
+  will-change: opacity, transform;
+}
+.landing-page .reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-page .reveal-on-scroll,
+  .landing-page .reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+}
