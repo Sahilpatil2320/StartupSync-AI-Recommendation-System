@@ -100,15 +100,6 @@ def run_recommendation(module_path, source_id, top_n=5):
     if isinstance(source_id, str):
         source_id = source_id.strip()
 
-    # Mentor dataset uses lowercase IDs such as m001.
-    # Normalize mentor IDs at the API boundary.
-    if module_path in {
-        "recommendations.mentor.mentor_to_founder",
-        "recommendations.mentor.mentor_to_investor",
-        "recommendations.mentor.mentor_to_student"
-    }:
-        source_id = source_id.lower()
-
     module = importlib.import_module(module_path)
 
     # --------------------------------------------------
@@ -273,7 +264,14 @@ def make_json_safe(value):
     return value
 
 
-def recommendation_response(key, source_id):
+def recommendation_response(key, source_id, top_n=None):
+    if top_n is None:
+        top_n = request.args.get("top_n", 5)
+    try:
+        top_n = max(1, min(int(top_n), 2500))
+    except (TypeError, ValueError):
+        top_n = 5
+
 
     if key not in MODULES:
         return jsonify({
@@ -286,7 +284,7 @@ def recommendation_response(key, source_id):
         result, method_name = run_recommendation(
             MODULES[key],
             source_id,
-            top_n=5
+            top_n=top_n
         )
 
         # Some existing engines return:
@@ -637,6 +635,7 @@ def recommend_custom_founder_investors():
             module, "FounderInvestorEngine"
         )()
 
+        top_n = max(1, min(int(data.get("top_n", 5)), 2500))
         recommendations = engine.recommend_custom_founder(
             {
                 "id": "custom-founder",
@@ -646,7 +645,7 @@ def recommend_custom_founder_investors():
                 "description": data["description"],
                 "funding_stage": data["fundingStage"],
             },
-            top_n=5,
+            top_n=top_n,
         )
 
         return jsonify(make_json_safe({
@@ -697,9 +696,10 @@ def recommend_custom_founder_mentors():
             module, "FounderMentorEngine"
         )()
 
+        top_n = max(1, min(int(data.get("top_n", 5)), 2500))
         recommendations = engine.recommend_custom_founder(
             data,
-            top_n=5,
+            top_n=top_n,
         )
 
         return jsonify(make_json_safe({
@@ -811,6 +811,129 @@ def recommend_student_opportunities():
             "message": "Not enough text to generate recommendations",
             "recommendations": []
         })
+
+
+# ============================================================
+# CUSTOM PROFILE -> FULL DATASET RECOMMENDATIONS
+# Used when a registered profile has no reliable dataset ID.
+# ============================================================
+
+@app.route("/recommend/custom", methods=["POST"])
+def recommend_custom_profile():
+    data = request.get_json() or {}
+    source_role = str(data.get("source_role", "")).strip().lower()
+    target_role = str(data.get("target_role", "")).strip().lower()
+    profile = data.get("profile", {})
+    if not isinstance(profile, dict):
+        return jsonify({"success": False, "message": "profile must be an object"}), 400
+
+    target_files = {
+        "founders": "processed_startups.csv",
+        "startups": "processed_startups.csv",
+        "investors": "investor_features.csv",
+        "mentors": "processed_mentors.csv",
+        "students": "processed_students.csv",
+    }
+    filename = target_files.get(target_role)
+    if not filename:
+        return jsonify({"success": False, "message": "Unsupported target dataset"}), 400
+
+    results_dir = Path(__file__).resolve().parent.parent / "results"
+    dataset_path = results_dir / filename
+    if not dataset_path.exists():
+        return jsonify({
+            "success": False,
+            "message": f"Recommendation dataset is missing: {filename}",
+        }), 500
+
+    def flatten(value):
+        if value is None:
+            return ""
+        if isinstance(value, dict):
+            return " ".join(flatten(v) for k, v in value.items()
+                            if k not in {"_id", "userId", "password", "createdAt", "updatedAt"})
+        if isinstance(value, (list, tuple, set)):
+            return " ".join(flatten(item) for item in value)
+        return str(value)
+
+    try:
+        limit = max(1, min(int(data.get("top_n", request.args.get("top_n", 2500))), 2500))
+        candidates_df = __import__("pandas").read_csv(dataset_path).fillna("")
+        if candidates_df.empty:
+            return jsonify({"success": True, "recommendations": [], "total": 0})
+
+        source_text = flatten({
+            key: value for key, value in profile.items()
+            if key not in {"_id", "userId", "password", "createdAt", "updatedAt", "__v"}
+        }).strip()
+
+        candidate_texts = candidates_df.apply(
+            lambda row: flatten(row.to_dict()), axis=1
+        ).tolist()
+
+        vectorizer = TfidfVectorizer(
+            lowercase=True, stop_words="english", ngram_range=(1, 2), min_df=1
+        )
+        matrix = vectorizer.fit_transform([source_text] + candidate_texts)
+        scores = cosine_similarity(matrix[0:1], matrix[1:]).flatten()
+
+        ranked = []
+        for index, (_, row) in enumerate(candidates_df.iterrows()):
+            item = {str(k): make_json_safe(v) for k, v in row.to_dict().items()}
+            raw_id = str(item.get("id", item.get("startup_id", index)))
+            raw_name = str(item.get("name", item.get("startup_name", item.get("firm_name", "Profile"))))
+            score = round(float(scores[index]) * 100, 2)
+            item.update({
+                "id": raw_id,
+                "dataset_id": raw_id,
+                "name": raw_name,
+                "score": round(float(scores[index]), 4),
+                "score_percentage": score,
+                "source_type": "dataset",
+                "registered_account": False,
+            })
+            if target_role in {"founders", "startups"}:
+                item.update({
+                    "startup_id": raw_id,
+                    "founder_id": raw_id,
+                    "startup_name": raw_name,
+                    "founder_name": raw_name,
+                    "company": raw_name,
+                })
+            elif target_role == "investors":
+                item.update({
+                    "investor_id": raw_id,
+                    "investor_name": raw_name,
+                    "firm_name": item.get("firm_name", raw_name),
+                })
+            elif target_role == "mentors":
+                item.update({
+                    "mentor_id": raw_id,
+                    "mentor_name": item.get("mentor_name", raw_name),
+                })
+            elif target_role == "students":
+                item.update({
+                    "student_id": raw_id,
+                    "student_name": item.get("student_name", raw_name),
+                })
+            ranked.append(item)
+
+        ranked.sort(key=lambda item: item["score"], reverse=True)
+        return jsonify(make_json_safe({
+            "success": True,
+            "direction": f"{source_role}_{target_role}",
+            "method": "TF-IDF + cosine similarity over role dataset",
+            "source": "StartupSync AI Recommendation API",
+            "total": len(ranked),
+            "recommendations": ranked[:limit],
+        }))
+    except Exception as error:
+        app.logger.exception("Custom dataset recommendation failed")
+        return jsonify({
+            "success": False,
+            "message": "Failed to generate dataset recommendations",
+            "error": str(error),
+        }), 500
 
 
 # ============================================================

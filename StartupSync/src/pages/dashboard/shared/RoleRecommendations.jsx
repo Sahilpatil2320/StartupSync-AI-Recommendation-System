@@ -63,8 +63,8 @@ const locationOf = (profile) => {
 };
 
 const detailsOf = (profile, role) => {
-  if (role === "founder") return [profile?.industry, profile?.domain, profile?.startupStage || profile?.fundingStage, profile?.description].filter(Boolean);
-  if (role === "investor") return [profile?.type || profile?.investorType, ...(Array.isArray(profile?.industries) ? profile.industries : profile?.investmentIndustries || []), profile?.investmentThesis, profile?.bio].filter(Boolean);
+  if (role === "founder") return [profile?.industry, profile?.domain, profile?.startupStage || profile?.startup_stage || profile?.fundingStage || profile?.funding_stage, profile?.description].filter(Boolean);
+  if (role === "investor") return [profile?.type || profile?.investorType || profile?.investor_type, ...(Array.isArray(profile?.industries) ? profile.industries : profile?.investmentIndustries || []), profile?.investmentThesis || profile?.investment_thesis, profile?.bio || profile?.short_bio].filter(Boolean);
   if (role === "mentor") return [profile?.expertise, profile?.industry, profile?.domain, profile?.experienceYears != null ? `${profile.experienceYears} years experience` : "", profile?.bio].flat().filter(Boolean);
   return [profile?.college, profile?.branch, profile?.graduationYear ? `Graduation ${profile.graduationYear}` : "", ...(profile?.technicalSkills || []), profile?.careerGoal].flat().filter(Boolean);
 };

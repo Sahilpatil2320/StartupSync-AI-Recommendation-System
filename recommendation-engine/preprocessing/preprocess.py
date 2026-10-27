@@ -10,8 +10,8 @@ from pathlib import Path
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATASET_DIR = PROJECT_ROOT / "separate_datasets"
-RESULTS_DIR = PROJECT_ROOT / "results"
+DATASET_DIR = PROJECT_ROOT.parent / "separate_datasets"
+RESULTS_DIR = PROJECT_ROOT.parent / "results"
 
 
 # ------------------------------------------------------------

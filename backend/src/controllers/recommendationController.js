@@ -233,63 +233,35 @@ const getRecommendations = async (req, res) => {
         }
 
 
-        // Use registered-profile similarity when the account has no AI dataset link.
-        // This keeps recommendations available without confusing dataset IDs with account IDs.
-        if (!hasDatasetId && !(role === "founder" && ["investors", "mentors"].includes(target))) {
-            return await fallbackResponse(res, role, target, {
-                ...profile.toObject(),
-                userId: user._id,
-            });
-        }
+        const requestedLimit = Math.max(
+            1,
+            Math.min(Number.parseInt(req.query.limit, 10) || 2500, 2500)
+        );
 
-        // Custom recommendation path for founders without a dataset ID.
-        if (!hasDatasetId) {
+        // A founder without a dataset link can still use the existing custom-founder
+        // ranking engines for investor and mentor discovery.
+        if (!hasDatasetId && role === "founder" && ["investors", "mentors"].includes(target)) {
             const customProfile = {
                 startupName: profile.startupName || "",
-                domain: [
-                    profile.domain || "",
-                    profile.industry || "",
-                ].filter(Boolean).join(" "),
+                domain: [profile.domain || "", profile.industry || ""].filter(Boolean).join(" "),
                 description: profile.description || "",
-                fundingStage:
-                    profile.fundingStage ||
-                    profile.startupStage ||
-                    "pre_seed",
+                fundingStage: profile.fundingStage || profile.startupStage || "pre_seed",
+                top_n: requestedLimit,
             };
 
-            const missingFields = [
-                "startupName",
-                "domain",
-                "description",
-            ].filter(
-                (field) => !String(customProfile[field] || "").trim()
-            );
-
-            if (missingFields.length > 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Please complete the required startup profile fields.",
-                    missing: missingFields,
-                });
-            }
-
-            const endpoint =
-                target === "investors"
-                    ? "/recommend/custom-founder/investors"
-                    : "/recommend/custom-founder/mentors";
+            const endpoint = target === "investors"
+                ? "/recommend/custom-founder/investors"
+                : "/recommend/custom-founder/mentors";
 
             const response = await fetch(`${AI_API_URL}${endpoint}`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(customProfile),
             });
-
             const data = await response.json();
 
             if (!response.ok) {
-                console.warn("Custom founder recommendation service returned a non-success response; using registered-profile fallback.");
+                console.warn("Custom founder recommendation service failed; using registered-profile fallback.");
                 return await fallbackResponse(res, role, target, {
                     ...profile.toObject(),
                     userId: user._id,
@@ -303,10 +275,43 @@ const getRecommendations = async (req, res) => {
             });
         }
 
+        // Any role without a reliable dataset ID is matched against the appropriate
+        // full role dataset rather than being restricted to registered website users.
+        if (
+            !hasDatasetId ||
+            (target === "founders" && role !== "investor") ||
+            (role === "student" && target === "investors")
+        ) {
+            const response = await fetch(`${AI_API_URL}/recommend/custom?top_n=${requestedLimit}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    source_role: role,
+                    target_role: target,
+                    profile: profile.toObject(),
+                    top_n: requestedLimit,
+                }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.warn("Custom dataset recommendation service failed; using registered-profile fallback.");
+                return await fallbackResponse(res, role, target, {
+                    ...profile.toObject(),
+                    userId: user._id,
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                source: "StartupSync AI Recommendation API",
+                data,
+            });
+        }
 
         // Existing dataset-based recommendation flow.
         const response = await fetch(
-            `${AI_API_URL}/recommend/${recommendationMap[role][target]}`,
+            `${AI_API_URL}/recommend/${recommendationMap[role][target]}?top_n=${requestedLimit}`,
             {
                 method: "POST",
                 headers: {
@@ -314,6 +319,7 @@ const getRecommendations = async (req, res) => {
                 },
                 body: JSON.stringify({
                     [`${role}_id`]: datasetId,
+                    top_n: requestedLimit,
                 }),
             }
         );

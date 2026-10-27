@@ -1,3 +1,4 @@
+
 import {
   Bell,
   BriefcaseBusiness,
@@ -11,6 +12,7 @@ import {
   TrendingUp,
   UsersRound
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import "./DashboardOverview.css";
 
@@ -20,26 +22,10 @@ const roleContent = {
     description:
       "Track your startup, connect with investors and mentors, and grow your ecosystem.",
     stats: [
-      {
-        label: "Startup Profile",
-        value: "82%",
-        icon: Rocket
-      },
-      {
-        label: "Investor Connections",
-        value: "12",
-        icon: TrendingUp
-      },
-      {
-        label: "Mentor Connections",
-        value: "6",
-        icon: Handshake
-      },
-      {
-        label: "Team Members",
-        value: "8",
-        icon: UsersRound
-      }
+      { label: "Startup Profile", value: "82%", icon: Rocket },
+      { label: "Investor Connections", value: "12", icon: TrendingUp },
+      { label: "Mentor Connections", value: "6", icon: Handshake },
+      { label: "Team Members", value: "8", icon: UsersRound }
     ],
     actions: [
       {
@@ -65,26 +51,10 @@ const roleContent = {
     description:
       "Discover startups, manage your investment interests, and build meaningful connections.",
     stats: [
-      {
-        label: "Saved Startups",
-        value: "18",
-        icon: Rocket
-      },
-      {
-        label: "Active Interests",
-        value: "7",
-        icon: TrendingUp
-      },
-      {
-        label: "Connections",
-        value: "24",
-        icon: UsersRound
-      },
-      {
-        label: "Messages",
-        value: "5",
-        icon: MessageSquare
-      }
+      { label: "Saved Startups", value: "18", icon: Rocket },
+      { label: "Active Interests", value: "7", icon: TrendingUp },
+      { label: "Connections", value: "24", icon: UsersRound },
+      { label: "Messages", value: "5", icon: MessageSquare }
     ],
     actions: [
       {
@@ -110,26 +80,10 @@ const roleContent = {
     description:
       "Share your expertise, support founders, and manage your mentoring activities.",
     stats: [
-      {
-        label: "Mentorships",
-        value: "9",
-        icon: Handshake
-      },
-      {
-        label: "Startups Helped",
-        value: "14",
-        icon: Rocket
-      },
-      {
-        label: "Pending Requests",
-        value: "4",
-        icon: FileText
-      },
-      {
-        label: "Messages",
-        value: "8",
-        icon: MessageSquare
-      }
+      { label: "Mentorships", value: "9", icon: Handshake },
+      { label: "Startups Helped", value: "14", icon: Rocket },
+      { label: "Pending Requests", value: "4", icon: FileText },
+      { label: "Messages", value: "8", icon: MessageSquare }
     ],
     actions: [
       {
@@ -155,26 +109,10 @@ const roleContent = {
     description:
       "Discover internships, opportunities, mentors, and startup experiences.",
     stats: [
-      {
-        label: "Recommended Jobs",
-        value: "16",
-        icon: BriefcaseBusiness
-      },
-      {
-        label: "Applications",
-        value: "6",
-        icon: FileText
-      },
-      {
-        label: "Saved Opportunities",
-        value: "11",
-        icon: TrendingUp
-      },
-      {
-        label: "Connections",
-        value: "9",
-        icon: UsersRound
-      }
+      { label: "Recommended Jobs", value: "16", icon: BriefcaseBusiness },
+      { label: "Applications", value: "6", icon: FileText },
+      { label: "Saved Opportunities", value: "11", icon: TrendingUp },
+      { label: "Connections", value: "9", icon: UsersRound }
     ],
     actions: [
       {
@@ -200,26 +138,10 @@ const roleContent = {
     description:
       "Monitor platform activity and manage StartupSync ecosystem operations.",
     stats: [
-      {
-        label: "Registered Users",
-        value: "1,248",
-        icon: UsersRound
-      },
-      {
-        label: "Startups",
-        value: "186",
-        icon: Rocket
-      },
-      {
-        label: "Pending Reports",
-        value: "12",
-        icon: FileText
-      },
-      {
-        label: "Platform Messages",
-        value: "38",
-        icon: MessageSquare
-      }
+      { label: "Registered Users", value: "—", icon: UsersRound },
+      { label: "Startups", value: "—", icon: Rocket },
+      { label: "Pending Reports", value: "—", icon: FileText },
+      { label: "Platform Messages", value: "—", icon: MessageSquare }
     ],
     actions: [
       {
@@ -242,11 +164,90 @@ const roleContent = {
 };
 
 function DashboardOverview({ role }) {
+  const [adminStats, setAdminStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState("");
+
+  useEffect(() => {
+    if (role !== "admin") {
+      return;
+    }
+
+    const token = localStorage.getItem("startupsync_token");
+
+    if (!token) {
+      setStatsError("No login token found. Please log in again.");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadAdminStats() {
+      setStatsLoading(true);
+      setStatsError("");
+
+      try {
+        const response = await fetch(
+          "http://localhost:5000/api/admin/dashboard/stats",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`
+            },
+            signal: controller.signal
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message || "Unable to load Admin statistics."
+          );
+        }
+
+        setAdminStats(result.stats);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setStatsError(error.message || "Unable to load statistics.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setStatsLoading(false);
+        }
+      }
+    }
+
+    loadAdminStats();
+
+    return () => controller.abort();
+  }, [role]);
+
   const content = roleContent[role] || roleContent.founder;
+
+  const displayStats =
+    role === "admin"
+      ? content.stats.map((stat) => {
+          let value = "—";
+
+          if (statsLoading) {
+            value = "Loading...";
+          } else if (stat.label === "Registered Users") {
+            value = adminStats?.totalUsers ?? "—";
+          } else if (stat.label === "Startups") {
+            value = adminStats?.profiles?.startups ?? "—";
+          } else if (stat.label === "Pending Reports") {
+            value = "Not configured";
+          } else if (stat.label === "Platform Messages") {
+            value = adminStats?.totalMessages ?? "—";
+          }
+
+          return { ...stat, value };
+        })
+      : content.stats;
 
   return (
     <div className="dashboard-overview">
-      {/* Welcome */}
       <section className="dashboard-welcome">
         <div className="dashboard-welcome-content">
           <span className="dashboard-welcome-badge">
@@ -254,7 +255,6 @@ function DashboardOverview({ role }) {
           </span>
 
           <h2>{content.title}</h2>
-
           <p>{content.description}</p>
         </div>
 
@@ -267,7 +267,6 @@ function DashboardOverview({ role }) {
         </div>
       </section>
 
-      {/* Statistics */}
       <section className="dashboard-section">
         <div className="dashboard-section-heading">
           <div>
@@ -276,8 +275,17 @@ function DashboardOverview({ role }) {
           </div>
         </div>
 
+        {role === "admin" && statsError && (
+          <p
+            role="alert"
+            style={{ color: "#dc2626", marginBottom: "16px" }}
+          >
+            {statsError}
+          </p>
+        )}
+
         <div className="dashboard-stats-grid">
-          {content.stats.map((stat) => {
+          {displayStats.map((stat) => {
             const Icon = stat.icon;
 
             return (
@@ -296,7 +304,6 @@ function DashboardOverview({ role }) {
         </div>
       </section>
 
-      {/* Quick Actions */}
       <section className="dashboard-section">
         <div className="dashboard-section-heading">
           <div>
@@ -324,16 +331,13 @@ function DashboardOverview({ role }) {
                   <p>{action.description}</p>
                 </div>
 
-                <span className="dashboard-action-arrow">
-                  →
-                </span>
+                <span className="dashboard-action-arrow">→</span>
               </button>
             );
           })}
         </div>
       </section>
 
-      {/* Activity + Recommendations */}
       <section className="dashboard-bottom-grid">
         <div className="dashboard-panel">
           <div className="dashboard-panel-header">
@@ -405,8 +409,8 @@ function DashboardOverview({ role }) {
             <div>
               <strong>Complete your profile</strong>
               <p>
-                A complete profile helps StartupSync provide
-                more relevant recommendations.
+                A complete profile helps StartupSync provide more relevant
+                recommendations.
               </p>
             </div>
           </div>
@@ -419,8 +423,8 @@ function DashboardOverview({ role }) {
             <div>
               <strong>Expand your network</strong>
               <p>
-                Explore people and organizations relevant to
-                your StartupSync goals.
+                Explore people and organizations relevant to your StartupSync
+                goals.
               </p>
             </div>
           </div>

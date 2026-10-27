@@ -9,7 +9,7 @@ const aiApi = axios.create({
   timeout: 20000,
 });
 
-export async function getRecommendations(role, target, userId) {
+export async function getRecommendations(role, target, userId, limit = 2500) {
   const token = localStorage.getItem("startupsync_token");
 
   if (!token) {
@@ -26,6 +26,7 @@ export async function getRecommendations(role, target, userId) {
     `/${encodeURIComponent(target)}`;
 
   const response = await aiApi.get(endpoint, {
+    params: { limit },
     headers: {
       Authorization: `Bearer ${token}`,
     },

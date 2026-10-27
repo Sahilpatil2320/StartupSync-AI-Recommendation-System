@@ -1014,12 +1014,13 @@ class MentorFounderEngine:
             self.mentors["id"]
             .astype(str)
             .str.strip()
+            .str.lower()
         )
 
 
         requested_id = str(
             mentor_id
-        ).strip()
+        ).strip().lower()
 
 
         mentor_matches = self.mentors[
@@ -1306,12 +1307,13 @@ class MentorFounderEngine:
             self.mentors["id"]
             .astype(str)
             .str.strip()
+            .str.lower()
         )
 
 
         requested_id = str(
             mentor_id
-        ).strip()
+        ).strip().lower()
 
 
         mentor_matches = self.mentors[
@@ -1514,6 +1516,3 @@ if __name__ == "__main__":
         print(
             "No mentors available."
         )
-
-
-
