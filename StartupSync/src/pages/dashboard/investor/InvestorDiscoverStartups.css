@@ -451,3 +451,36 @@
     grid-template-columns: 1fr;
   }
 }
+
+.startup-request-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.startup-request-actions .startup-connect-button {
+    flex: 1;
+}
+
+.startup-cancel-request {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: 1px solid #fecaca;
+    border-radius: 9px;
+    background: #fff;
+    color: #dc2626;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.startup-cancel-request:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.startup-connected {
+    opacity: 0.85;
+    cursor: not-allowed;
+}

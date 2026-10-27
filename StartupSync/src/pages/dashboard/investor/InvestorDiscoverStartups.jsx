@@ -10,10 +10,10 @@ import {
     X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import { getRecommendations } from "../../../services/aiApi";
 import "./InvestorDiscoverStartups.css";
-import { useNavigate } from "react-router-dom";
 
 const getProfileId = (profile) =>
     String(
@@ -105,6 +105,7 @@ const getFounded = (profile) =>
 
 const getRecommendationItems = (response) => {
     const root = response?.data ?? response;
+
     const candidates = [
         root?.data?.recommendations,
         root?.data?.founders,
@@ -154,6 +155,8 @@ const extractProfiles = (response) => {
 };
 
 function InvestorDiscoverStartups() {
+    const navigate = useNavigate();
+
     const [founders, setFounders] = useState([]);
     const [recommendations, setRecommendations] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -162,15 +165,14 @@ function InvestorDiscoverStartups() {
     const [location, setLocation] = useState("All Locations");
     const [sortBy, setSortBy] = useState("name");
     const [savedStartups, setSavedStartups] = useState([]);
-    const [connectedStartups, setConnectedStartups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(true);
     const [error, setError] = useState("");
     const [aiError, setAiError] = useState("");
-    const [connectingId, setConnectingId] = useState("");
-    const [selectedFounder, setSelectedFounder] = useState(null);
     const [datasetPage, setDatasetPage] = useState(1);
-    const navigate = useNavigate();
+    const [sentRequests, setSentRequests] = useState({});
+    const [requestActionId, setRequestActionId] = useState(null);
+    const [selectedFounder, setSelectedFounder] = useState(null);
 
     const fetchFounders = useCallback(async () => {
         setLoading(true);
@@ -178,7 +180,10 @@ function InvestorDiscoverStartups() {
 
         try {
             const token = localStorage.getItem("startupsync_token");
-            if (!token) throw new Error("Please log in again to view founder profiles.");
+
+            if (!token) {
+                throw new Error("Please log in again to view founder profiles.");
+            }
 
             const response = await api.get("/profiles/founders", {
                 headers: { Authorization: `Bearer ${token}` },
@@ -203,17 +208,25 @@ function InvestorDiscoverStartups() {
 
         try {
             const token = localStorage.getItem("startupsync_token");
-            if (!token) throw new Error("Please log in again to view AI recommendations.");
+
+            if (!token) {
+                throw new Error("Please log in again to view AI recommendations.");
+            }
 
             const payload = token.split(".")[1];
-            if (!payload) throw new Error("Invalid login token. Please log in again.");
+
+            if (!payload) {
+                throw new Error("Invalid login token. Please log in again.");
+            }
 
             const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
             const decoded = JSON.parse(window.atob(normalized));
             const userId =
                 decoded.userId || decoded.id || decoded._id || decoded.sub || "";
 
-            if (!userId) throw new Error("Could not identify your account from the login token.");
+            if (!userId) {
+                throw new Error("Could not identify your account from the login token.");
+            }
 
             const response = await getRecommendations("investor", "founders", userId);
             setRecommendations(getRecommendationItems(response).slice(0, 650));
@@ -229,10 +242,49 @@ function InvestorDiscoverStartups() {
         }
     }, []);
 
+    const fetchExistingRequests = useCallback(async () => {
+        const token = localStorage.getItem("startupsync_token");
+        if (!token) return;
+
+        try {
+            const response = await api.get("/connections", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const requests = response.data?.requests || [];
+            const sent = {};
+
+            requests.forEach((request) => {
+                const senderId =
+                    typeof request.sender === "object"
+                        ? request.sender?._id
+                        : request.sender;
+
+                const receiverId =
+                    typeof request.receiver === "object"
+                        ? request.receiver?._id
+                        : request.receiver;
+
+                if (
+                    String(senderId) === String(getCurrentUserId(token)) &&
+                    request.status === "pending"
+                ) {
+                    const targetId = String(receiverId || "");
+                    if (targetId) sent[targetId] = request._id;
+                }
+            });
+
+            setSentRequests(sent);
+        } catch (err) {
+            console.error("Unable to load existing connection requests:", err);
+        }
+    }, []);
+
     useEffect(() => {
         fetchFounders();
         fetchRecommendations();
-    }, [fetchFounders, fetchRecommendations]);
+        fetchExistingRequests();
+    }, [fetchFounders, fetchRecommendations, fetchExistingRequests]);
 
     const allStartups = useMemo(() => {
         const combined = [...recommendations, ...founders];
@@ -244,6 +296,7 @@ function InvestorDiscoverStartups() {
             const key = id ? `id:${id}` : `name:${name}`;
 
             if (seen.has(key)) return false;
+
             seen.add(key);
             return true;
         });
@@ -264,7 +317,9 @@ function InvestorDiscoverStartups() {
             new Set(
                 recommendedFounders.map((item) => {
                     const id = getProfileId(item);
-                    return id ? `id:${id}` : `name:${getName(item).trim().toLowerCase()}`;
+                    return id
+                        ? `id:${id}`
+                        : `name:${getName(item).trim().toLowerCase()}`;
                 })
             ),
         [recommendedFounders]
@@ -338,8 +393,9 @@ function InvestorDiscoverStartups() {
             if (sortBy === "industry") return getIndustry(a).localeCompare(getIndustry(b));
             if (sortBy === "stage") return getStage(a).localeCompare(getStage(b));
             if (sortBy === "location") return getLocation(a).localeCompare(getLocation(b));
-            if (sortBy === "newest")
+            if (sortBy === "newest") {
                 return Number(getFounded(b) || 0) - Number(getFounded(a) || 0);
+            }
             return 0;
         });
     }, [allStartups, recommendedKeys, searchTerm, industry, stage, location, sortBy]);
@@ -355,38 +411,86 @@ function InvestorDiscoverStartups() {
     };
 
     const expressInterest = async (founder) => {
-        const id = getProfileId(founder);
+        const profileId = getProfileId(founder);
 
-        if (!id || founder._isDatasetRecommendation || connectedStartups.includes(id) || connectingId) {
-            if (founder._isDatasetRecommendation) {
-                window.alert("This is a public AI dataset record. Connecting is available when the startup has a registered StartupSync account.");
-            }
+        if (!profileId || requestActionId || founder?._isDatasetRecommendation) return;
+
+        if (sentRequests[profileId]) return;
+
+        const token = localStorage.getItem("startupsync_token");
+
+        if (!token) {
+            alert("Please log in to send a connection request.");
             return;
         }
 
+        setRequestActionId(profileId);
+
         try {
-            setConnectingId(id);
-            const token = localStorage.getItem("startupsync_token");
-            if (!token) throw new Error("Please log in again.");
-
-            await api.post(
-                `/connections/founders/${encodeURIComponent(id)}`,
+            const response = await api.post(
+                `/connections/founders/${encodeURIComponent(profileId)}`,
                 {},
-                { headers: { Authorization: `Bearer ${token}` } }
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
             );
 
-            setConnectedStartups((current) =>
-                current.includes(id) ? current : [...current, id]
-            );
-            window.alert("Your interest has been sent successfully.");
+            const request = response.data?.request;
+
+            if (!request?._id) {
+                throw new Error("The server did not return a request ID.");
+            }
+
+            setSentRequests((previous) => ({
+                ...previous,
+                [profileId]: request._id,
+            }));
         } catch (err) {
-            window.alert(
+            alert(
                 err.response?.data?.message ||
                 err.message ||
-                "Unable to send your interest. Please try again."
+                "Unable to send connection request."
+            );
+
+            if (err.response?.status === 409) {
+                fetchExistingRequests();
+            }
+        } finally {
+            setRequestActionId(null);
+        }
+    };
+
+    const cancelInterest = async (profileId) => {
+        const requestId = sentRequests[profileId];
+
+        if (!requestId || requestActionId) return;
+
+        const token = localStorage.getItem("startupsync_token");
+
+        if (!token) {
+            alert("Please log in again.");
+            return;
+        }
+
+        setRequestActionId(profileId);
+
+        try {
+            await api.delete(`/connections/${encodeURIComponent(requestId)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            setSentRequests((previous) => {
+                const updated = { ...previous };
+                delete updated[profileId];
+                return updated;
+            });
+        } catch (err) {
+            alert(
+                err.response?.data?.message ||
+                "Unable to cancel the connection request."
             );
         } finally {
-            setConnectingId("");
+            setRequestActionId(null);
         }
     };
 
@@ -402,7 +506,8 @@ function InvestorDiscoverStartups() {
         const id = getProfileId(founder);
         const isDataset = Boolean(founder._isDatasetRecommendation);
         const isSaved = savedStartups.includes(id);
-        const isConnected = connectedStartups.includes(id);
+        const requestId = sentRequests[id];
+        const isSending = requestActionId === id;
         const score = founder._aiScore;
 
         return (
@@ -431,7 +536,9 @@ function InvestorDiscoverStartups() {
                 {recommended && (
                     <div className="startup-match">
                         <span>AI Recommended</span>
-                        {score !== null && score !== undefined && <strong>{score}% match</strong>}
+                        {score !== null && score !== undefined && (
+                            <strong>{score}% match</strong>
+                        )}
                     </div>
                 )}
 
@@ -474,12 +581,8 @@ function InvestorDiscoverStartups() {
                         className="btn btn-secondary startup-view-button"
                         onClick={() =>
                             navigate(
-                                `/dashboard/investor/profile-view/founder/${getProfileId(founder)}`,
-                                {
-                                    state: {
-                                        profile: founder,
-                                    },
-                                }
+                                `/dashboard/investor/profile-view/founder/${encodeURIComponent(id)}`,
+                                { state: { profile: founder } }
                             )
                         }
                     >
@@ -487,26 +590,49 @@ function InvestorDiscoverStartups() {
                         <ExternalLink size={16} />
                     </button>
 
-                    <button
-                        type="button"
-                        className={`btn startup-connect-button ${isConnected ? "startup-connected" : "btn-primary"
-                            }`}
-                        disabled={isDataset || isConnected || connectingId === id || !id}
-                        onClick={() => expressInterest(founder)}
-                    >
-                        {isConnected ? (
+                    <div className="startup-request-actions">
+                        {isDataset ? (
+                            <button
+                                type="button"
+                                className="btn startup-connect-button"
+                                disabled
+                                title="This dataset record is not linked to a registered account."
+                            >
+                                Dataset Profile
+                            </button>
+                        ) : requestId ? (
                             <>
-                                <Check size={16} />
-                                Interest Sent
+                                <button
+                                    type="button"
+                                    className="btn startup-connect-button startup-connected"
+                                    disabled
+                                >
+                                    <Check size={16} />
+                                    Request Sent
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="startup-cancel-request"
+                                    title="Cancel connection request"
+                                    aria-label="Cancel connection request"
+                                    disabled={isSending}
+                                    onClick={() => cancelInterest(id)}
+                                >
+                                    {isSending ? "…" : <X size={16} />}
+                                </button>
                             </>
-                        ) : isDataset ? (
-                            "Dataset Profile"
-                        ) : connectingId === id ? (
-                            "Sending..."
                         ) : (
-                            "Express Interest"
+                            <button
+                                type="button"
+                                className="btn startup-connect-button"
+                                disabled={isSending || !id}
+                                onClick={() => expressInterest(founder)}
+                            >
+                                {isSending ? "Sending..." : "Express Interest"}
+                            </button>
                         )}
-                    </button>
+                    </div>
                 </div>
             </article>
         );
@@ -574,7 +700,9 @@ function InvestorDiscoverStartups() {
 
             <section style={{ margin: "32px 0 14px" }}>
                 <h3>Explore All Other Startups</h3>
-                <p>Search, filter, and sort available dataset records and registered founder profiles.</p>
+                <p>
+                    Search, filter, and sort available dataset records and registered founder profiles.
+                </p>
             </section>
 
             <section className="investor-search-panel">
@@ -586,6 +714,7 @@ function InvestorDiscoverStartups() {
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                     />
+
                     {searchTerm && (
                         <button
                             type="button"
@@ -604,27 +733,30 @@ function InvestorDiscoverStartups() {
                 </div>
 
                 <div className="investor-filter-grid">
-                    <select value={industry} onChange={(event) => setIndustry(event.target.value)}>
+                    <select
+                        value={industry}
+                        onChange={(event) => setIndustry(event.target.value)}
+                    >
                         {industries.map((option) => (
-                            <option key={option} value={option}>
-                                {option}
-                            </option>
+                            <option key={option} value={option}>{option}</option>
                         ))}
                     </select>
 
-                    <select value={stage} onChange={(event) => setStage(event.target.value)}>
+                    <select
+                        value={stage}
+                        onChange={(event) => setStage(event.target.value)}
+                    >
                         {stages.map((option) => (
-                            <option key={option} value={option}>
-                                {option}
-                            </option>
+                            <option key={option} value={option}>{option}</option>
                         ))}
                     </select>
 
-                    <select value={location} onChange={(event) => setLocation(event.target.value)}>
+                    <select
+                        value={location}
+                        onChange={(event) => setLocation(event.target.value)}
+                    >
                         {locations.map((option) => (
-                            <option key={option} value={option}>
-                                {option}
-                            </option>
+                            <option key={option} value={option}>{option}</option>
                         ))}
                     </select>
 
@@ -645,14 +777,14 @@ function InvestorDiscoverStartups() {
                         stage !== "All Stages" ||
                         location !== "All Locations" ||
                         sortBy !== "name") && (
-                            <button
-                                type="button"
-                                className="investor-clear-filters"
-                                onClick={clearFilters}
-                            >
-                                Clear Filters
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            className="investor-clear-filters"
+                            onClick={clearFilters}
+                        >
+                            Clear Filters
+                        </button>
+                    )}
                 </div>
             </section>
 
@@ -662,7 +794,11 @@ function InvestorDiscoverStartups() {
                 <section className="investor-empty-state">
                     <h3>Unable to load registered founder profiles</h3>
                     <p>{error}</p>
-                    <button type="button" className="btn btn-primary" onClick={fetchFounders}>
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={fetchFounders}
+                    >
                         Retry
                     </button>
                 </section>
@@ -672,6 +808,7 @@ function InvestorDiscoverStartups() {
                         {remainingFounders.length} other startup
                         {remainingFounders.length !== 1 ? "s" : ""} found
                     </p>
+
                     <section className="investor-startup-grid">
                         {remainingFounders.map((founder) => renderFounderCard(founder))}
                     </section>
@@ -683,7 +820,11 @@ function InvestorDiscoverStartups() {
                     </div>
                     <h3>No other startups found</h3>
                     <p>Try changing your search or filter criteria.</p>
-                    <button type="button" className="btn btn-primary" onClick={clearFilters}>
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={clearFilters}
+                    >
                         Clear Filters
                     </button>
                 </section>
@@ -713,24 +854,12 @@ function InvestorDiscoverStartups() {
 
                         <div className="investor-notification-modal-body">
                             <h3>{getName(selectedFounder)}</h3>
-                            <p>
-                                <strong>Industry:</strong> {getIndustry(selectedFounder) || "Not specified"}
-                            </p>
-                            <p>
-                                <strong>Stage:</strong> {getStage(selectedFounder) || "Not specified"}
-                            </p>
-                            <p>
-                                <strong>Location:</strong> {getLocation(selectedFounder) || "Not specified"}
-                            </p>
-                            <p>
-                                <strong>Team size:</strong> {getTeamSize(selectedFounder) || "Not specified"}
-                            </p>
-                            <p>
-                                <strong>Funding sought:</strong> {getFunding(selectedFounder) || "Not specified"}
-                            </p>
-                            <p>
-                                <strong>Description:</strong> {getDescription(selectedFounder)}
-                            </p>
+                            <p><strong>Industry:</strong> {getIndustry(selectedFounder) || "Not specified"}</p>
+                            <p><strong>Stage:</strong> {getStage(selectedFounder) || "Not specified"}</p>
+                            <p><strong>Location:</strong> {getLocation(selectedFounder) || "Not specified"}</p>
+                            <p><strong>Team size:</strong> {getTeamSize(selectedFounder) || "Not specified"}</p>
+                            <p><strong>Funding sought:</strong> {getFunding(selectedFounder) || "Not specified"}</p>
+                            <p><strong>Description:</strong> {getDescription(selectedFounder)}</p>
                         </div>
 
                         <div className="investor-notification-modal-footer">
@@ -746,8 +875,9 @@ function InvestorDiscoverStartups() {
                                 className="btn btn-primary"
                                 disabled={Boolean(selectedFounder._isDatasetRecommendation)}
                                 onClick={() => {
+                                    const founder = selectedFounder;
                                     setSelectedFounder(null);
-                                    expressInterest(selectedFounder);
+                                    expressInterest(founder);
                                 }}
                             >
                                 Express Interest
@@ -758,6 +888,18 @@ function InvestorDiscoverStartups() {
             )}
         </div>
     );
+}
+
+function getCurrentUserId(token) {
+    try {
+        const payload = token.split(".")[1];
+        const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+        const decoded = JSON.parse(window.atob(normalized));
+
+        return decoded.userId || decoded.id || decoded._id || decoded.sub || "";
+    } catch {
+        return "";
+    }
 }
 
 export default InvestorDiscoverStartups;
