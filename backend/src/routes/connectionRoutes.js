@@ -1,10 +1,10 @@
-
 const express = require("express");
 const protect = require("../middleware/authMiddleware");
 
 const {
     sendConnectionRequest,
     getMyConnectionRequests,
+    cancelConnectionRequest,
 } = require("../controllers/connectionController");
 
 const router = express.Router();
@@ -12,7 +12,11 @@ const router = express.Router();
 // Get requests sent or received by the logged-in user.
 router.get("/", protect, getMyConnectionRequests);
 
-// Existing route preserved for Founder -> Investor.
+// Cancel a pending request sent by the logged-in user.
+router.delete("/:requestId", protect, cancelConnectionRequest);
+
+// Founder -> Investor
+// Mentor -> Investor also uses this route; the controller checks the role.
 router.post(
     "/investors/:investorId",
     protect,
@@ -25,6 +29,7 @@ router.post(
 );
 
 // Founder -> Mentor
+// Investor -> Mentor also uses this route.
 router.post(
     "/mentors/:mentorId",
     protect,
@@ -49,6 +54,7 @@ router.post(
 );
 
 // Mentor -> Founder
+// Investor -> Founder and Student -> Founder also use this route.
 router.post(
     "/founders/:founderId",
     protect,

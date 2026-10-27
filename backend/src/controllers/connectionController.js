@@ -1,5 +1,5 @@
-
 const Connection = require("../models/Connection");
+const Notification = require("../models/Notification");
 const Investor = require("../models/Investor");
 const Mentor = require("../models/Mentor");
 const Student = require("../models/Student");
@@ -13,11 +13,18 @@ const profileModels = {
     founder: Founder,
 };
 
-// Send a connection request to a supported profile type.
+// Role combinations allowed to send connection requests.
+const allowedTargets = {
+    founder: ["investor", "mentor", "student"],
+    investor: ["founder", "mentor"],
+    mentor: ["founder", "investor", "student"],
+    student: ["founder", "mentor"],
+};
+
+// Send a connection request.
 const sendConnectionRequest = async (req, res) => {
     try {
         const { targetRole, targetId } = req.params;
-
         const Model = profileModels[targetRole];
 
         if (!Model) {
@@ -26,15 +33,6 @@ const sendConnectionRequest = async (req, res) => {
                 message: "Invalid connection target.",
             });
         }
-
-        // Preserve the existing restriction for Founder -> Investor.
-        // Other role combinations are allowed only when explicitly listed.
-        const allowedTargets = {
-            founder: ["investor", "mentor", "student"],
-            investor: ["founder", "mentor"],
-            mentor: ["founder", "investor", "student"],
-            student: ["founder", "mentor", "investor"],
-        };
 
         if (!allowedTargets[req.user.role]?.includes(targetRole)) {
             return res.status(403).json({
@@ -88,7 +86,27 @@ const sendConnectionRequest = async (req, res) => {
         const request = await Connection.create({
             sender: req.user.userId,
             receiver: receiver._id,
+            status: "pending",
         });
+
+        // Notify the recipient.
+        try {
+            const senderUser = await User.findById(req.user.userId)
+                .select("name role");
+
+            await Notification.create({
+                user: receiver._id,
+                type: "profile",
+                title: "New connection request",
+                message: `${senderUser?.name || "A user"} (${req.user.role}) sent you a connection request.`,
+                link: "/dashboard/notifications",
+            });
+        } catch (notificationError) {
+            console.error(
+                "Connection notification error:",
+                notificationError.message
+            );
+        }
 
         return res.status(201).json({
             success: true,
@@ -140,7 +158,41 @@ const getMyConnectionRequests = async (req, res) => {
     }
 };
 
+// Cancel a request sent by the logged-in user.
+// Only pending requests can be cancelled.
+const cancelConnectionRequest = async (req, res) => {
+    try {
+        const request = await Connection.findOne({
+            _id: req.params.requestId,
+            sender: req.user.userId,
+            status: "pending",
+        });
+
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: "Pending connection request not found.",
+            });
+        }
+
+        await request.deleteOne();
+
+        return res.status(200).json({
+            success: true,
+            message: "Connection request cancelled successfully.",
+        });
+    } catch (error) {
+        console.error("Cancel connection request error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to cancel connection request.",
+        });
+    }
+};
+
 module.exports = {
     sendConnectionRequest,
     getMyConnectionRequests,
+    cancelConnectionRequest,
 };

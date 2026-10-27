@@ -17,12 +17,12 @@ import MentorLogin from "./pages/auth/MentorLogin";
 import StudentLogin from "./pages/auth/StudentLogin";
 import AdminLogin from "./pages/auth/AdminLogin";
 
+
 import SignupRoleSelection from "./pages/auth/SignupRoleSelection";
 import FounderSignup from "./pages/auth/FounderSignup";
 import InvestorSignup from "./pages/auth/InvestorSignup";
 import MentorSignup from "./pages/auth/MentorSignup";
 import StudentSignup from "./pages/auth/StudentSignup";
-import AdminSignup from "./pages/auth/AdminSignup";
 
 import FounderDashboard from "./pages/dashboard/FounderDashboard";
 import InvestorDashboard from "./pages/dashboard/InvestorDashboard";
@@ -62,6 +62,7 @@ import AdminNotifications from "./pages/dashboard/admin/AdminNotifications";
 import RoleRecommendations from "./pages/dashboard/shared/RoleRecommendations";
 import RoleProfile from "./pages/dashboard/shared/RoleProfile";
 import RoleSettings from "./pages/dashboard/shared/RoleSettings";
+import PublicProfile from "./pages/dashboard/shared/PublicProfile";
 
 function Home() {
     const location = useLocation();
@@ -158,11 +159,6 @@ function App() {
                 />
 
                 <Route
-                    path="/signup/admin"
-                    element={<AdminSignup />}
-                />
-
-                <Route
                     path="/dashboard/founder"
                     element={<FounderDashboard />}
                 />
@@ -244,6 +240,15 @@ function App() {
                     element={
                         <DashboardLayout role="founder">
                             <FounderNotifications />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
+                    path="/dashboard/:viewerRole/profile-view/:targetRole/:id"
+                    element={
+                        <DashboardLayout role="investor">
+                            <PublicProfile />
                         </DashboardLayout>
                     }
                 />
