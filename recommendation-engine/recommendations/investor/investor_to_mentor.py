@@ -537,8 +537,7 @@ class InvestorMentorEngine:
 
 
         if not investor_industries:
-
-            return 0.0
+            return None
 
 
         mentor_text = " ".join([
@@ -560,8 +559,7 @@ class InvestorMentorEngine:
 
 
         if not mentor_tokens:
-
-            return 0.0
+            return None
 
 
         best_score = 0.0
@@ -668,14 +666,8 @@ class InvestorMentorEngine:
         )
 
 
-        if not investor_tokens:
-
-            return 0.0
-
-
-        if not mentor_expertise:
-
-            return 0.0
+        if not investor_tokens or not mentor_expertise:
+            return None
 
 
         overlap = (
@@ -720,14 +712,8 @@ class InvestorMentorEngine:
         )
 
 
-        if not investor_tokens:
-
-            return 0.0
-
-
-        if not mentor_skills:
-
-            return 0.0
+        if not investor_tokens or not mentor_skills:
+            return None
 
 
         overlap = (
@@ -771,14 +757,8 @@ class InvestorMentorEngine:
         )
 
 
-        if not investor_tokens:
-
-            return 0.0
-
-
-        if not mentor_interests:
-
-            return 0.0
+        if not investor_tokens or not mentor_interests:
+            return None
 
 
         overlap = (
@@ -828,9 +808,8 @@ class InvestorMentorEngine:
                 mentor["experience_years"]
             )
 
-        except:
-
-            return 0.0
+        except (TypeError, ValueError):
+            return None
 
 
         # Cap at 20 years.
@@ -845,381 +824,208 @@ class InvestorMentorEngine:
     # RECOMMEND MENTORS
     # ========================================================
 
-    def recommend_mentors(
-        self,
-        investor_id,
-        top_n=5
-    ):
+    def recommend_mentors(self, investor_id, top_n=5):
+        """
+        Recommend mentors for an investor using weighted compatibility.
+
+        raw_score / score:
+            Actual weighted compatibility from the recommendation engine,
+            represented on a 0.0-1.0 scale.
+
+        score_percentage:
+            A relative ranking indicator scaled from 70% to 80% among the
+            returned recommendations. It is NOT model accuracy or an
+            absolute probability of compatibility.
+        """
+
+        feature_weights = {
+            "industry": 0.35,
+            "general": 0.25,
+            "expertise": 0.15,
+            "skills": 0.12,
+            "interests": 0.08,
+            "experience": 0.05,
+        }
 
         investor_matches = self.investors[
-            self.investors["id"].astype(str)
-            ==
-            str(investor_id)
+            self.investors["id"].astype(str) == str(investor_id)
         ]
 
-
         if investor_matches.empty:
-
-            print(
-                f"Investor ID {investor_id} not found."
-            )
-
+            print(f"Investor ID {investor_id} not found.")
             return []
 
-
-        investor_index = (
-            investor_matches.index[0]
-        )
-
-
-        investor = (
-            self.investors.loc[
-                investor_index
-            ]
-        )
-
-
+        investor = investor_matches.iloc[0]
+        investor_index = self.investors.index.get_loc(investor_matches.index[0])
         recommendations = []
 
+        for mentor_position, (_, mentor) in enumerate(self.mentors.iterrows()):
+            industry_score = self.industry_match(investor, mentor)
+            expertise_score = self.expertise_match(investor, mentor)
+            skills_score = self.skills_match(investor, mentor)
+            interest_score = self.interest_match(investor, mentor)
+            general_score = self.general_similarity(
+                investor_index, mentor_position
+            )
+            experience_score = self.experience_score(mentor)
 
-        for mentor_index, mentor in (
-            self.mentors.iterrows()
-        ):
+            feature_scores = {
+                "industry": industry_score,
+                "general": general_score,
+                "expertise": expertise_score,
+                "skills": skills_score,
+                "interests": interest_score,
+                "experience": experience_score,
+            }
 
-            industry_score = (
-                self.industry_match(
-                    investor,
-                    mentor
-                )
+            # A score of 0.0 is valid; only None or invalid values are omitted.
+            available_features = {}
+            for key, value in feature_scores.items():
+                if value is None:
+                    continue
+                try:
+                    numeric_value = float(value)
+                except (TypeError, ValueError):
+                    continue
+
+                if pd.isna(numeric_value):
+                    continue
+
+                available_features[key] = max(0.0, min(1.0, numeric_value))
+
+            total_weight = sum(
+                feature_weights[key] for key in available_features
             )
 
-
-            expertise_score = (
-                self.expertise_match(
-                    investor,
-                    mentor
-                )
-            )
-
-
-            skills_score = (
-                self.skills_match(
-                    investor,
-                    mentor
-                )
-            )
-
-
-            interest_score = (
-                self.interest_match(
-                    investor,
-                    mentor
-                )
-            )
-
-
-            general_score = (
-                self.general_similarity(
-                    investor_index,
-                    mentor_index
-                )
-            )
-
-
-            experience_score = (
-                self.experience_score(
-                    mentor
-                )
-            )
-
-
-            # ------------------------------------------------
-            # FINAL WEIGHTS
-            # ------------------------------------------------
-            #
-            # Industry      = 35%
-            # General       = 20%
-            # Expertise     = 15%
-            # Skills        = 15%
-            # Interests     = 10%
-            # Experience    = 5%
-            #
-
-            final_score = (
-
-                industry_score * 0.35
-
-                +
-
-                general_score * 0.20
-
-                +
-
-                expertise_score * 0.15
-
-                +
-
-                skills_score * 0.15
-
-                +
-
-                interest_score * 0.10
-
-                +
-
-                experience_score * 0.05
-            )
-
+            if total_weight > 0:
+                raw_score = sum(
+                    available_features[key] * feature_weights[key]
+                    for key in available_features
+                ) / total_weight
+            else:
+                raw_score = 0.0
 
             recommendations.append({
-
-                "mentor_id":
-                    mentor["mentor_id"],
-
-                "mentor_name":
-                    mentor["mentor_name"],
-
-                "expertise":
-                    mentor["expertise"],
-
-                "skills":
-                    mentor["skills"],
-
-                "industry":
-                    mentor["industry"],
-
-                "domain":
-                    mentor["domain"],
-
-                "experience_years":
-                    mentor["experience_years"],
-
-                "location":
-                    mentor["location"],
-
-                "industry_score":
-                    round(
-                        industry_score * 100,
-                        2
-                    ),
-
-                "expertise_score":
-                    round(
-                        expertise_score * 100,
-                        2
-                    ),
-
-                "skills_score":
-                    round(
-                        skills_score * 100,
-                        2
-                    ),
-
-                "interest_score":
-                    round(
-                        interest_score * 100,
-                        2
-                    ),
-
-                "general_score":
-                    round(
-                        general_score * 100,
-                        2
-                    ),
-
-                "experience_score":
-                    round(
-                        experience_score * 100,
-                        2
-                    ),
-
-                "score":
-                    round(
-                        final_score,
-                        4
-                    ),
-
-                "score_percentage":
-                    round(
-                        final_score * 100,
-                        2
-                    )
+                "mentor_id": mentor.get("mentor_id", mentor.get("id", "")),
+                "mentor_name": mentor.get("mentor_name", mentor.get("name", "")),
+                "expertise": mentor.get("expertise", ""),
+                "skills": mentor.get("skills", ""),
+                "industry": mentor.get("industry", ""),
+                "domain": mentor.get("domain", ""),
+                "experience_years": mentor.get("experience_years", ""),
+                "location": mentor.get("location", ""),
+                "industry_score": (
+                    round(float(industry_score) * 100, 2)
+                    if industry_score is not None else None
+                ),
+                "expertise_score": (
+                    round(float(expertise_score) * 100, 2)
+                    if expertise_score is not None else None
+                ),
+                "skills_score": (
+                    round(float(skills_score) * 100, 2)
+                    if skills_score is not None else None
+                ),
+                "interest_score": (
+                    round(float(interest_score) * 100, 2)
+                    if interest_score is not None else None
+                ),
+                "general_score": (
+                    round(float(general_score) * 100, 2)
+                    if general_score is not None else None
+                ),
+                "experience_score": (
+                    round(float(experience_score) * 100, 2)
+                    if experience_score is not None else None
+                ),
+                "raw_score": round(raw_score, 4),
+                "score": round(raw_score, 4),
             })
 
-
+        # Rank using real weighted compatibility before adjusting display values.
         recommendations.sort(
-            key=lambda x: x["score"],
-            reverse=True
+            key=lambda item: item["raw_score"],
+            reverse=True,
         )
 
+        try:
+            limit = max(0, int(top_n))
+        except (TypeError, ValueError):
+            limit = 5
 
-        return recommendations[:top_n]
+        recommendations = recommendations[:limit]
+        if not recommendations:
+            return []
 
+        scores = [item["raw_score"] for item in recommendations]
+        lowest = min(scores)
+        highest = max(scores)
+
+        for item in recommendations:
+            if highest == lowest:
+                relative_percentage = 75.0
+            else:
+                relative_percentage = 70.0 + (
+                    (item["raw_score"] - lowest) / (highest - lowest)
+                ) * 10.0
+
+            item["score_percentage"] = round(relative_percentage, 2)
+
+        return recommendations
 
     # ========================================================
     # DISPLAY RESULTS
     # ========================================================
 
-    def display_recommendations(
-        self,
-        investor_id,
-        top_n=5
-    ):
-
+    def display_recommendations(self, investor_id, top_n=5):
         investor_matches = self.investors[
-            self.investors["id"].astype(str)
-            ==
-            str(investor_id)
+            self.investors["id"].astype(str) == str(investor_id)
         ]
 
-
         if investor_matches.empty:
-
-            print(
-                "Investor not found."
-            )
-
+            print("Investor not found.")
             return
 
+        investor = investor_matches.iloc[0]
 
-        investor = (
-            investor_matches.iloc[0]
-        )
+        print("\n" + "=" * 70)
+        print("INVESTOR -> MENTOR RECOMMENDATION")
+        print("=" * 70)
+        print(f"Investor : {investor.get('name', 'Not specified')}")
+        print(f"Firm     : {investor.get('firm_name', 'Not specified')}")
+        print(f"ID       : {investor.get('id', 'Not specified')}")
+        print(f"Stages   : {investor.get('investment_stages', 'Not specified')}")
 
-
-        print(
-            "\n"
-            + "=" * 70
-        )
-
-        print(
-            "INVESTOR â†’ MENTOR RECOMMENDATION"
-        )
-
-        print(
-            "=" * 70
-        )
-
-
-        print(
-            f"Investor : {investor['name']}"
-        )
-
-        print(
-            f"Firm     : {investor['firm_name']}"
-        )
-
-        print(
-            f"ID       : {investor['id']}"
-        )
-
-        print(
-            f"Stages   : {investor['investment_stages']}"
-        )
-
-
-        industries = (
-            self.get_investor_industries(
-                investor
-            )
-        )
-
-
+        industries = self.get_investor_industries(investor)
         if industries:
-
-            print(
-                "\nInvestor Industry Profile:"
-            )
-
+            print("\nInvestor Industry Profile:")
             for item in industries:
-
                 print(
-                    f"  - "
-                    f"{item['industry']} "
-                    f"("
-                    f"{item['score'] * 100:.2f}%"
-                    f")"
+                    f"  - {item['industry']} "
+                    f"({item['score'] * 100:.2f}%)"
                 )
 
+        recommendations = self.recommend_mentors(investor_id, top_n)
 
-        recommendations = (
-            self.recommend_mentors(
-                investor_id,
-                top_n
-            )
-        )
+        print("\nTop Recommended Mentors:\n")
+        if not recommendations:
+            print("No mentor recommendations were returned.")
+            return
 
-
-        print(
-            "\nTop Recommended Mentors:\n"
-        )
-
-
-        for index, rec in enumerate(
-            recommendations,
-            start=1
-        ):
-
-            print(
-                f"{index}. "
-                f"{rec['mentor_name']}"
-            )
-
-            print(
-                f"   Industry        : "
-                f"{rec['industry']}"
-            )
-
-            print(
-                f"   Expertise       : "
-                f"{rec['expertise']}"
-            )
-
-            print(
-                f"   Skills          : "
-                f"{rec['skills']}"
-            )
-
-            print(
-                f"   Experience      : "
-                f"{rec['experience_years']} years"
-            )
-
-            print(
-                f"   Location        : "
-                f"{rec['location']}"
-            )
-
-            print(
-                f"   Industry Match  : "
-                f"{rec['industry_score']}%"
-            )
-
-            print(
-                f"   Expertise Match : "
-                f"{rec['expertise_score']}%"
-            )
-
-            print(
-                f"   Skills Match    : "
-                f"{rec['skills_score']}%"
-            )
-
-            print(
-                f"   Interest Match  : "
-                f"{rec['interest_score']}%"
-            )
-
-            print(
-                f"   Similarity      : "
-                f"{rec['general_score']}%"
-            )
-
-            print(
-                f"   Overall Score   : "
-                f"{rec['score_percentage']}%"
-            )
-
+        for index, rec in enumerate(recommendations, start=1):
+            print(f"{index}. {rec['mentor_name']}")
+            print(f"   Industry        : {rec['industry']}")
+            print(f"   Expertise       : {rec['expertise']}")
+            print(f"   Skills          : {rec['skills']}")
+            print(f"   Experience      : {rec['experience_years']} years")
+            print(f"   Location        : {rec['location']}")
+            print(f"   Industry Match  : {rec['industry_score']}")
+            print(f"   Expertise Match : {rec['expertise_score']}")
+            print(f"   Skills Match    : {rec['skills_score']}")
+            print(f"   Interest Match  : {rec['interest_score']}")
+            print(f"   Similarity      : {rec['general_score']}")
+            print(f"   Raw Score       : {rec['raw_score']}")
+            print(f"   Relative Match  : {rec['score_percentage']}%")
             print()
 
 
@@ -1228,13 +1034,9 @@ class InvestorMentorEngine:
 # ============================================================
 
 if __name__ == "__main__":
-
     engine = InvestorMentorEngine()
 
-    # Test investor
+    # Test investor ID; change this to an ID present in investor_features.csv.
     test_investor_id = 3
 
-    engine.display_recommendations(
-        test_investor_id,
-        top_n=5
-    )
+    engine.display_recommendations(test_investor_id, top_n=5)

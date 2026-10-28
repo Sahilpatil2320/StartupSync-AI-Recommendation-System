@@ -303,6 +303,49 @@ def industry_compatibility(
 # FOUNDER â†’ MENTOR ENGINE
 # ============================================================
 
+def assign_relative_match_percentages(recommendations):
+    """
+    Add distinct display percentages for the returned ranked list.
+
+    `score` remains the raw weighted compatibility score used for ranking.
+    `score_percentage` is a relative presentation score for this result list,
+    not a probability or a claim that the match is objectively 70-80% likely.
+    """
+    if not recommendations:
+        return recommendations
+
+    # Preserve raw scores for transparent debugging and downstream ranking.
+    raw_scores = []
+    for item in recommendations:
+        try:
+            raw_scores.append(float(item.get("score", 0.0)))
+        except (TypeError, ValueError):
+            raw_scores.append(0.0)
+
+    low = min(raw_scores)
+    high = max(raw_scores)
+
+    if len(recommendations) == 1:
+        recommendations[0]["score_percentage"] = 80.0
+        return recommendations
+
+    if high - low > 1e-9:
+        for item, raw_score in zip(recommendations, raw_scores):
+            relative = (raw_score - low) / (high - low)
+            item["score_percentage"] = round(70.0 + relative * 10.0, 1)
+    else:
+        # If raw scores tie, use rank order to avoid identical display labels.
+        # The underlying raw score remains unchanged and recommendations stay
+        # in the order established by the engine.
+        denominator = max(len(recommendations) - 1, 1)
+        for rank, item in enumerate(recommendations):
+            item["score_percentage"] = round(
+                80.0 - (rank / denominator) * 10.0, 1
+            )
+
+    return recommendations
+
+
 class FounderMentorEngine:
 
     def __init__(self):
@@ -774,8 +817,11 @@ class FounderMentorEngine:
             )
         )
 
+        selected = recommendations[:top_n]
+        assign_relative_match_percentages(selected)
+
         return (
-            recommendations[:top_n],
+            selected,
             industries
         )
 
@@ -893,7 +939,9 @@ class FounderMentorEngine:
             )
         )
 
-        return recommendations[:top_n]
+        selected = recommendations[:top_n]
+        assign_relative_match_percentages(selected)
+        return selected
 
 
 

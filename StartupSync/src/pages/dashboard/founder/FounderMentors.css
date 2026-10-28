@@ -1,60 +1,125 @@
+/* =========================================
+   FOUNDER MENTORS — STARTUPSYNC
+   Compact layout matching the reference UI
+   ========================================= */
+
 .founder-mentors-page {
+  width: 100%;
   max-width: 1500px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
-/* Header */
+/* =========================================
+   HEADER
+   ========================================= */
 
 .founder-mentors-header {
-  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+  margin-bottom: 36px;
+}
+
+.founder-mentors-header > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .founder-mentors-badge {
   display: inline-flex;
-  padding: 6px 11px;
-  margin-bottom: 9px;
+  align-items: center;
+  padding: 7px 13px;
+  margin-bottom: 10px;
+  border: 1px solid #dbeafe;
   border-radius: 999px;
   background: #eff6ff;
   color: #2563eb;
-  border: 1px solid #dbeafe;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .founder-mentors-header h2 {
-  margin: 0 0 7px;
+  margin: 0 0 9px;
   color: #0f172a;
-  font-size: 27px;
+  font-size: 32px;
+  line-height: 1.3;
+  font-weight: 700;
 }
 
 .founder-mentors-header p {
+  max-width: 850px;
   margin: 0;
-  max-width: 720px;
   color: #64748b;
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.65;
 }
 
-/* Filters */
+/* =========================================
+   TOTAL MENTORS CARD
+   ========================================= */
+
+.founder-mentors-total-card {
+  flex: 0 0 300px;
+  width: 300px;
+  min-height: 160px;
+  box-sizing: border-box;
+  padding: 26px 32px;
+  background: #ffffff;
+  border: 1px solid #dce5f2;
+  border-radius: 22px;
+  box-shadow: 0 6px 24px rgba(25, 50, 90, 0.035);
+}
+
+.founder-mentors-total-card > span {
+  display: block;
+  margin: 0 0 12px;
+  color: #64748b;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.founder-mentors-total-card > strong {
+  display: block;
+  margin: 0 0 10px;
+  color: #2864f0;
+  font-size: 46px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.founder-mentors-total-card > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* =========================================
+   FILTERS
+   ========================================= */
 
 .founder-mentors-filters {
-  padding: 18px;
-  margin-bottom: 25px;
+  padding: 22px;
+  margin-bottom: 32px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+  border-radius: 17px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.035);
 }
 
 .founder-mentors-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding: 0 13px;
-  margin-bottom: 13px;
+  gap: 11px;
+  height: 48px;
+  padding: 0 15px;
+  margin-bottom: 16px;
   border: 1px solid #cbd5e1;
-  border-radius: 9px;
+  border-radius: 11px;
   background: #f1f5f9;
   color: #64748b;
 }
@@ -68,12 +133,13 @@
 .founder-mentors-search input {
   width: 100%;
   height: 100%;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   color: #0f172a;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .founder-mentors-search input::placeholder {
@@ -82,18 +148,19 @@
 
 .founder-mentors-filter-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
 .founder-mentors-filter {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 42px;
-  padding: 0 11px;
+  gap: 9px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
   border: 1px solid #cbd5e1;
-  border-radius: 9px;
+  border-radius: 10px;
   background: #f1f5f9;
   color: #64748b;
 }
@@ -105,49 +172,147 @@
 
 .founder-mentors-filter select {
   width: 100%;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   color: #334155;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
 }
 
-/* Results */
+/* Optional reset button */
+
+.founder-mentors-reset {
+  min-height: 42px;
+  padding: 0 17px;
+  margin-top: 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.founder-mentors-reset:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+/* =========================================
+   RESULTS HEADINGS
+   ========================================= */
 
 .founder-mentors-results-header {
-  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .founder-mentors-results-header h3 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   color: #0f172a;
-  font-size: 18px;
+  font-size: 22px;
+  line-height: 1.4;
+  font-weight: 700;
 }
 
 .founder-mentors-results-header p {
   margin: 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-/* Grid */
+/* =========================================
+   TOP 5 AI RECOMMENDATIONS
+   ========================================= */
+
+.founder-mentors-recommendations {
+  margin-bottom: 36px;
+}
+
+.founder-mentors-recommendations-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.founder-mentors-recommendations-header h3 {
+  margin: 0 0 7px;
+  color: #0f172a;
+  font-size: 25px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.founder-mentors-recommendations-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Refresh button */
+
+.founder-mentors-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.founder-mentors-refresh:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+/* =========================================
+   MENTOR GRID
+   ========================================= */
 
 .founder-mentors-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 17px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 20px;
 }
 
-/* Card */
+/* =========================================
+   MENTOR CARDS
+   ========================================= */
 
 .founder-mentor-card {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 22px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+  border-radius: 19px;
+  box-shadow: 0 4px 17px rgba(15, 23, 42, 0.035);
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
@@ -157,66 +322,83 @@
 .founder-mentor-card:hover {
   transform: translateY(-2px);
   border-color: #bfdbfe;
-  box-shadow: 0 9px 24px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 8px 23px rgba(15, 23, 42, 0.065);
 }
+
+/* Card header */
 
 .founder-mentor-card-top {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .founder-mentor-avatar {
-  width: 47px;
-  height: 47px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  border-radius: 13px;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
   background: #eff6ff;
   color: #2563eb;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 800;
 }
 
 .founder-mentor-heading {
-  min-width: 0;
   flex: 1;
+  min-width: 0;
 }
 
 .founder-mentor-heading h4 {
   overflow: hidden;
-  margin: 0 0 4px;
+  margin: 0 0 7px;
   color: #0f172a;
-  font-size: 14px;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .founder-mentor-heading span {
+  display: block;
   color: #64748b;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
+
+/* AI match score */
 
 .founder-mentor-match {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 44px;
-  padding: 5px 7px;
-  border-radius: 8px;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 62px;
+  min-height: 58px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  border-radius: 12px;
   background: #f0fdf4;
 }
 
 .founder-mentor-match strong {
   color: #15803d;
-  font-size: 13px;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 700;
 }
 
 .founder-mentor-match span {
   color: #16a34a;
-  font-size: 9px;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 /* Location */
@@ -224,77 +406,100 @@
 .founder-mentor-location {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 15px 0;
+  gap: 8px;
+  margin: 17px 0;
   color: #64748b;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-/* Details */
+.founder-mentor-location svg {
+  flex-shrink: 0;
+}
+
+/* Experience and availability */
 
 .founder-mentor-details {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 13px 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 0;
   border-top: 1px solid #f1f5f9;
   border-bottom: 1px solid #f1f5f9;
 }
 
+.founder-mentor-details > div {
+  min-width: 0;
+}
+
 .founder-mentor-details span {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   color: #94a3b8;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .founder-mentor-details strong {
   display: block;
   color: #334155;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-/* Industries */
+/* Industry tags */
 
 .founder-mentor-industries {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 14px 0 10px;
+  gap: 7px;
+  margin: 16px 0 12px;
 }
 
 .founder-mentor-industries span {
-  padding: 5px 8px;
-  border-radius: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
   background: #f1f5f9;
   color: #475569;
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.4;
   font-weight: 600;
 }
 
-/* Network */
+/* Profile and mentoring format */
 
 .founder-mentor-network,
 .founder-mentor-format {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
   color: #64748b;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.founder-mentor-network svg,
+.founder-mentor-format svg {
+  flex-shrink: 0;
 }
 
 .founder-mentor-format {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
-/* Actions */
+/* =========================================
+   ACTION BUTTONS
+   ========================================= */
 
 .founder-mentor-actions {
   display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 9px;
+  margin-top: auto;
 }
 
 .founder-mentor-view-button,
@@ -302,24 +507,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 9px;
-  border-radius: 8px;
+  gap: 7px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 10px;
+  border-radius: 10px;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1.4;
   font-weight: 700;
+  text-align: center;
   cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .founder-mentor-view-button {
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #475569;
+  color: #334155;
 }
 
 .founder-mentor-view-button:hover {
   border-color: #93c5fd;
+  background: #eff6ff;
   color: #2563eb;
 }
 
@@ -330,6 +543,7 @@
 }
 
 .founder-mentor-request-button:hover {
+  border-color: #1d4ed8;
   background: #1d4ed8;
 }
 
@@ -343,80 +557,236 @@
   color: #15803d;
 }
 
-/* Empty */
+/* Dataset profile notice */
+
+.founder-mentor-dataset-notice {
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* =========================================
+   EMPTY STATE
+   ========================================= */
 
 .founder-mentors-empty {
   display: flex;
   align-items: center;
   flex-direction: column;
   justify-content: center;
-  padding: 65px 20px;
+  padding: 55px 20px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 16px;
   text-align: center;
 }
 
 .founder-mentors-empty-icon {
-  width: 52px;
-  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
   border-radius: 14px;
   background: #f1f5f9;
   color: #64748b;
 }
 
 .founder-mentors-empty h3 {
-  margin: 0 0 6px;
+  margin: 0 0 7px;
   color: #0f172a;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .founder-mentors-empty p {
   margin: 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* =========================================
+   RESPONSIVE LAYOUT
+   ========================================= */
+
+/* Smaller desktop / tablet */
+
+@media (max-width: 1200px) {
+  .founder-mentors-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 17px;
+  }
+
+  .founder-mentors-total-card {
+    flex-basis: 280px;
+    width: 280px;
+  }
+
+  .founder-mentor-card {
+    padding: 19px;
+  }
 }
 
 /* Tablet */
 
-@media (max-width: 1150px) {
-  .founder-mentors-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 850px) {
+  .founder-mentors-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
   }
-}
 
-/* Smaller tablet */
+  .founder-mentors-total-card {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 0;
+    padding: 20px 24px;
+    border-radius: 17px;
+  }
 
-@media (max-width: 800px) {
+  .founder-mentors-total-card > span {
+    margin-bottom: 8px;
+    font-size: 15px;
+  }
+
+  .founder-mentors-total-card > strong {
+    margin-bottom: 8px;
+    font-size: 38px;
+  }
+
+  .founder-mentors-total-card > p {
+    font-size: 14px;
+  }
+
   .founder-mentors-filter-row {
-    grid-template-columns: 1fr;
-  }
-
-  .founder-mentors-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 /* Mobile */
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
   .founder-mentors-header h2 {
-    font-size: 23px;
+    font-size: 27px;
+  }
+
+  .founder-mentors-header p {
+    font-size: 14px;
   }
 
   .founder-mentors-filters {
-    padding: 14px;
+    padding: 15px;
+    margin-bottom: 26px;
+    border-radius: 14px;
+  }
+
+  .founder-mentors-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .founder-mentors-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+  }
+
+  .founder-mentors-results-header h3 {
+    font-size: 20px;
+  }
+
+  .founder-mentors-results-header p {
+    font-size: 13px;
+  }
+
+  .founder-mentors-recommendations-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .founder-mentors-recommendations-header h3 {
+    font-size: 22px;
+  }
+
+  .founder-mentors-recommendations-header p {
+    font-size: 14px;
   }
 
   .founder-mentor-card {
-    padding: 17px;
+    padding: 18px;
+    border-radius: 15px;
+  }
+
+  .founder-mentor-avatar {
+    flex-basis: 46px;
+    width: 46px;
+    height: 46px;
+    font-size: 20px;
+  }
+
+  .founder-mentor-heading h4 {
+    font-size: 15px;
+  }
+
+  .founder-mentor-heading span {
+    font-size: 12px;
+  }
+
+  .founder-mentor-match {
+    min-width: 55px;
+    min-height: 51px;
+    padding: 5px;
+  }
+
+  .founder-mentor-match strong {
+    font-size: 15px;
+  }
+
+  .founder-mentor-match span {
+    font-size: 10px;
   }
 
   .founder-mentor-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .founder-mentor-view-button,
+  .founder-mentor-request-button {
+    min-height: 42px;
+    padding: 8px;
+    font-size: 11px;
+  }
+}
+
+/* Very small mobile screens */
+
+@media (max-width: 380px) {
+  .founder-mentor-card-top {
+    gap: 8px;
+  }
+
+  .founder-mentor-avatar {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    font-size: 18px;
+  }
+
+  .founder-mentor-heading h4 {
+    font-size: 14px;
+  }
+
+  .founder-mentor-match {
+    min-width: 49px;
+  }
+
+  .founder-mentor-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

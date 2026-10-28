@@ -10,6 +10,7 @@ import {
     X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import "./FounderInvestors.css";
 
@@ -96,9 +97,11 @@ function FounderInvestors() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [aiRecommendations, setAiRecommendations] = useState([]);
+    const [aiSearchTerm, setAiSearchTerm] = useState("");
+    const [aiSortBy, setAiSortBy] = useState("score");
     const [aiLoading, setAiLoading] = useState(true);
     const [aiError, setAiError] = useState("");
-    const [selectedProfile, setSelectedProfile] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchInvestors = async () => {
@@ -290,7 +293,7 @@ function FounderInvestors() {
                     <button
                         type="button"
                         className="founder-investor-view-button"
-                        onClick={() => setSelectedProfile({ type: "dataset", data: recommendation || {} })}
+                        onClick={() => navigate(`/dashboard/founder/investors/profile/${encodeURIComponent(String(recommendation?.investor_id || recommendation?.investorId || recommendation?.dataset_id || recommendation?.id || getAiName(recommendation || {})))}`, { state: { profileType: "dataset", profile: recommendation || {} } })}
                     >
                         Dataset Profile <ArrowRight size={15} />
                     </button>
@@ -312,7 +315,7 @@ function FounderInvestors() {
                 <button
                     type="button"
                     className="founder-investor-view-button"
-                    onClick={() => setSelectedProfile({ type: "registered", data: mongoInvestor })}
+                    onClick={() => navigate(`/dashboard/founder/investors/profile/${encodeURIComponent(String(mongoInvestor.id))}`, { state: { profileType: "registered", profile: mongoInvestor } })}
                 >
                     View Profile <ArrowRight size={15} />
                 </button>
@@ -328,6 +331,37 @@ function FounderInvestors() {
         );
     };
 
+    const otherAiRecommendations = useMemo(() => {
+        const query = aiSearchTerm.trim().toLowerCase();
+        const remaining = aiRecommendations.slice(5).filter((investor) => {
+            if (!query) return true;
+            const searchable = [
+                getAiName(investor),
+                getAiFirm(investor),
+                investor.primary_domain,
+                investor.secondary_domain_features,
+                investor.tag_features,
+                investor.thesis_features,
+                investor.bio_features,
+                investor.investment_history,
+                investor.funding_stage,
+                investor.investment_stages,
+                investor.location,
+            ].filter(Boolean).join(" ").toLowerCase();
+            return searchable.includes(query);
+        });
+        return remaining.sort((a, b) => {
+            if (aiSortBy === "name") return getAiName(a).localeCompare(getAiName(b));
+            if (aiSortBy === "firm") return getAiFirm(a).localeCompare(getAiFirm(b));
+            return (getAiScore(b) ?? -1) - (getAiScore(a) ?? -1);
+        });
+    }, [aiRecommendations, aiSearchTerm, aiSortBy]);
+
+    const totalInvestorCount = useMemo(() => {
+        const datasetOnlyCount = aiRecommendations.filter((recommendation) => !findMongoInvestor(recommendation)).length;
+        return investors.length + datasetOnlyCount;
+    }, [investors, aiRecommendations]);
+
     const stages = ["Idea", "Pre-Seed", "Seed", "Series A", "Growth"];
     const ranges = [
         "Up to ₹25 Lakhs",
@@ -340,11 +374,16 @@ function FounderInvestors() {
 
     return (
         <div className="founder-investors-page">
-            <section className="founder-investors-header">
+            <section className="founder-investors-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
                 <div>
                     <span className="founder-investors-badge">Investor Discovery</span>
                     <h2>Find Investors</h2>
                     <p>Discover investors who match your startup&apos;s industry, stage and funding requirements.</p>
+                </div>
+                <div style={{ minWidth: 170, padding: "16px 22px", border: "1px solid #dbe5f1", borderRadius: 16, background: "#ffffff", boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)", textAlign: "left" }} aria-label="Total investors">
+                    <span style={{ display: "block", color: "#64748b", fontSize: 13, marginBottom: 6 }}>Total Investors</span>
+                    <strong style={{ display: "block", color: "#2563eb", fontSize: 28, lineHeight: 1.1 }}>{loading && aiLoading ? "—" : totalInvestorCount.toLocaleString("en-IN")}</strong>
+                    <span style={{ display: "block", color: "#64748b", fontSize: 12, marginTop: 5 }}>Registered + dataset profiles</span>
                 </div>
             </section>
 
@@ -415,6 +454,100 @@ function FounderInvestors() {
                     Match percentages are ranking scores, not probabilities of receiving funding.
                 </p>
             </section>
+
+            {aiRecommendations.length > 5 && (
+                <section className="founder-investors-ai-section" style={{ marginBottom: 24 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+                        <div>
+                            <h3 style={{ marginBottom: 6 }}>All Other Investors in the AI Dataset</h3>
+                            <p style={{ color: "#64748b", margin: 0 }}>
+                                {otherAiRecommendations.length} of {aiRecommendations.length - 5} additional dataset investors, ranked after the top five recommendations.
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 10, flex: "1 1 300px", minWidth: 220, background: "#fff", border: "1px solid #cbd5e1", borderRadius: 12, padding: "0 14px", minHeight: 48, color: "#64748b" }}>
+                            <Search size={18} />
+                            <input
+                                type="search"
+                                aria-label="Search other AI dataset investors"
+                                placeholder="Search investors, firms, industries or stages..."
+                                value={aiSearchTerm}
+                                onChange={(event) => setAiSearchTerm(event.target.value)}
+                                style={{ width: "100%", border: 0, outline: 0, background: "transparent", color: "#0f172a", font: "inherit" }}
+                            />
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 48, padding: "0 14px", border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", color: "#475569" }}>
+                            <TrendingUp size={16} />
+                            <select aria-label="Sort other AI dataset investors" value={aiSortBy} onChange={(event) => setAiSortBy(event.target.value)} style={{ border: 0, outline: 0, background: "transparent", color: "inherit", font: "inherit" }}>
+                                <option value="score">Sort: Match score</option>
+                                <option value="name">Sort: Name A–Z</option>
+                                <option value="firm">Sort: Firm A–Z</option>
+                            </select>
+                        </label>
+                    </div>
+                    {otherAiRecommendations.length ? <section className="founder-investors-grid">
+                        {otherAiRecommendations.map((investor, index) => {
+                            const score = getAiScore(investor);
+                            const mongoInvestor = findMongoInvestor(investor);
+                            const name = getAiName(investor);
+                            const firm = getAiFirm(investor);
+                            const stagesText =
+                                investor.funding_stage ||
+                                investor.investment_stages ||
+                                "Not specified";
+
+                            return (
+                                <article
+                                    className="founder-investor-card"
+                                    key={`dataset-${investor.investor_id || investor.id || firm}-${index}`}
+                                >
+                                    <div className="founder-investor-card-top">
+                                        <div className="founder-investor-avatar">
+                                            {String(name || "I").charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="founder-investor-heading">
+                                            <h4>{name}</h4>
+                                            <span>{firm}</span>
+                                        </div>
+                                        <div className="founder-investor-match">
+                                            <strong>{score !== null ? `${score.toFixed(1)}%` : "—"}</strong>
+                                            <span>Relative match</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="founder-investor-details">
+                                        <div>
+                                            <span>Investment Stages</span>
+                                            <strong>{stagesText}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Investor Status</span>
+                                            <strong>{investor.active === true ? "Active" : "Status unverified"}</strong>
+                                        </div>
+                                    </div>
+
+                                    <div className="founder-investor-network">
+                                        <TrendingUp size={15} />
+                                        <span>AI dataset recommendation</span>
+                                    </div>
+
+                                    {mongoInvestor && (
+                                        <div className="founder-investor-location">
+                                            <MapPin size={14} /> {mongoInvestor.location}
+                                        </div>
+                                    )}
+
+                                    {renderInvestorActions(mongoInvestor, investor)}
+                                </article>
+                            );
+                        })}
+                    </section> : <section className="founder-investors-empty"><p>No dataset investors match your search. Try another name, firm, industry or stage.</p></section>}
+                    <p style={{ color: "#64748b", fontSize: 12, marginTop: 10 }}>
+                        Dataset entries that are not linked to a registered StartupSync account can be viewed, but cannot receive connection requests.
+                    </p>
+                </section>
+            )}
 
             <section className="founder-investors-filters">
                 <div className="founder-investors-search">
@@ -509,7 +642,7 @@ function FounderInvestors() {
                                     <button
                                         type="button"
                                         className="founder-investor-view-button"
-                                        onClick={() => setSelectedProfile({ type: "registered", data: investor })}
+                                        onClick={() => navigate(`/dashboard/founder/investors/profile/${encodeURIComponent(String(investor.id))}`, { state: { profileType: "registered", profile: investor } })}
                                     >View Profile <ArrowRight size={15} /></button>
                                     <button
                                         type="button"
@@ -532,67 +665,7 @@ function FounderInvestors() {
                 </section>
             )}
 
-            {selectedProfile && (
-                <div
-                    className="investor-profile-modal-backdrop"
-                    role="presentation"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) setSelectedProfile(null);
-                    }}
-                >
-                    <section
-                        className="investor-profile-modal"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="investor-profile-modal-title"
-                    >
-                        <div className="investor-profile-modal-header">
-                            <div>
-                                <span className="investor-profile-modal-eyebrow">
-                                    {selectedProfile.type === "dataset" ? "AI dataset profile" : "Registered investor profile"}
-                                </span>
-                                <h3 id="investor-profile-modal-title">
-                                    {getAiName(selectedProfile.data) || selectedProfile.data.name || selectedProfile.data.firmName || "Investor profile"}
-                                </h3>
-                            </div>
-                            <button
-                                type="button"
-                                className="investor-profile-modal-close"
-                                onClick={() => setSelectedProfile(null)}
-                                aria-label="Close investor profile"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-                        {selectedProfile.type === "dataset" && (
-                            <p className="investor-profile-modal-note">
-                                This information comes from the AI recommendation dataset. It is not a registered StartupSync account, so connection requests cannot be sent to this entry.
-                            </p>
-                        )}
-                        <div className="investor-profile-modal-fields">
-                            {Object.entries(selectedProfile.data || {})
-                                .filter(([key, value]) =>
-                                    value !== null && value !== undefined && value !== "" &&
-                                    !["__v", "password", "passwordHash", "token"].includes(key) &&
-                                    typeof value !== "function"
-                                )
-                                .map(([key, value]) => {
-                                    const displayValue = Array.isArray(value)
-                                        ? value.join(", ")
-                                        : typeof value === "object"
-                                            ? JSON.stringify(value, null, 2)
-                                            : String(value);
-                                    return (
-                                        <div className="investor-profile-modal-field" key={key}>
-                                            <span>{key.replace(/([A-Z])/g, " $1").replace(/[_-]/g, " ").replace(/^./, (letter) => letter.toUpperCase())}</span>
-                                            <strong>{displayValue}</strong>
-                                        </div>
-                                    );
-                                })}
-                        </div>
-                    </section>
-                </div>
-            )}
+
         </div>
     );
 }

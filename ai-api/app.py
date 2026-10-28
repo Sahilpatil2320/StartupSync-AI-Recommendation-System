@@ -12,6 +12,7 @@ from flask_cors import CORS
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from founder_weighted_ranker import rank_founder_candidates
 
 app = Flask(__name__)
 CORS(app)
@@ -264,6 +265,76 @@ def make_json_safe(value):
     return value
 
 
+def calibrate_founder_match_scores(payload):
+    """
+    Keep the original model score for debugging, but expose a calibrated
+    70-80 relative-match display score for founder discovery cards.
+
+    This is a UI calibration, NOT a probability and NOT a substitute for
+    evaluating recommendation quality. Ranking remains based on the weighted
+    ranker's original scores.
+    """
+    def calibrate_candidate(candidate):
+        if not isinstance(candidate, dict):
+            return
+
+        # Do not calibrate a score that the engine has already calibrated.
+        if candidate.get("score_type") == "calibrated_relative_match":
+            return
+
+        # Preserve the model score so the raw output remains auditable.
+        raw_percent = candidate.get("raw_score_percentage")
+        if raw_percent is None:
+            raw_percent = candidate.get("score_percentage")
+        raw_score = candidate.get("score")
+
+        try:
+            if raw_percent is not None:
+                raw = float(raw_percent)
+                if raw > 1:
+                    raw /= 100.0
+            elif raw_score is not None:
+                raw = float(raw_score)
+                if raw > 1:
+                    raw /= 100.0
+            else:
+                return
+
+            raw = max(0.0, min(raw, 1.0))
+            candidate.setdefault(
+                "raw_score_percentage",
+                round(raw * 100.0, 2)
+            )
+            candidate["score_percentage"] = round(70.0 + (10.0 * raw), 2)
+            candidate["score_label"] = "Relative match"
+            candidate["score_type"] = "calibrated_relative_match"
+        except (TypeError, ValueError):
+            return
+
+    if isinstance(payload, list):
+        for candidate in payload:
+            calibrate_candidate(candidate)
+        return payload
+
+    if isinstance(payload, dict):
+        # Handle the common response shape and nested engine-specific shapes.
+        for key in ("recommendations", "results", "data"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                for candidate in value:
+                    calibrate_candidate(candidate)
+            elif isinstance(value, dict):
+                calibrate_founder_match_scores(value)
+
+        # Some weighted rankers return the candidate list directly under a
+        # differently named collection. Calibrate only dictionaries that look
+        # like candidate records, not metadata.
+        if any(k in payload for k in ("score", "score_percentage")):
+            calibrate_candidate(payload)
+
+    return payload
+
+
 def recommendation_response(key, source_id, top_n=None):
     if top_n is None:
         top_n = request.args.get("top_n", 5)
@@ -280,6 +351,45 @@ def recommendation_response(key, source_id, top_n=None):
         }), 400
 
     try:
+        # Founder -> Student uses its dedicated recommendation engine directly.
+        # This avoids reflection-based method selection and preserves the
+        # engine's predicted-industry metadata in the API response.
+        if key == "founder_student":
+            module = importlib.import_module(MODULES[key])
+            engine_class = getattr(module, "FounderStudentEngine")
+            engine = engine_class()
+            recommendations, predicted_industries = engine.recommend_students(
+                founder_id=source_id,
+                top_n=top_n,
+            )
+            recommendations = calibrate_founder_match_scores(recommendations)
+            return jsonify(make_json_safe({
+                "success": True,
+                "direction": key,
+                "source_id": str(source_id),
+                "method": "FounderStudentEngine: weighted TF-IDF and profile compatibility",
+                "score_type": "calibrated_relative_match",
+                "score_label": "Relative match",
+                "predicted_industries": predicted_industries,
+                "recommendations": recommendations,
+            }))
+
+        # Optional weighted ranker for any explicitly configured founder target.
+        founder_target_map = {}
+
+        if key in founder_target_map:
+            weighted_result = rank_founder_candidates(
+                source_id,
+                founder_target_map[key],
+                top_n
+            )
+
+            if weighted_result is not None:
+                # Apply a consistent 70-80 relative-match display calibration
+                # to Founder -> Investor/Mentor/Student results. The original
+                # model score is retained as raw_score_percentage.
+                weighted_result = calibrate_founder_match_scores(weighted_result)
+                return jsonify(make_json_safe(weighted_result))
 
         result, method_name = run_recommendation(
             MODULES[key],
@@ -311,6 +421,12 @@ def recommendation_response(key, source_id, top_n=None):
 
             recommendations = result
             extra = {}
+
+        # Founder -> Mentor uses its dedicated recommendation engine.
+        # Keep the real score for auditing while displaying a consistent
+        # 70-80 relative-match score on the discovery cards.
+        if key in ("founder_mentor", "founder_student"):
+            recommendations = calibrate_founder_match_scores(recommendations)
 
         response_data = {
             "success": True,
@@ -701,6 +817,7 @@ def recommend_custom_founder_mentors():
             data,
             top_n=top_n,
         )
+        recommendations = calibrate_founder_match_scores(recommendations)
 
         return jsonify(make_json_safe({
             "success": True,
@@ -861,6 +978,22 @@ def recommend_custom_profile():
         candidates_df = __import__("pandas").read_csv(dataset_path).fillna("")
         if candidates_df.empty:
             return jsonify({"success": True, "recommendations": [], "total": 0})
+
+        # Investor -> Founder/Startup uses structured compatibility scoring even
+        # when the registered investor has no linked dataset ID. Other directions
+        # keep the existing generic text-similarity implementation.
+        if source_role == "investor" and target_role in {"founders", "startups"}:
+            engine = load_engine(MODULES["investor_founder"])
+            recommendations = engine.recommend_custom_investor(profile, top_n=limit)
+            return jsonify({
+                "success": True,
+                "source_role": source_role,
+                "target_role": target_role,
+                "score_type": "weighted_compatibility",
+                "score_label": "Compatibility score",
+                "total": len(recommendations),
+                "recommendations": recommendations,
+            })
 
         source_text = flatten({
             key: value for key, value in profile.items()

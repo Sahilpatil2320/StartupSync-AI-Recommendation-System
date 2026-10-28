@@ -365,6 +365,45 @@ def funding_stage_score(founder_stage, investor_stages):
     return 0.0
 
 # ============================================================
+# RELATIVE MATCH DISPLAY
+# ============================================================
+
+def apply_relative_match_percentages(recommendations, low=70.0, high=80.0):
+    """Attach a rank-preserving relative-match percentage to each result.
+
+    The percentage is a presentation/ranking indicator, NOT a probability
+    of receiving funding. Raw model scores remain available in ``score`` and
+    ``raw_score_percentage`` so evaluation can use the uncalibrated values.
+    """
+    if not recommendations:
+        return recommendations
+
+    raw_scores = []
+    for item in recommendations:
+        try:
+            raw = float(item.get("score", 0.0))
+        except (TypeError, ValueError):
+            raw = 0.0
+        raw_scores.append(max(0.0, raw))
+
+    max_score = max(raw_scores, default=0.0)
+    min_score = min(raw_scores, default=0.0)
+    spread = max_score - min_score
+
+    for item, raw in zip(recommendations, raw_scores):
+        item["raw_score_percentage"] = round(raw * 100.0, 2)
+        if max_score <= 0:
+            relative = low
+        else:
+            # Scale by the strongest candidate to preserve score ordering.
+            relative = low + (high - low) * (raw / max_score)
+        item["score_percentage"] = round(max(low, min(high, relative)), 2)
+        item["score_type"] = "relative_match_not_probability"
+
+    return recommendations
+
+
+# ============================================================
 
 # TF-IDF SIMILARITY
 
@@ -1550,6 +1589,10 @@ class FounderInvestorEngine:
 
         )
 
+        # Keep the model's ranking, but show an easier-to-read relative
+        # match percentage in the 70-80 range. Raw scores remain preserved.
+        apply_relative_match_percentages(recommendations)
+
         return (
 
             recommendations[:top_n],
@@ -1681,6 +1724,7 @@ class FounderInvestorEngine:
             )
         )
 
+        apply_relative_match_percentages(recommendations)
         return recommendations[:top_n]
 
 
