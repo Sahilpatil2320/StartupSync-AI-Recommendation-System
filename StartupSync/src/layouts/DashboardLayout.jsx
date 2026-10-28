@@ -1,41 +1,41 @@
-import { useState } from "react";
 
+import { useState } from "react";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import DashboardTopbar from "../components/dashboard/DashboardTopbar";
-
 import "./DashboardLayout.css";
 
-function DashboardLayout({
-  role,
-  children
-}) {
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false);
+function DashboardLayout({ role, children }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const normalizedRole = String(role || "founder").toLowerCase();
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((previous) => !previous);
+  };
 
   return (
-    <div className="dashboard-layout">
-
+    <div
+      className={`dashboard-layout ${
+        sidebarCollapsed ? "sidebar-collapsed" : ""
+      }`}
+    >
       <DashboardSidebar
-        role={role}
+        role={normalizedRole}
         isOpen={sidebarOpen}
+        isCollapsed={sidebarCollapsed}
         onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={toggleSidebar}
       />
 
       <div className="dashboard-main">
-
         <DashboardTopbar
-          role={role}
-          onMenuClick={() =>
-            setSidebarOpen(true)
-          }
+          role={normalizedRole}
+          onMenuClick={() => setSidebarOpen(true)}
         />
 
-        <main className="dashboard-content">
-          {children}
-        </main>
-
+        <main className="dashboard-content">{children}</main>
       </div>
-
     </div>
   );
 }

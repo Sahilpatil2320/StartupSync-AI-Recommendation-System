@@ -223,3 +223,103 @@
     cursor: pointer;
   }
 }
+
+
+/* Brand navigation */
+.dashboard-brand-button {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dashboard-brand-button > * {
+  cursor: pointer;
+}
+
+/* Desktop collapse arrow */
+.dashboard-sidebar-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 9px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.dashboard-sidebar-collapse:hover {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+}
+
+.dashboard-role-text,
+.dashboard-nav-text {
+  min-width: 0;
+}
+
+.dashboard-sidebar-collapsed {
+  width: 82px;
+  min-width: 82px;
+}
+
+.dashboard-sidebar-collapsed .dashboard-sidebar-header {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dashboard-sidebar-collapsed .dashboard-brand-button {
+  display: none;
+}
+
+.dashboard-sidebar-collapsed .dashboard-role {
+  justify-content: center;
+  padding-inline: 8px;
+}
+
+.dashboard-sidebar-collapsed .dashboard-role-text,
+.dashboard-sidebar-collapsed .dashboard-navigation-label,
+.dashboard-sidebar-collapsed .dashboard-nav-text {
+  display: none;
+}
+
+.dashboard-sidebar-collapsed .dashboard-nav-item {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+}
+
+.dashboard-sidebar-collapsed .dashboard-sidebar-bottom {
+  align-items: stretch;
+}
+
+@media (max-width: 768px) {
+  .dashboard-sidebar-collapse {
+    display: none;
+  }
+
+  .dashboard-sidebar-collapsed {
+    width: 280px;
+    min-width: 280px;
+  }
+
+  .dashboard-sidebar-collapsed .dashboard-role-text,
+  .dashboard-sidebar-collapsed .dashboard-navigation-label,
+  .dashboard-sidebar-collapsed .dashboard-nav-text {
+    display: initial;
+  }
+
+  .dashboard-sidebar-collapsed .dashboard-nav-item {
+    justify-content: flex-start;
+    gap: 14px;
+    padding-inline: 16px;
+  }
+}

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import { connectSocket } from "../../../services/socket";
 import "./InvestorNotifications.css";
@@ -43,26 +44,28 @@ const getNotificationType = (notification) => {
 };
 
 const normalizeNotification = (notification) => {
+  if (!notification || typeof notification !== "object") return null;
+
   const id = getNotificationId(notification);
 
   return {
     ...notification,
     id,
     type: getNotificationType(notification),
-    title: notification?.title || notification?.subject || "Notification",
+    title: notification.title || notification.subject || "Notification",
     message:
-      notification?.message ||
-      notification?.description ||
-      notification?.body ||
+      notification.message ||
+      notification.description ||
+      notification.body ||
       "",
     details:
-      notification?.details ||
-      notification?.message ||
-      notification?.description ||
+      notification.details ||
+      notification.message ||
+      notification.description ||
       "",
-    createdAt: notification?.createdAt || notification?.updatedAt || null,
-    read: Boolean(notification?.isRead ?? notification?.read ?? false),
-    link: notification?.link || "",
+    createdAt: notification.createdAt || notification.updatedAt || null,
+    read: Boolean(notification.isRead ?? notification.read ?? false),
+    link: notification.link || "",
   };
 };
 
@@ -78,7 +81,6 @@ const extractNotifications = (response) => {
 
 const getNotificationDate = (notification) => {
   const date = notification?.createdAt || notification?.updatedAt;
-
   if (!date) return "Recently";
 
   const timestamp = new Date(date).getTime();
@@ -101,6 +103,8 @@ const getNotificationDate = (notification) => {
 };
 
 function InvestorNotifications() {
+  const navigate = useNavigate();
+
   const [notifications, setNotifications] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedNotification, setSelectedNotification] = useState(null);
@@ -112,15 +116,15 @@ function InvestorNotifications() {
     (notification) => !notification.read
   ).length;
 
-  const loadNotifications = useCallback(async () => {
-    setLoading(true);
+  const loadNotifications = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true);
     setError("");
 
     try {
       const response = await api.get("/notifications");
       const records = extractNotifications(response)
         .map(normalizeNotification)
-        .filter((notification) => notification.id);
+        .filter((notification) => notification?.id);
 
       setNotifications(records);
     } catch (err) {
@@ -129,7 +133,7 @@ function InvestorNotifications() {
           "Unable to load notifications. Please try again."
       );
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   }, []);
 
@@ -138,19 +142,34 @@ function InvestorNotifications() {
   }, [loadNotifications]);
 
   useEffect(() => {
-    const socket = connectSocket();
+    const token = localStorage.getItem("startupsync_token");
+    if (!token) return undefined;
+
+    // connectSocket must authenticate with the JWT required by server.js.
+    // This supports both connectSocket(token) and the existing no-argument
+    // helper if it already reads the token internally.
+    const socket = connectSocket(token);
     if (!socket) return undefined;
 
-    const handleNewNotification = (incoming) => {
-      const notification = normalizeNotification(incoming);
-      if (!notification.id) return;
+    const upsertNotification = (rawNotification) => {
+      const notification = normalizeNotification(
+        rawNotification?.notification || rawNotification
+      );
+
+      if (!notification?.id) {
+        // Some events carry only an ID or a count; fetch the canonical list.
+        loadNotifications(false);
+        return;
+      }
 
       setNotifications((current) => {
         const exists = current.some((item) => item.id === notification.id);
 
         if (exists) {
           return current.map((item) =>
-            item.id === notification.id ? { ...item, ...notification } : item
+            item.id === notification.id
+              ? { ...item, ...notification }
+              : item
           );
         }
 
@@ -159,20 +178,24 @@ function InvestorNotifications() {
     };
 
     const handleNotificationUpdated = (payload) => {
-      const updated = normalizeNotification(payload?.notification);
-      if (!updated.id) return;
+      const notification = normalizeNotification(payload?.notification);
+
+      if (!notification?.id) {
+        loadNotifications(false);
+        return;
+      }
 
       setNotifications((current) =>
         current.map((item) =>
-          item.id === updated.id
-            ? { ...item, ...updated, read: updated.read }
+          item.id === notification.id
+            ? { ...item, ...notification }
             : item
         )
       );
 
       setSelectedNotification((current) =>
-        current?.id === updated.id
-          ? { ...current, ...updated, read: updated.read }
+        current?.id === notification.id
+          ? { ...current, ...notification }
           : current
       );
     };
@@ -189,7 +212,11 @@ function InvestorNotifications() {
 
     const handleNotificationDeleted = (payload) => {
       const deletedId = String(payload?.notificationId || "");
-      if (!deletedId) return;
+
+      if (!deletedId) {
+        loadNotifications(false);
+        return;
+      }
 
       setNotifications((current) =>
         current.filter((item) => item.id !== deletedId)
@@ -200,18 +227,25 @@ function InvestorNotifications() {
       );
     };
 
-    socket.on("notification:new", handleNewNotification);
+    // Listen to both names for compatibility with existing backend emitters.
+    socket.on("notification:created", upsertNotification);
+    socket.on("notification:new", upsertNotification);
     socket.on("notification:updated", handleNotificationUpdated);
     socket.on("notification:read-all", handleAllNotificationsRead);
     socket.on("notification:deleted", handleNotificationDeleted);
 
+    const handleConnect = () => loadNotifications(false);
+    socket.on("connect", handleConnect);
+
     return () => {
-      socket.off("notification:new", handleNewNotification);
+      socket.off("notification:created", upsertNotification);
+      socket.off("notification:new", upsertNotification);
       socket.off("notification:updated", handleNotificationUpdated);
       socket.off("notification:read-all", handleAllNotificationsRead);
       socket.off("notification:deleted", handleNotificationDeleted);
+      socket.off("connect", handleConnect);
     };
-  }, []);
+  }, [loadNotifications]);
 
   const filteredNotifications = useMemo(() => {
     if (activeFilter === "all") return notifications;
@@ -329,11 +363,6 @@ function InvestorNotifications() {
   const openNotification = async (notification) => {
     setSelectedNotification(notification);
 
-    if (notification.link && notification.link.startsWith("/")) {
-      // Navigation is intentionally handled by the notification detail modal.
-      // Preserve the existing Investor notification page behavior.
-    }
-
     if (!notification.read) {
       await markAsRead(notification);
     }
@@ -342,7 +371,9 @@ function InvestorNotifications() {
   const openNotificationLink = (notification) => {
     if (!notification?.link?.startsWith("/")) return;
 
-    window.location.assign(notification.link);
+    // Keep navigation within the React Router application.
+    navigate(notification.link);
+    setSelectedNotification(null);
   };
 
   return (

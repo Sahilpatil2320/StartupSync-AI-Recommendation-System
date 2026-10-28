@@ -1,31 +1,326 @@
+
+/* Main dashboard layout */
 .dashboard-layout {
+  --dashboard-sidebar-width: 270px;
+  --dashboard-sidebar-collapsed-width: 76px;
+
+  display: grid;
+  grid-template-columns: var(--dashboard-sidebar-width) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
-  background: #f8fafc;
+  overflow-x: clip;
+  background: #f7f9fc;
+  transition: grid-template-columns 220ms ease;
 }
 
-.dashboard-main {
-  min-height: 100vh;
-  margin-left: 260px;
+/* Collapsed sidebar: narrow icon rail */
+.dashboard-layout.sidebar-collapsed {
+  grid-template-columns: var(--dashboard-sidebar-collapsed-width) minmax(0, 1fr);
 }
 
-.dashboard-content {
-  min-height: calc(100vh - 72px);
+/* Sidebar occupies exactly its grid column */
+.dashboard-layout > .dashboard-sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
-  padding: 26px;
+  z-index: 30;
+  transition: width 220ms ease;
 }
 
-@media (max-width: 900px) {
-  .dashboard-main {
-    margin-left: 0;
+/* Main panel always fills remaining width */
+.dashboard-layout > .dashboard-main {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: clip;
+}
+
+/* Main content */
+.dashboard-content {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+/* Prevent wide cards and grids from forcing horizontal overflow */
+.dashboard-content > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-content img,
+.dashboard-content table {
+  max-width: 100%;
+}
+
+/* Smooth, professional layout transitions */
+.dashboard-layout *,
+.dashboard-layout *::before,
+.dashboard-layout *::after {
+  box-sizing: border-box;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .dashboard-layout {
+    --dashboard-sidebar-width: 245px;
   }
 
   .dashboard-content {
-    padding: 22px;
+    padding: 24px;
   }
 }
 
-@media (max-width: 600px) {
+/* Mobile: sidebar becomes an overlay drawer */
+@media (max-width: 768px) {
+  .dashboard-layout,
+  .dashboard-layout.sidebar-collapsed {
+    display: block;
+    min-height: 100vh;
+  }
+
+  .dashboard-layout > .dashboard-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px !important;
+    max-width: min(280px, 85vw);
+    height: 100dvh;
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition:
+      transform 220ms ease,
+      visibility 220ms ease;
+    z-index: 100;
+  }
+
+  .dashboard-layout > .dashboard-sidebar.dashboard-sidebar-open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .dashboard-layout.sidebar-collapsed > .dashboard-sidebar {
+    width: 280px !important;
+  }
+
+  .dashboard-layout > .dashboard-main {
+    width: 100%;
+    min-height: 100vh;
+  }
+
   .dashboard-content {
-    padding: 16px;
+    padding: 18px;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 480px) {
+  .dashboard-content {
+    padding: 14px;
+  }
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-layout,
+  .dashboard-layout > .dashboard-sidebar {
+    transition: none;
+  }
+}
+
+
+/* =====================================================
+   STARTUPSYNC SIDEBAR HEADER AND COLLAPSE TOGGLE FIX
+   ===================================================== */
+
+.dashboard-sidebar {
+  width: 270px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.dashboard-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 88px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  box-sizing: border-box;
+}
+
+/* Brand button: no invisible extra space */
+.dashboard-brand-button {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  max-width: calc(100% - 48px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dashboard-brand-button > * {
+  max-width: 100%;
+}
+
+/* Clear, visible toggle */
+.dashboard-sidebar-collapse {
+  position: relative;
+  z-index: 5;
+  display: inline-flex !important;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #17243a;
+  color: #e2e8f0;
+  opacity: 1;
+  visibility: visible;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.dashboard-sidebar-collapse svg {
+  display: block;
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.dashboard-sidebar-collapse:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #60a5fa;
+}
+
+.dashboard-sidebar-collapse:focus-visible {
+  outline: 3px solid #60a5fa;
+  outline-offset: 3px;
+}
+
+.dashboard-sidebar-collapse:active {
+  transform: scale(0.96);
+}
+
+/* Avoid overlapping the mobile close button */
+.dashboard-sidebar-close {
+  flex-shrink: 0;
+}
+
+/* Proper compact icon rail */
+.dashboard-sidebar-collapsed {
+  width: 76px;
+  min-width: 0;
+}
+
+.dashboard-sidebar-collapsed .dashboard-sidebar-header {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 8px;
+}
+
+.dashboard-sidebar-collapsed .dashboard-brand-button {
+  display: none;
+}
+
+.dashboard-sidebar-collapsed .dashboard-sidebar-collapse {
+  flex-basis: 40px;
+}
+
+.dashboard-sidebar-collapsed .dashboard-role {
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.dashboard-sidebar-collapsed .dashboard-role-text,
+.dashboard-sidebar-collapsed .dashboard-navigation-label,
+.dashboard-sidebar-collapsed .dashboard-nav-text {
+  display: none !important;
+}
+
+.dashboard-sidebar-collapsed .dashboard-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.dashboard-sidebar-collapsed .dashboard-nav-item > svg {
+  flex-shrink: 0;
+}
+
+/* Mobile: use the drawer behavior instead of desktop collapsing */
+@media (max-width: 768px) {
+  .dashboard-sidebar-header {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .dashboard-sidebar-collapse {
+    display: none !important;
+  }
+
+  .dashboard-sidebar-collapsed .dashboard-sidebar-header {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .dashboard-sidebar-collapsed .dashboard-brand-button {
+    display: flex;
+  }
+
+  .dashboard-sidebar-collapsed .dashboard-role-text,
+  .dashboard-sidebar-collapsed .dashboard-navigation-label,
+  .dashboard-sidebar-collapsed .dashboard-nav-text {
+    display: initial !important;
+  }
+
+  .dashboard-sidebar-collapsed .dashboard-nav-item {
+    justify-content: flex-start;
+    gap: 14px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }

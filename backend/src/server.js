@@ -19,6 +19,10 @@ const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const investmentRoutes = require("./routes/investmentRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const dealPipelineRoutes = require("./routes/dealPipelineRoutes");
+const pitchRoomRoutes = require("./routes/pitchRoomRoutes");
+const mentorshipRoutes = require("./routes/mentorshipRoutes");
+const ecosystemRoutes = require("./routes/ecosystemRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -104,6 +108,10 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/investments", investmentRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/pipeline", dealPipelineRoutes);
+app.use("/api/pitch-room", pitchRoomRoutes);
+app.use("/api/mentorship", mentorshipRoutes);
+app.use("/api/ecosystem", ecosystemRoutes);
 
 const PORT = process.env.PORT || 5000;
 
