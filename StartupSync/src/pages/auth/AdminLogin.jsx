@@ -1,8 +1,11 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Eye,
+  EyeOff,
   LockKeyhole,
   Mail,
+  ShieldAlert,
   ShieldCheck
 } from "lucide-react";
 
@@ -10,6 +13,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import BrandLogo from "../../components/BrandLogo";
+import api from "../../services/api";
 
 import "./AdminLogin.css";
 
@@ -22,6 +26,9 @@ function AdminLogin() {
   });
 
   const [errors, setErrors] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -35,6 +42,8 @@ function AdminLogin() {
       ...previous,
       [name]: ""
     }));
+
+    setErrorMessage("");
   };
 
   const validateForm = () => {
@@ -57,14 +66,41 @@ function AdminLogin() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    console.log("Admin login:", formData);
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const response = await api.post("/auth/login", {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password
+      });
+
+      const { token, user } = response.data;
+
+      if (user.role !== "admin") {
+        setErrorMessage("Access denied. This account does not possess administrator privileges.");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("startupsync_token", token);
+      localStorage.setItem("startupsync_user", JSON.stringify(user));
+
+      navigate("/dashboard/admin");
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message || "Invalid administrator credentials. Please check your email and password."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,7 +119,7 @@ function AdminLogin() {
             onClick={() => navigate("/login")}
           >
             <ArrowLeft size={16} />
-            Change role
+            Back to role selection
           </button>
 
           <div className="admin-login-header">
@@ -93,17 +129,24 @@ function AdminLogin() {
             </div>
 
             <span className="admin-login-badge">
-              Administrator Login
+              <ShieldCheck size={14} />
+              Database Verified Access
             </span>
 
-            <h1>Welcome Back, Administrator</h1>
+            <h1>Administrator Login</h1>
 
             <p>
-              Sign in to manage users, startups,
-              platform activities and StartupSync services.
+              Sign in with your database-provisioned administrator credentials to manage platform users, startups, and analytics.
             </p>
 
           </div>
+
+          {errorMessage && (
+            <div className="admin-error-alert" role="alert">
+              <ShieldAlert size={18} />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           <form
             className="admin-login-form"
@@ -113,7 +156,7 @@ function AdminLogin() {
             <div className="login-form-field">
 
               <label htmlFor="admin-email">
-                Email
+                Administrator Email
                 <span className="required-mark"> *</span>
               </label>
 
@@ -130,9 +173,10 @@ function AdminLogin() {
                   id="admin-email"
                   name="email"
                   type="email"
-                  placeholder="Enter administrator email"
+                  placeholder="e.g. pushkarmeshram17@gmail.com"
                   value={formData.email}
                   onChange={handleChange}
+                  autoComplete="email"
                 />
               </div>
 
@@ -163,11 +207,21 @@ function AdminLogin() {
                 <input
                   id="admin-password"
                   name="password"
-                  type="password"
-                  placeholder="Enter your password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter administrator password"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="current-password"
                 />
+
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
 
               {errors.password && (
@@ -187,18 +241,24 @@ function AdminLogin() {
             <button
               type="submit"
               className="admin-login-button"
+              disabled={loading}
             >
-              Login as Administrator
-              <ArrowRight size={18} />
+              {loading ? (
+                <span>Authenticating...</span>
+              ) : (
+                <>
+                  <span>Sign In as Administrator</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
             </button>
 
           </form>
 
           <div className="admin-security-note">
-            <ShieldCheck size={15} />
-
+            <ShieldCheck size={16} />
             <span>
-              Authorized administrators only
+              Administrator accounts are provisioned via database. Public registration is disabled.
             </span>
           </div>
 

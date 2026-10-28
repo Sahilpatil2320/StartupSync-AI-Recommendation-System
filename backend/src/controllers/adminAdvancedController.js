@@ -337,10 +337,10 @@ const getAiMonitoring = async (req, res) => {
       }
     } catch {
       // Offline fallback metrics if AI service is starting
-      aiEvaluation = {
-        founder_to_investor: { precision_at_k: 1.0, recall_at_k: 1.0, ndcg_at_k: 0.9998, catalog_coverage: 10.28 },
-        student_to_startup: { precision_at_k: 0.898, ndcg_at_k: 0.9001, catalog_coverage: 6.0 },
-      };
+      // aiEvaluation = {
+      //   founder_to_investor: { precision_at_k: 1.0, recall_at_k: 1.0, ndcg_at_k: 0.9998, catalog_coverage: 10.28 },
+      //   student_to_startup: { precision_at_k: 0.898, ndcg_at_k: 0.9001, catalog_coverage: 6.0 },
+      // };
     }
 
     const datasetStats = datasetService.getStats();

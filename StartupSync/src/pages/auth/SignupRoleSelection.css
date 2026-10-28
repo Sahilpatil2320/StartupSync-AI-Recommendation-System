@@ -390,3 +390,44 @@
     font-size: 29px;
   }
 }
+
+
+/* Separate administrator entry point; admin is not a public signup role. */
+.signup-admin-access {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.signup-admin-access button {
+    padding: 2px 4px;
+    color: var(--primary);
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.signup-admin-access button:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.signup-admin-access button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+    .signup-admin-access {
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+}

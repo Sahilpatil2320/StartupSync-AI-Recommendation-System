@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BrandLogo from "../../components/BrandLogo";
@@ -11,6 +11,21 @@ function SignupRoleSelection() {
     const [selectedRole, setSelectedRole] = useState("");
 
     const navigate = useNavigate();
+
+    // If an administrator is already signed in, take them straight to their dashboard.
+    // This is a navigation convenience only; the dashboard and APIs remain protected.
+    useEffect(() => {
+        try {
+            const token = localStorage.getItem("startupsync_token");
+            const storedUser = localStorage.getItem("startupsync_user");
+            const user = storedUser ? JSON.parse(storedUser) : null;
+            if (token && user?.role === "admin") {
+                navigate("/dashboard/admin", { replace: true });
+            }
+        } catch {
+            // Ignore invalid cached user data and keep the public signup page available.
+        }
+    }, [navigate]);
 
     const handleContinue = () => {
         if (!selectedRole) {
@@ -61,6 +76,16 @@ function SignupRoleSelection() {
                         <ArrowRight size={18} />
                     </button>
 
+                </div>
+
+                <div className="signup-admin-access">
+                    <span>Platform administrator?</span>
+                    <button
+                        type="button"
+                        onClick={() => navigate("/login/admin")}
+                    >
+                        Admin Login
+                    </button>
                 </div>
 
                 <div className="signup-role-footer-text">
