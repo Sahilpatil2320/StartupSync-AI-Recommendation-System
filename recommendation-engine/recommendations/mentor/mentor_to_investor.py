@@ -1014,68 +1014,72 @@ class MentorInvestorEngine:
             })
 
 
+        # Rank by the ORIGINAL weighted model score first. Never replace this
+        # score before sorting, because doing so could change recommendation order.
         recommendations.sort(
             key=lambda x: x["score"],
             reverse=True
         )
 
-
         # ----------------------------------------------------
         # REMOVE DUPLICATE INVESTORS / FIRMS
         # ----------------------------------------------------
-
+        # Deduplicate the full candidate pool before calculating relative ranks.
+        # Do not stop at top_n here: the discovery page also needs scores for
+        # the remaining investor dataset records.
         unique_recommendations = []
-
         seen = set()
 
-
         for recommendation in recommendations:
+            firm = clean_text(recommendation.get("firm_name", ""))
+            investor_name = clean_text(recommendation.get("investor_name", ""))
 
-            firm = clean_text(
-                recommendation["firm_name"]
-            )
-
-            investor_name = clean_text(
-                recommendation["investor_name"]
-            )
-
-
-            unique_key = (
-                firm
-                if firm
-                else investor_name
-            )
-
-
+            unique_key = firm or investor_name
             if not unique_key:
-
-                unique_key = str(
-                    recommendation["investor_id"]
-                )
-
+                unique_key = str(recommendation.get("investor_id", ""))
 
             if unique_key in seen:
                 continue
 
+            seen.add(unique_key)
+            unique_recommendations.append(recommendation)
 
-            seen.add(
-                unique_key
+        # ----------------------------------------------------
+        # RELATIVE RANK SCORE FOR DISPLAY
+        # ----------------------------------------------------
+        # Raw weighted TF-IDF scores are often numerically small and should not
+        # be presented as if they were probabilities. Preserve the raw score,
+        # and add a percentile-style rank score for UI display.
+        #
+        # Example: the best-ranked candidate receives 100; candidates are
+        # scored relative to the entire unique investor pool. The top five
+        # therefore rank above 75 when the pool has at least 5 candidates.
+        # This is a RELATIVE RANK, not a probability or guaranteed match quality.
+        total = len(unique_recommendations)
+
+        for rank, recommendation in enumerate(unique_recommendations, start=1):
+            raw_score = float(recommendation.get("score", 0.0) or 0.0)
+            raw_percentage = recommendation.get("score_percentage")
+
+            recommendation["raw_score"] = round(raw_score, 6)
+            recommendation["raw_score_percentage"] = round(
+                raw_score * 100.0, 2
             )
+            recommendation["rank"] = rank
+            recommendation["score_percentage"] = round(
+                ((total - rank + 1) / total) * 100.0, 2
+            ) if total else 0.0
+            recommendation["score_label"] = "Relative rank"
+            recommendation["score_type"] = "relative_rank_percentile"
 
+        # Return all ranked records when the caller asks for the full candidate
+        # list (e.g. top_n=2500). Normal calls still return the requested count.
+        try:
+            requested_count = max(1, int(top_n))
+        except (TypeError, ValueError):
+            requested_count = 5
 
-            unique_recommendations.append(
-                recommendation
-            )
-
-
-            if len(
-                unique_recommendations
-            ) >= top_n:
-
-                break
-
-
-        return unique_recommendations
+        return unique_recommendations[:requested_count]
 
 
     # ========================================================

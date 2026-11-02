@@ -1,3 +1,4 @@
+
 import {
     Bookmark,
     Check,
@@ -24,10 +25,6 @@ const getProfileId = (profile) =>
         profile?.userId ||
         profile?.user?._id ||
         profile?.user?.id ||
-        profile?.startupId ||
-        profile?.startup_id ||
-        profile?.dataset_id ||
-        profile?.datasetId ||
         ""
     );
 
@@ -35,22 +32,21 @@ const getName = (profile) =>
     profile?.startupName ||
     profile?.companyName ||
     profile?.name ||
-    profile?.startup_name ||
-    profile?.company_name ||
     profile?.userId?.name ||
     profile?.user?.name ||
     profile?.fullName ||
     "Startup";
 
 const getIndustry = (profile) =>
-    profile?.industry || profile?.domain || profile?.sector || "";
+    profile?.industry || profile?.domain || profile?.sector || profile?.primary_domain || "";
 
 const getStage = (profile) =>
     profile?.fundingStage ||
+    profile?.funding_stage ||
     profile?.startupStage ||
+    profile?.startup_stage ||
     profile?.stage ||
     profile?.businessStage ||
-    profile?.funding_stage ||
     "";
 
 const getLocation = (profile) => {
@@ -75,8 +71,9 @@ const getDescription = (profile) =>
     profile?.tagline ||
     profile?.description ||
     profile?.startupDescription ||
-    profile?.businessDescription ||
     profile?.startup_description ||
+    profile?.businessDescription ||
+    profile?.summary ||
     "No startup description provided.";
 
 const getFunding = (profile) =>
@@ -85,27 +82,21 @@ const getFunding = (profile) =>
     profile?.fundingNeeded ??
     profile?.investmentRequired ??
     profile?.fundingAmount ??
-    profile?.funding_required ??
     profile?.funding_amount ??
+    profile?.funding_required ??
     "";
 
 const getTeamSize = (profile) =>
     profile?.teamSize ??
     profile?.numberOfEmployees ??
     profile?.employees ??
-    profile?.team_size ??
     "";
 
 const getFounded = (profile) =>
-    profile?.foundedYear ||
-    profile?.founded ||
-    profile?.yearFounded ||
-    profile?.founded_year ||
-    "";
+    profile?.foundedYear || profile?.founded || profile?.yearFounded || "";
 
 const getRecommendationItems = (response) => {
-    const root = response?.data ?? response;
-
+    const root = response?.data;
     const candidates = [
         root?.data?.recommendations,
         root?.data?.founders,
@@ -119,10 +110,38 @@ const getRecommendationItems = (response) => {
     return candidates.find(Array.isArray) || [];
 };
 
+const getRecommendationId = (item) =>
+    String(
+        item?.founderId ||
+        item?.founder_id ||
+        item?.dataset_id ||
+        item?.startup_id ||
+        item?.profileId ||
+        item?.profile_id ||
+        item?.userId?._id ||
+        item?.userId ||
+        item?.user_id ||
+        item?._id ||
+        item?.id ||
+        ""
+    );
+
+const getRecommendationName = (item) =>
+    item?.startupName ||
+    item?.companyName ||
+    item?.name ||
+    item?.founder_name ||
+    item?.startup_name ||
+    item?.founder?.startupName ||
+    item?.founder?.name ||
+    "";
+
 const getRecommendationScore = (item) => {
     const raw =
         item?.score_percentage ??
         item?.scorePercentage ??
+        item?.compatibility_percentage ??
+        item?.compatibilityScore ??
         item?.matchPercentage ??
         item?.match_percentage ??
         item?.matchScore ??
@@ -134,13 +153,10 @@ const getRecommendationScore = (item) => {
         item?.match;
 
     if (raw === undefined || raw === null || raw === "") return null;
-
     const score = Number(raw);
     if (!Number.isFinite(score)) return null;
 
-    return Math.round(
-        Math.max(0, Math.min(100, score >= 0 && score <= 1 ? score * 100 : score))
-    );
+    return Math.round(Math.max(0, Math.min(80, score >= 0 && score <= 1 ? score * 100 : score)));
 };
 
 const extractProfiles = (response) => {
@@ -155,24 +171,21 @@ const extractProfiles = (response) => {
 };
 
 function InvestorDiscoverStartups() {
-    const navigate = useNavigate();
-
     const [founders, setFounders] = useState([]);
     const [recommendations, setRecommendations] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [industry, setIndustry] = useState("All Industries");
     const [stage, setStage] = useState("All Stages");
     const [location, setLocation] = useState("All Locations");
-    const [sortBy, setSortBy] = useState("name");
+    const [sortBy, setSortBy] = useState("score");
     const [savedStartups, setSavedStartups] = useState([]);
+    const [connectedStartups, setConnectedStartups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(true);
     const [error, setError] = useState("");
     const [aiError, setAiError] = useState("");
-    const [datasetPage, setDatasetPage] = useState(1);
-    const [sentRequests, setSentRequests] = useState({});
-    const [requestActionId, setRequestActionId] = useState(null);
-    const [selectedFounder, setSelectedFounder] = useState(null);
+    const [connectingId, setConnectingId] = useState("");
+    const navigate = useNavigate();
 
     const fetchFounders = useCallback(async () => {
         setLoading(true);
@@ -213,23 +226,32 @@ function InvestorDiscoverStartups() {
                 throw new Error("Please log in again to view AI recommendations.");
             }
 
-            const payload = token.split(".")[1];
+            let userId = "";
 
-            if (!payload) {
-                throw new Error("Invalid login token. Please log in again.");
+            try {
+                const payload = token.split(".")[1];
+                const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+                const decoded = JSON.parse(window.atob(normalized));
+                userId =
+                    decoded.userId || decoded.id || decoded._id || decoded.sub || "";
+            } catch {
+                throw new Error("Could not identify your account from the login token.");
             }
-
-            const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-            const decoded = JSON.parse(window.atob(normalized));
-            const userId =
-                decoded.userId || decoded.id || decoded._id || decoded.sub || "";
 
             if (!userId) {
                 throw new Error("Could not identify your account from the login token.");
             }
 
             const response = await getRecommendations("investor", "founders", userId);
-            setRecommendations(getRecommendationItems(response).slice(0, 650));
+            const items = getRecommendationItems(response);
+            const scoredItems = items
+                .map((item) => ({ ...item, _normalizedScore: getRecommendationScore(item) }))
+                .sort((a, b) => {
+                    const scoreDifference = Number(b._normalizedScore ?? 0) - Number(a._normalizedScore ?? 0);
+                    if (scoreDifference !== 0) return scoreDifference;
+                    return getRecommendationName(a).localeCompare(getRecommendationName(b));
+                });
+            setRecommendations(scoredItems);
         } catch (err) {
             setAiError(
                 err.response?.data?.message ||
@@ -242,163 +264,206 @@ function InvestorDiscoverStartups() {
         }
     }, []);
 
-    const fetchExistingRequests = useCallback(async () => {
-        const token = localStorage.getItem("startupsync_token");
-        if (!token) return;
-
-        try {
-            const response = await api.get("/connections", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            const requests = response.data?.requests || [];
-            const sent = {};
-
-            requests.forEach((request) => {
-                const senderId =
-                    typeof request.sender === "object"
-                        ? request.sender?._id
-                        : request.sender;
-
-                const receiverId =
-                    typeof request.receiver === "object"
-                        ? request.receiver?._id
-                        : request.receiver;
-
-                if (
-                    String(senderId) === String(getCurrentUserId(token)) &&
-                    request.status === "pending"
-                ) {
-                    const targetId = String(receiverId || "");
-                    if (targetId) sent[targetId] = request._id;
-                }
-            });
-
-            setSentRequests(sent);
-        } catch (err) {
-            console.error("Unable to load existing connection requests:", err);
-        }
-    }, []);
-
     useEffect(() => {
         fetchFounders();
         fetchRecommendations();
-        fetchExistingRequests();
-    }, [fetchFounders, fetchRecommendations, fetchExistingRequests]);
-
-    const allStartups = useMemo(() => {
-        const combined = [...recommendations, ...founders];
-        const seen = new Set();
-
-        return combined.filter((item) => {
-            const id = getProfileId(item);
-            const name = getName(item).trim().toLowerCase();
-            const key = id ? `id:${id}` : `name:${name}`;
-
-            if (seen.has(key)) return false;
-
-            seen.add(key);
-            return true;
-        });
-    }, [recommendations, founders]);
-
-    const recommendedFounders = useMemo(
-        () =>
-            recommendations.slice(0, 5).map((item) => ({
-                ...item,
-                _aiScore: getRecommendationScore(item),
-                _isDatasetRecommendation: true,
-            })),
-        [recommendations]
-    );
-
-    const recommendedKeys = useMemo(
-        () =>
-            new Set(
-                recommendedFounders.map((item) => {
-                    const id = getProfileId(item);
-                    return id
-                        ? `id:${id}`
-                        : `name:${getName(item).trim().toLowerCase()}`;
-                })
-            ),
-        [recommendedFounders]
-    );
+    }, [fetchFounders, fetchRecommendations]);
 
     const industries = useMemo(
         () => [
             "All Industries",
-            ...new Set(allStartups.map(getIndustry).filter(Boolean)),
+            ...new Set([...founders, ...recommendations].map(getIndustry).filter(Boolean)),
         ],
-        [allStartups]
+        [founders, recommendations]
     );
 
     const stages = useMemo(
-        () => [
-            "All Stages",
-            ...new Set(allStartups.map(getStage).filter(Boolean)),
-        ],
-        [allStartups]
+        () => ["All Stages", ...new Set([...founders, ...recommendations].map(getStage).filter(Boolean))],
+        [founders, recommendations]
     );
 
     const locations = useMemo(
         () => [
             "All Locations",
             ...new Set(
-                allStartups
+                [...founders, ...recommendations]
                     .map(getLocation)
                     .filter(Boolean)
                     .map((value) => value.split(",").pop().trim())
             ),
         ],
-        [allStartups]
+        [founders, recommendations]
     );
 
-    useEffect(() => {
-        setDatasetPage(1);
-    }, [searchTerm, industry, stage, location, sortBy]);
+    // Convert every AI dataset recommendation into a displayable startup card.
+    // Registered MongoDB profiles are merged when an ID/name match exists; dataset
+    // records remain visible even when no registered founder account exists.
+    const rankedRecommendations = useMemo(() => {
+        const usedKeys = new Set();
+        const ranked = [];
+
+        const registeredById = new Map();
+        const registeredByName = new Map();
+
+        founders.forEach((profile) => {
+            const profileId = getProfileId(profile);
+            const datasetId = String(profile.aiDatasetId || profile.dataset_id || "");
+            const name = getName(profile).trim().toLowerCase();
+
+            [profileId, datasetId].filter(Boolean).forEach((id) => {
+                if (!registeredById.has(id)) registeredById.set(id, profile);
+            });
+            if (name && !registeredByName.has(name)) registeredByName.set(name, profile);
+        });
+
+        recommendations.forEach((recommendation, index) => {
+            const recommendationId = getRecommendationId(recommendation);
+            const recommendationName = getRecommendationName(recommendation).trim().toLowerCase();
+
+            const registered =
+                (recommendationId && registeredById.get(recommendationId)) ||
+                (recommendationName && registeredByName.get(recommendationName)) ||
+                null;
+
+            const datasetId = String(
+                recommendation.dataset_id ||
+                recommendation.startup_id ||
+                recommendation.founder_id ||
+                recommendation.aiDatasetId ||
+                recommendationId ||
+                `dataset-${index}-${recommendationName || "startup"}`
+            );
+
+            const profile = registered
+                ? {
+                    ...recommendation,
+                    ...registered,
+                    _id: getProfileId(registered) || datasetId,
+                    aiDatasetId: registered.aiDatasetId || datasetId,
+                    _aiScore: getRecommendationScore(recommendation),
+                    _isDatasetRecommendation: false,
+                    _datasetRecommendationId: datasetId,
+                }
+                : {
+                    ...recommendation,
+                    _id: datasetId,
+                    id: recommendation.id || datasetId,
+                    aiDatasetId: datasetId,
+                    startupName:
+                        recommendation.startupName ||
+                        recommendation.startup_name ||
+                        recommendation.companyName ||
+                        recommendation.company ||
+                        recommendation.founder_name ||
+                        recommendation.name ||
+                        "Startup",
+                    _aiScore: getRecommendationScore(recommendation),
+                    _isDatasetRecommendation: true,
+                    _datasetRecommendationId: datasetId,
+                };
+
+            const key = `${datasetId}|${getName(profile).trim().toLowerCase()}`;
+            if (usedKeys.has(key)) return;
+            usedKeys.add(key);
+            ranked.push(profile);
+        });
+
+        // Sort the full AI-ranked list first. The first five are therefore always
+        // the highest scores and no item in the remaining list can outrank them.
+        ranked.sort((a, b) => {
+            const scoreDifference = (Number(b._aiScore) || 0) - (Number(a._aiScore) || 0);
+            if (scoreDifference !== 0) return scoreDifference;
+            return getName(a).localeCompare(getName(b));
+        });
+
+        return ranked;
+    }, [founders, recommendations]);
+
+    const recommendedFounders = useMemo(
+        () => rankedRecommendations.slice(0, 5),
+        [rankedRecommendations]
+    );
+
+    const recommendedKeys = useMemo(
+        () => new Set(recommendedFounders.map((item) => item._datasetRecommendationId || getProfileId(item))),
+        [recommendedFounders]
+    );
 
     const remainingFounders = useMemo(() => {
         const search = searchTerm.toLowerCase().trim();
+        const rankedKeys = new Set(
+            rankedRecommendations.map((item) => item._datasetRecommendationId || getProfileId(item))
+        );
 
-        const filtered = allStartups.filter((startup) => {
-            const id = getProfileId(startup);
-            const key = id
-                ? `id:${id}`
-                : `name:${getName(startup).trim().toLowerCase()}`;
+        const scoredDatasetSuggestions = rankedRecommendations
+            .filter((item) => !recommendedKeys.has(item._datasetRecommendationId || getProfileId(item)))
+            .filter((founder) => {
+                const searchableText = [
+                    getName(founder),
+                    getIndustry(founder),
+                    getStage(founder),
+                    getLocation(founder),
+                    getDescription(founder),
+                ].join(" ").toLowerCase();
 
-            if (recommendedKeys.has(key)) return false;
+                return (
+                    (!search || searchableText.includes(search)) &&
+                    (industry === "All Industries" || getIndustry(founder) === industry) &&
+                    (stage === "All Stages" || getStage(founder) === stage) &&
+                    (location === "All Locations" ||
+                        getLocation(founder).toLowerCase().includes(location.toLowerCase()))
+                );
+            });
 
-            const searchableText = [
-                getName(startup),
-                getIndustry(startup),
-                getStage(startup),
-                getLocation(startup),
-                getDescription(startup),
-            ]
-                .join(" ")
-                .toLowerCase();
+        // Also retain registered founder profiles absent from the AI dataset response.
+        // They are shown after scored dataset suggestions and do not get fabricated scores.
+        const unscoredRegistered = founders
+            .filter((founder) => {
+                const profileId = getProfileId(founder);
+                const datasetId = String(founder.aiDatasetId || founder.dataset_id || "");
+                const name = getName(founder).trim().toLowerCase();
+                return !rankedKeys.has(datasetId || profileId) &&
+                    !rankedRecommendations.some((item) =>
+                        getName(item).trim().toLowerCase() === name
+                    );
+            })
+            .map((founder) => ({ ...founder, _aiScore: null, _isDatasetRecommendation: false }))
+            .filter((founder) => {
+                const searchableText = [
+                    getName(founder),
+                    getIndustry(founder),
+                    getStage(founder),
+                    getLocation(founder),
+                    getDescription(founder),
+                ].join(" ").toLowerCase();
 
-            return (
-                (!search || searchableText.includes(search)) &&
-                (industry === "All Industries" || getIndustry(startup) === industry) &&
-                (stage === "All Stages" || getStage(startup) === stage) &&
-                (location === "All Locations" ||
-                    getLocation(startup).toLowerCase().includes(location.toLowerCase()))
-            );
-        });
+                return (
+                    (!search || searchableText.includes(search)) &&
+                    (industry === "All Industries" || getIndustry(founder) === industry) &&
+                    (stage === "All Stages" || getStage(founder) === stage) &&
+                    (location === "All Locations" ||
+                        getLocation(founder).toLowerCase().includes(location.toLowerCase()))
+                );
+            });
 
-        return [...filtered].sort((a, b) => {
+        const sortScored = (a, b) => {
             if (sortBy === "name") return getName(a).localeCompare(getName(b));
             if (sortBy === "industry") return getIndustry(a).localeCompare(getIndustry(b));
             if (sortBy === "stage") return getStage(a).localeCompare(getStage(b));
             if (sortBy === "location") return getLocation(a).localeCompare(getLocation(b));
-            if (sortBy === "newest") {
-                return Number(getFounded(b) || 0) - Number(getFounded(a) || 0);
-            }
-            return 0;
-        });
-    }, [allStartups, recommendedKeys, searchTerm, industry, stage, location, sortBy]);
+            if (sortBy === "newest") return Number(getFounded(b) || 0) - Number(getFounded(a) || 0);
+
+            const scoreDifference = (Number(b._aiScore) || 0) - (Number(a._aiScore) || 0);
+            if (scoreDifference !== 0) return scoreDifference;
+            return getName(a).localeCompare(getName(b));
+        };
+
+        // Default sorting is descending compatibility for every scored record.
+        // For non-score sorting choices, honor the user's selected sort.
+        return [...scoredDatasetSuggestions].sort(sortScored).concat(
+            unscoredRegistered.sort(sortScored)
+        );
+    }, [founders, rankedRecommendations, recommendedKeys, searchTerm, industry, stage, location, sortBy]);
 
     const toggleSave = (id) => {
         if (!id) return;
@@ -411,86 +476,38 @@ function InvestorDiscoverStartups() {
     };
 
     const expressInterest = async (founder) => {
-        const profileId = getProfileId(founder);
-
-        if (!profileId || requestActionId || founder?._isDatasetRecommendation) return;
-
-        if (sentRequests[profileId]) return;
-
-        const token = localStorage.getItem("startupsync_token");
-
-        if (!token) {
-            alert("Please log in to send a connection request.");
+        const id = getProfileId(founder);
+        if (connectingId || connectedStartups.includes(id)) return;
+        if (founder._isDatasetRecommendation) {
+            window.alert("This dataset profile is not linked to a registered StartupSync account, so a request cannot be delivered yet.");
             return;
         }
-
-        setRequestActionId(profileId);
+        if (!id) return;
 
         try {
-            const response = await api.post(
-                `/connections/founders/${encodeURIComponent(profileId)}`,
+            setConnectingId(id);
+            const token = localStorage.getItem("startupsync_token");
+
+            if (!token) throw new Error("Please log in again.");
+
+            await api.post(
+                `/connections/founders/${encodeURIComponent(id)}`,
                 {},
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            const request = response.data?.request;
-
-            if (!request?._id) {
-                throw new Error("The server did not return a request ID.");
-            }
-
-            setSentRequests((previous) => ({
-                ...previous,
-                [profileId]: request._id,
-            }));
+            setConnectedStartups((current) =>
+                current.includes(id) ? current : [...current, id]
+            );
+            window.alert("Your interest has been sent successfully.");
         } catch (err) {
-            alert(
+            window.alert(
                 err.response?.data?.message ||
                 err.message ||
-                "Unable to send connection request."
-            );
-
-            if (err.response?.status === 409) {
-                fetchExistingRequests();
-            }
-        } finally {
-            setRequestActionId(null);
-        }
-    };
-
-    const cancelInterest = async (profileId) => {
-        const requestId = sentRequests[profileId];
-
-        if (!requestId || requestActionId) return;
-
-        const token = localStorage.getItem("startupsync_token");
-
-        if (!token) {
-            alert("Please log in again.");
-            return;
-        }
-
-        setRequestActionId(profileId);
-
-        try {
-            await api.delete(`/connections/${encodeURIComponent(requestId)}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            setSentRequests((previous) => {
-                const updated = { ...previous };
-                delete updated[profileId];
-                return updated;
-            });
-        } catch (err) {
-            alert(
-                err.response?.data?.message ||
-                "Unable to cancel the connection request."
+                "Unable to send your interest. Please try again."
             );
         } finally {
-            setRequestActionId(null);
+            setConnectingId("");
         }
     };
 
@@ -499,15 +516,13 @@ function InvestorDiscoverStartups() {
         setIndustry("All Industries");
         setStage("All Stages");
         setLocation("All Locations");
-        setSortBy("name");
+        setSortBy("score");
     };
 
     const renderFounderCard = (founder, recommended = false) => {
         const id = getProfileId(founder);
-        const isDataset = Boolean(founder._isDatasetRecommendation);
         const isSaved = savedStartups.includes(id);
-        const requestId = sentRequests[id];
-        const isSending = requestActionId === id;
+        const isConnected = connectedStartups.includes(id);
         const score = founder._aiScore;
 
         return (
@@ -524,7 +539,8 @@ function InvestorDiscoverStartups() {
 
                     <button
                         type="button"
-                        className={`startup-save-button ${isSaved ? "startup-save-active" : ""}`}
+                        className={`startup-save-button ${isSaved ? "startup-save-active" : ""
+                            }`}
                         onClick={() => toggleSave(id)}
                         aria-label={isSaved ? "Remove saved startup" : "Save startup"}
                         title={isSaved ? "Remove saved startup" : "Save startup"}
@@ -533,12 +549,10 @@ function InvestorDiscoverStartups() {
                     </button>
                 </div>
 
-                {recommended && (
+                {score !== null && score !== undefined && Number.isFinite(Number(score)) && (
                     <div className="startup-match">
-                        <span>AI Recommended</span>
-                        {score !== null && score !== undefined && (
-                            <strong>{score}% match</strong>
-                        )}
+                        <span>{recommended ? "AI Recommended" : "AI Compatibility"}</span>
+                        <strong>{Math.round(Number(score))}% match</strong>
                     </div>
                 )}
 
@@ -566,7 +580,11 @@ function InvestorDiscoverStartups() {
 
                     <div className="startup-detail">
                         <span className="startup-detail-label">Funding</span>
-                        <span>{getFunding(founder) || "Not specified"}</span>
+                        <span>
+                            {getFunding(founder) === ""
+                                ? "Not specified"
+                                : String(getFunding(founder))}
+                        </span>
                     </div>
 
                     <div className="startup-detail">
@@ -580,59 +598,33 @@ function InvestorDiscoverStartups() {
                         type="button"
                         className="btn btn-secondary startup-view-button"
                         onClick={() =>
-                            navigate(
-                                `/dashboard/investor/profile-view/founder/${encodeURIComponent(id)}`,
-                                { state: { profile: founder } }
-                            )
+                            navigate("/dashboard/investor/profile/founder", {
+                                state: { profile: founder, targetRole: "founder", sourceRole: "investor" },
+                            })
                         }
                     >
                         View Profile
                         <ExternalLink size={16} />
                     </button>
 
-                    <div className="startup-request-actions">
-                        {isDataset ? (
-                            <button
-                                type="button"
-                                className="btn startup-connect-button"
-                                disabled
-                                title="This dataset record is not linked to a registered account."
-                            >
-                                Dataset Profile
-                            </button>
-                        ) : requestId ? (
+                    <button
+                        type="button"
+                        className={`btn startup-connect-button ${isConnected ? "startup-connected" : "btn-primary"
+                            }`}
+                        disabled={isConnected || connectingId === id || (!id && !isDatasetOnly)}
+                        onClick={() => expressInterest(founder)}
+                    >
+                        {isConnected ? (
                             <>
-                                <button
-                                    type="button"
-                                    className="btn startup-connect-button startup-connected"
-                                    disabled
-                                >
-                                    <Check size={16} />
-                                    Request Sent
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="startup-cancel-request"
-                                    title="Cancel connection request"
-                                    aria-label="Cancel connection request"
-                                    disabled={isSending}
-                                    onClick={() => cancelInterest(id)}
-                                >
-                                    {isSending ? "…" : <X size={16} />}
-                                </button>
+                                <Check size={16} />
+                                Interest Sent
                             </>
+                        ) : connectingId === id ? (
+                            "Sending..."
                         ) : (
-                            <button
-                                type="button"
-                                className="btn startup-connect-button"
-                                disabled={isSending || !id}
-                                onClick={() => expressInterest(founder)}
-                            >
-                                {isSending ? "Sending..." : "Express Interest"}
-                            </button>
+                            "Send Request"
                         )}
-                    </div>
+                    </button>
                 </div>
             </article>
         );
@@ -648,19 +640,20 @@ function InvestorDiscoverStartups() {
                     </span>
                     <h2>Discover Startups</h2>
                     <p>
-                        Discover AI-recommended startups and explore the StartupSync ecosystem.
+                        Discover AI-recommended founders and explore the StartupSync
+                        startup ecosystem.
                     </p>
                 </div>
 
                 <div className="investor-discover-summary">
-                    <strong>{allStartups.length}</strong>
-                    <span>Available Startups</span>
+                    <strong>{rankedRecommendations.length}</strong>
+                    <span>Dataset Startups</span>
                 </div>
             </section>
 
             <section style={{ margin: "24px 0 14px" }}>
                 <h3>Top 5 AI Recommendations</h3>
-                <p>Startups recommended for your investor profile.</p>
+                <p>Founders recommended for your investor profile.</p>
             </section>
 
             {aiLoading ? (
@@ -679,15 +672,20 @@ function InvestorDiscoverStartups() {
                 </section>
             ) : recommendedFounders.length > 0 ? (
                 <section className="investor-startup-grid">
-                    {recommendedFounders.map((founder) => renderFounderCard(founder, true))}
+                    {recommendedFounders.slice(0, 5).map((founder) =>
+                        renderFounderCard(founder, true)
+                    )}
                 </section>
             ) : (
                 <section className="investor-empty-state">
                     <div className="investor-empty-icon">
                         <Rocket size={28} />
                     </div>
-                    <h3>No AI recommendations returned</h3>
-                    <p>The AI API did not return any recommendation records.</p>
+                    <h3>No matched AI recommendations</h3>
+                    <p>
+                        No AI recommendation records were returned by the recommendation service.
+                        Check that the AI API is returning the full founder dataset and compatibility scores.
+                    </p>
                     <button
                         type="button"
                         className="btn btn-secondary"
@@ -700,9 +698,7 @@ function InvestorDiscoverStartups() {
 
             <section style={{ margin: "32px 0 14px" }}>
                 <h3>Explore All Other Startups</h3>
-                <p>
-                    Search, filter, and sort available dataset records and registered founder profiles.
-                </p>
+                <p>Search, filter, and sort all remaining dataset recommendations and registered founder profiles.</p>
             </section>
 
             <section className="investor-search-panel">
@@ -714,7 +710,6 @@ function InvestorDiscoverStartups() {
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                     />
-
                     {searchTerm && (
                         <button
                             type="button"
@@ -738,7 +733,9 @@ function InvestorDiscoverStartups() {
                         onChange={(event) => setIndustry(event.target.value)}
                     >
                         {industries.map((option) => (
-                            <option key={option} value={option}>{option}</option>
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
                         ))}
                     </select>
 
@@ -747,7 +744,9 @@ function InvestorDiscoverStartups() {
                         onChange={(event) => setStage(event.target.value)}
                     >
                         {stages.map((option) => (
-                            <option key={option} value={option}>{option}</option>
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
                         ))}
                     </select>
 
@@ -756,7 +755,9 @@ function InvestorDiscoverStartups() {
                         onChange={(event) => setLocation(event.target.value)}
                     >
                         {locations.map((option) => (
-                            <option key={option} value={option}>{option}</option>
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
                         ))}
                     </select>
 
@@ -765,6 +766,7 @@ function InvestorDiscoverStartups() {
                         onChange={(event) => setSortBy(event.target.value)}
                         aria-label="Sort startups"
                     >
+                        <option value="score">Sort: Match Score (High–Low)</option>
                         <option value="name">Sort: Name A–Z</option>
                         <option value="industry">Sort: Industry</option>
                         <option value="stage">Sort: Stage</option>
@@ -776,15 +778,15 @@ function InvestorDiscoverStartups() {
                         industry !== "All Industries" ||
                         stage !== "All Stages" ||
                         location !== "All Locations" ||
-                        sortBy !== "name") && (
-                        <button
-                            type="button"
-                            className="investor-clear-filters"
-                            onClick={clearFilters}
-                        >
-                            Clear Filters
-                        </button>
-                    )}
+                        sortBy !== "score") && (
+                            <button
+                                type="button"
+                                className="investor-clear-filters"
+                                onClick={clearFilters}
+                            >
+                                Clear Filters
+                            </button>
+                        )}
                 </div>
             </section>
 
@@ -792,7 +794,7 @@ function InvestorDiscoverStartups() {
                 <p>Loading founder profiles...</p>
             ) : error ? (
                 <section className="investor-empty-state">
-                    <h3>Unable to load registered founder profiles</h3>
+                    <h3>Unable to load startups</h3>
                     <p>{error}</p>
                     <button
                         type="button"
@@ -808,7 +810,6 @@ function InvestorDiscoverStartups() {
                         {remainingFounders.length} other startup
                         {remainingFounders.length !== 1 ? "s" : ""} found
                     </p>
-
                     <section className="investor-startup-grid">
                         {remainingFounders.map((founder) => renderFounderCard(founder))}
                     </section>
@@ -830,76 +831,9 @@ function InvestorDiscoverStartups() {
                 </section>
             )}
 
-            {selectedFounder && (
-                <div
-                    className="investor-notification-modal-overlay"
-                    onClick={() => setSelectedFounder(null)}
-                >
-                    <div
-                        className="investor-notification-modal"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div className="investor-notification-modal-header">
-                            <div className="investor-notification-modal-icon investor-notification-icon-startup">
-                                <Rocket size={22} />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedFounder(null)}
-                                aria-label="Close profile"
-                            >
-                                <X size={19} />
-                            </button>
-                        </div>
 
-                        <div className="investor-notification-modal-body">
-                            <h3>{getName(selectedFounder)}</h3>
-                            <p><strong>Industry:</strong> {getIndustry(selectedFounder) || "Not specified"}</p>
-                            <p><strong>Stage:</strong> {getStage(selectedFounder) || "Not specified"}</p>
-                            <p><strong>Location:</strong> {getLocation(selectedFounder) || "Not specified"}</p>
-                            <p><strong>Team size:</strong> {getTeamSize(selectedFounder) || "Not specified"}</p>
-                            <p><strong>Funding sought:</strong> {getFunding(selectedFounder) || "Not specified"}</p>
-                            <p><strong>Description:</strong> {getDescription(selectedFounder)}</p>
-                        </div>
-
-                        <div className="investor-notification-modal-footer">
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => setSelectedFounder(null)}
-                            >
-                                Close
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                disabled={Boolean(selectedFounder._isDatasetRecommendation)}
-                                onClick={() => {
-                                    const founder = selectedFounder;
-                                    setSelectedFounder(null);
-                                    expressInterest(founder);
-                                }}
-                            >
-                                Express Interest
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
-}
-
-function getCurrentUserId(token) {
-    try {
-        const payload = token.split(".")[1];
-        const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-        const decoded = JSON.parse(window.atob(normalized));
-
-        return decoded.userId || decoded.id || decoded._id || decoded.sub || "";
-    } catch {
-        return "";
-    }
 }
 
 export default InvestorDiscoverStartups;

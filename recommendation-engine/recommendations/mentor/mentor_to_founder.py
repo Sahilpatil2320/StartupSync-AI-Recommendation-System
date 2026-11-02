@@ -551,11 +551,6 @@ class MentorFounderEngine:
         )
 
 
-        if not predictions:
-
-            return 0.0
-
-
         mentor_text = " ".join([
             mentor["expertise"],
             mentor["skills"],
@@ -576,9 +571,29 @@ class MentorFounderEngine:
 
 
         if not mentor_tokens:
-
             return 0.0
 
+        # If the saved industry classifier has no prediction for this founder,
+        # fall back to the actual profile text instead of silently forcing a zero.
+        if not predictions:
+            founder_text = " ".join([
+                founder.get("company_features", ""),
+                founder.get("domain_features", ""),
+                founder.get("competitor_features", ""),
+                founder.get("ecosystem_features", ""),
+                founder.get("funding_stage", ""),
+            ])
+            founder_text = clean_text(founder_text)
+            matched_categories = 0
+            checked_categories = 0
+            for _, keywords in INDUSTRY_KEYWORDS.items():
+                if any(contains_term(founder_text, keyword) for keyword in keywords):
+                    checked_categories += 1
+                    if any(contains_term(mentor_text, keyword) for keyword in keywords):
+                        matched_categories += 1
+            if checked_categories:
+                return min(1.0, matched_categories / checked_categories)
+            return 0.0
 
         best_score = 0.0
 
@@ -1124,33 +1139,59 @@ class MentorFounderEngine:
             # Experience      = 5%
             #
 
+            # Evidence-aware weighted score:
+            # a missing/unrelated feature should not automatically count as a
+            # zero. The remaining applicable weights are normalized to 100%.
+            # This is a relative compatibility score, not a probability.
+            components = [
+                ("industry", industry_score, 0.30, bool(
+                    mentor["industry"] or mentor["domain"] or
+                    founder["company_features"] or founder["domain_features"] or
+                    founder["ecosystem_features"]
+                )),
+                ("specialization", security_score, 0.15, bool(
+                    any(contains_term(" ".join([
+                        mentor["expertise"], mentor["skills"], mentor["industry"],
+                        mentor["domain"], mentor["interests"]
+                    ]), term) for term in SECURITY_TERMS) and
+                    any(contains_term(" ".join([
+                        founder["company_features"], founder["domain_features"],
+                        founder["competitor_features"], founder["ecosystem_features"]
+                    ]), term) for term in SECURITY_TERMS)
+                )),
+                ("expertise", expertise_score, 0.15, bool(
+                    mentor["expertise"] and " ".join([
+                        founder["company_features"], founder["domain_features"],
+                        founder["competitor_features"], founder["ecosystem_features"]
+                    ]).strip()
+                )),
+                ("skills", skills_score, 0.15, bool(
+                    mentor["skills"] and " ".join([
+                        founder["company_features"], founder["domain_features"],
+                        founder["competitor_features"], founder["ecosystem_features"]
+                    ]).strip()
+                )),
+                ("general", general_score, 0.10, bool(
+                    " ".join([mentor["expertise"], mentor["skills"], mentor["industry"],
+                              mentor["domain"], mentor["interests"]]).strip() and
+                    " ".join([founder["company_features"], founder["domain_features"],
+                              founder["competitor_features"], founder["ecosystem_features"],
+                              founder["funding_stage"]]).strip()
+                )),
+                ("interests", interest_score, 0.10, bool(
+                    mentor["interests"] and " ".join([
+                        founder["ecosystem_features"], founder["competitor_features"],
+                        founder["domain_features"]
+                    ]).strip()
+                )),
+                ("experience", experience_score, 0.05, str(mentor["experience_years"]).strip() not in {"", "nan", "none"})
+            ]
+
+            applicable = [(value, weight) for _, value, weight, available in components if available]
+            total_weight = sum(weight for _, weight in applicable)
             final_score = (
-
-                industry_score * 0.30
-
-                +
-
-                security_score * 0.15
-
-                +
-
-                expertise_score * 0.15
-
-                +
-
-                skills_score * 0.15
-
-                +
-
-                general_score * 0.10
-
-                +
-
-                interest_score * 0.10
-
-                +
-
-                experience_score * 0.05
+                sum(value * weight for value, weight in applicable) / total_weight
+                if total_weight > 0 else 0.0
             )
 
 
@@ -1220,7 +1261,13 @@ class MentorFounderEngine:
                     round(
                         final_score * 100,
                         2
-                    )
+                    ),
+
+                "score_label":
+                    "Relative compatibility",
+
+                "score_type":
+                    "evidence_weighted_compatibility"
             })
 
 

@@ -188,11 +188,12 @@ def calculate_overlap(text1, text2):
         return 0.0
 
     common = tokens1.intersection(tokens2)
+    union = tokens1.union(tokens2)
 
-    return min(
-        len(common) / max(len(tokens1), 1) * 100,
-        100
-    )
+    # Jaccard overlap is more discriminative than dividing only by tokens1.
+    # It prevents a short mentor keyword list from receiving 100% simply
+    # because every one of its words appears in a much larger student profile.
+    return (len(common) / max(len(union), 1)) * 100
 
 
 def industry_related_skills(industry_profile):
@@ -725,19 +726,15 @@ class StudentMentorEngine:
             # FINAL WEIGHTED SCORE
             # ---------------------------------------------
 
+            # Weighted compatibility score. Each component is now less likely
+            # to saturate because calculate_overlap uses Jaccard overlap.
             overall_score = (
-
-                industry_score * 0.30
-
+                industry_score * 0.25
                 + industry_skill_score * 0.25
-
                 + skill_score * 0.20
-
                 + expertise_score * 0.10
-
-                + career_score * 0.05
-
-                + similarity_score * 0.10
+                + career_score * 0.08
+                + similarity_score * 0.12
             )
 
             # ---------------------------------------------
@@ -885,9 +882,49 @@ class StudentMentorEngine:
         # =================================================
 
         recommendations.sort(
-            key=lambda x: x["overall_score"],
+            key=lambda x: (
+                x["overall_score"],
+                x["similarity_score"],
+                x["industry_skill_score"],
+                x["skill_score"],
+                x["expertise_score"],
+                str(x["id"])
+            ),
             reverse=True
         )
+
+        # UI currently caps displayed scores at 80. Return a differentiated
+        # relative-rank score below that cap, so the first 10-15 cards do not
+        # all render as 80%. This is deliberately labelled "Relative rank":
+        # it is an ordering score, not a probability or a guaranteed match.
+        #
+        # Rank calibration uses the full eligible candidate set before top_n
+        # slicing, so requesting more results keeps one consistent ordering.
+        total = len(recommendations)
+        if total == 1:
+            recommendations[0]["score_percentage"] = 79
+            recommendations[0]["score_label"] = "Relative rank"
+            recommendations[0]["rank"] = 1
+        elif total > 1:
+            for rank, candidate in enumerate(recommendations):
+                if rank < 15:
+                    # The first 15 results are intentionally distinct:
+                    # 79%, 78%, ... 65%.
+                    calibrated_score = 79 - rank
+                else:
+                    # Every other result remains below the first 15, with
+                    # scores gradually descending toward 45%.
+                    remaining_count = total - 15
+                    if remaining_count <= 1:
+                        calibrated_score = 45
+                    else:
+                        remaining_rank = rank - 15
+                        calibrated_score = round(
+                            64 - (19 * remaining_rank / (remaining_count - 1))
+                        )
+                candidate["score_percentage"] = max(45, min(79, calibrated_score))
+                candidate["score_label"] = "Relative rank"
+                candidate["rank"] = rank + 1
 
         return (
             recommendations[:top_n],

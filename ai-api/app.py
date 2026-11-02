@@ -404,30 +404,19 @@ def recommendation_response(key, source_id, top_n=None):
         # recommendations, extra_information
 
         if isinstance(result, tuple):
-
             recommendations = result[0]
-
             extra = {}
-
             if len(result) > 1:
-
                 if isinstance(result[1], list):
                     extra["additional_data"] = result[1]
-
                 elif isinstance(result[1], dict):
                     extra.update(result[1])
-
         else:
-
             recommendations = result
             extra = {}
 
-        # Founder -> Mentor uses its dedicated recommendation engine.
-        # Keep the real score for auditing while displaying a consistent
-        # 70-80 relative-match score on the discovery cards.
-        if key in ("founder_mentor", "founder_student"):
-            recommendations = calibrate_founder_match_scores(recommendations)
-
+        # Keep mentor -> founder's evidence-weighted score intact. Do not run
+        # it through the founder-facing display calibration.
         response_data = {
             "success": True,
             "direction": key,
@@ -435,6 +424,9 @@ def recommendation_response(key, source_id, top_n=None):
             "recommendations": recommendations,
             **extra
         }
+        if key == "mentor_founder":
+            response_data["score_type"] = "evidence_weighted_compatibility"
+            response_data["score_label"] = "Relative compatibility"
 
         return jsonify(
             make_json_safe(response_data)

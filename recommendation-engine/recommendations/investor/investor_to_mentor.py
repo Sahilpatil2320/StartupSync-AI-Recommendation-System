@@ -969,7 +969,11 @@ class InvestorMentorEngine:
                     (item["raw_score"] - lowest) / (highest - lowest)
                 ) * 10.0
 
-            item["score_percentage"] = round(relative_percentage, 2)
+            # Keep the displayed recommendation score within 70%-80%.
+            # Ranking still uses raw_score, not this display percentage.
+            item["score_percentage"] = round(
+                min(80.0, max(70.0, relative_percentage)), 2
+            )
 
         return recommendations
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -206,15 +207,39 @@ const detailsOf = (profile, role) => {
   ].filter(Boolean);
 };
 
-const scoreOf = (profile) => {
+const rawScoreForRanking = (profile) => {
   const raw =
-    profile?._aiScore ??
     profile?.score_percentage ??
     profile?.scorePercentage ??
     profile?.matchPercentage ??
     profile?.match_percentage ??
     profile?.matchScore ??
     profile?.match_score ??
+    profile?._aiScore ??
+    profile?.similarity_score ??
+    profile?.score ??
+    profile?.similarity ??
+    profile?.confidence ??
+    profile?.match;
+
+  if (raw === undefined || raw === null || raw === "") return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return null;
+  return value >= 0 && value <= 1 ? value * 100 : value;
+};
+
+const scoreOf = (profile) => {
+  // Prefer the backend's final display score over stale cached/raw fields.
+  // _aiScore may contain an old raw cosine score (e.g. 0.03 = 3%), so it
+  // must not override score_percentage returned by the current engine.
+  const raw =
+    profile?.score_percentage ??
+    profile?.scorePercentage ??
+    profile?.matchPercentage ??
+    profile?.match_percentage ??
+    profile?.matchScore ??
+    profile?.match_score ??
+    profile?._aiScore ??
     profile?.similarity_score ??
     profile?.score ??
     profile?.similarity ??
@@ -226,8 +251,10 @@ const scoreOf = (profile) => {
   const value = Number(raw);
   if (!Number.isFinite(value)) return null;
 
+  // Display compatibility as a conservative percentage, not as a probability.
+  // Keep the UI from presenting a perfect 100% match for sparse profiles.
   return Math.round(
-    Math.max(0, Math.min(100, value >= 0 && value <= 1 ? value * 100 : value))
+    Math.max(0, Math.min(80, value >= 0 && value <= 1 ? value * 100 : value))
   );
 };
 
@@ -260,12 +287,15 @@ function RoleRecommendations({ role, targetRole }) {
   const [pendingIds, setPendingIds] = useState([]);
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
-  const [selected, setSelected] = useState(null);
+  const navigate = useNavigate();
 
   const targetPlural = pluralRole(targetRole);
   const targetLabel =
     targetRole.charAt(0).toUpperCase() + targetRole.slice(1);
   const isFounderStudentPage = role === "founder" && targetRole === "student";
+  const isStudentMentorPage = role === "student" && targetRole === "mentor";
+  const isStudentFounderPage = role === "student" && targetRole === "founder";
+  const useDistinctStudentScores = isStudentMentorPage || isStudentFounderPage;
 
   const loadProfiles = useCallback(async () => {
     setLoading(true);
@@ -322,10 +352,23 @@ function RoleRecommendations({ role, targetRole }) {
       );
 
       const rows = recommendationsFromResponse(response);
+      const seen = new Set();
+      const uniqueRows = rows.filter((row) => {
+        if (!row || typeof row !== "object") return false;
 
-      setRecommendations(
-        rows.filter((row) => row && typeof row === "object")
-      );
+        const stableId = datasetIdOf(row) || idOf(row);
+        const normalizedName = nameOf(row, targetRole).trim().toLowerCase();
+        const normalizedLocation = locationOf(row).trim().toLowerCase();
+        const dedupeKey = stableId
+          ? `id:${stableId.toLowerCase()}`
+          : `name:${normalizedName}|location:${normalizedLocation}`;
+
+        if (seen.has(dedupeKey)) return false;
+        seen.add(dedupeKey);
+        return true;
+      });
+
+      setRecommendations(uniqueRows);
     } catch (err) {
       setAiError(
         err.response?.data?.message ||
@@ -336,7 +379,7 @@ function RoleRecommendations({ role, targetRole }) {
     } finally {
       setAiLoading(false);
     }
-  }, [role, targetPlural]);
+  }, [role, targetPlural, targetRole]);
 
   useEffect(() => {
     loadProfiles();
@@ -346,7 +389,7 @@ function RoleRecommendations({ role, targetRole }) {
   // Match recommendations to registered accounts without treating dataset IDs
   // as valid MongoDB account IDs.
   const rankedRecommendations = useMemo(() => {
-    return recommendations.map((recommendation, index) => {
+    const ranked = recommendations.map((recommendation, index) => {
       const profile = matchesRegisteredProfile(
         recommendation,
         profiles,
@@ -363,9 +406,39 @@ function RoleRecommendations({ role, targetRole }) {
         recommendation,
         profile,
         score: scoreOf(recommendation),
+        rankingScore: rawScoreForRanking(recommendation),
+        originalIndex: index,
       };
     });
-  }, [recommendations, profiles, targetRole]);
+
+    // Preserve the engine's relative ranking where it provides distinct raw
+    // values. The UI's old 80% cap must not erase those ranking differences.
+    ranked.sort((a, b) => {
+      const scoreA = useDistinctStudentScores
+        ? (a.rankingScore == null ? -1 : a.rankingScore)
+        : (a.score == null ? -1 : a.score);
+      const scoreB = useDistinctStudentScores
+        ? (b.rankingScore == null ? -1 : b.rankingScore)
+        : (b.score == null ? -1 : b.score);
+      return scoreB - scoreA || a.originalIndex - b.originalIndex;
+    });
+
+    // Student -> Mentor and Student -> Founder currently receive repeated
+    // 80% values from the API/UI cap. Show distinct relative rank scores only
+    // on those two pages; do not change scores on other role pages.
+    if (useDistinctStudentScores) {
+      const topFiveScores = [90, 86, 82, 78, 74];
+
+      return ranked.map((item, index) => ({
+        ...item,
+        score: index < 5
+          ? topFiveScores[index]
+          : Math.max(35, 69 - (index - 5)),
+      }));
+    }
+
+    return ranked;
+  }, [recommendations, profiles, targetRole, useDistinctStudentScores]);
 
   const topRecommendations = useMemo(
     () => rankedRecommendations.slice(0, 5),
@@ -428,10 +501,19 @@ function RoleRecommendations({ role, targetRole }) {
 
   const totalCount = profiles.length + datasetOnlyCount;
 
-  const sendRequest = async (profile) => {
+  const sendRequest = async (profile, datasetOnly = false) => {
     const profileId = idOf(profile);
 
-    if (!profileId || busyId) return;
+    if (busyId) return;
+
+    if (!profileId || datasetOnly) {
+      setError(
+        isStudentMentorPage
+          ? "This mentor is a dataset-only profile and has no registered account to receive a notification. You can send requests to registered mentors."
+          : "This profile is from the recommendation dataset and is not connected to a registered account. A request cannot be delivered until the person registers."
+      );
+      return;
+    }
 
     setBusyId(profileId);
     setError("");
@@ -492,6 +574,10 @@ function RoleRecommendations({ role, targetRole }) {
     const details = detailsOf(profile, targetRole);
     const registered = Boolean(profileId);
     const requested = pendingIds.includes(profileId);
+    // Dataset-only cards have no registered profileId. Avoid treating the
+    // initial empty busyId as a match, which incorrectly showed "Sending..."
+    // on every dataset card.
+    const isBusy = Boolean(profileId && busyId === profileId);
 
     return (
       <article className="role-rec-card" key={key}>
@@ -508,7 +594,14 @@ function RoleRecommendations({ role, targetRole }) {
           {score !== null && score !== undefined && (
             <div className="role-rec-score">
               <strong>{score}%</strong>
-              <span>Match</span>
+              <span>
+                {useDistinctStudentScores
+                  ? "Rank score"
+                  : recommendation?.score_label ||
+                    (recommendation?.score_type === "relative_rank_percentile"
+                      ? "Relative rank"
+                      : "Match")}
+              </span>
             </div>
           )}
         </div>
@@ -521,47 +614,35 @@ function RoleRecommendations({ role, targetRole }) {
           ))}
         </div>
 
-        {datasetOnly && (
-          <p className="role-rec-dataset-note">
-            AI dataset profile — not linked to a registered StartupSync
-            account.
-          </p>
-        )}
-
         <div className="role-rec-actions">
           <button
             type="button"
             className="role-rec-secondary"
             onClick={() =>
-              setSelected({
-                profile,
-                recommendation,
-                targetRole,
-                registered,
+              navigate(`/dashboard/${role}/profile/${targetRole}`, {
+                state: { profile, recommendation, sourceRole: role, targetRole },
               })
             }
           >
-            {registered ? "View Profile" : "Dataset Profile"}
+            View Profile
             <ArrowRight size={15} />
           </button>
 
           <button
             type="button"
-            className="role-rec-primary"
-            disabled={!registered || requested || busyId === profileId}
-            onClick={() => sendRequest(profile)}
+            className={`role-rec-primary ${requested ? "is-sent" : ""}`}
+            disabled={requested || isBusy}
+            onClick={() => sendRequest(profile, datasetOnly)}
           >
             {requested ? (
               <>
                 <CheckCircle2 size={15} />
-                Request Sent
+                {isStudentMentorPage ? "Sent" : "Request Sent"}
               </>
-            ) : busyId === profileId ? (
+            ) : isBusy ? (
               "Sending..."
-            ) : role === "founder" && targetRole === "mentor" ? (
-              "Request Mentorship"
             ) : (
-              "Connect"
+              "Send Request"
             )}
           </button>
         </div>
@@ -594,17 +675,13 @@ function RoleRecommendations({ role, targetRole }) {
           </p>
         </div>
 
-        {isFounderStudentPage && (
-          <aside className="role-rec-total-card">
-            <span>Total Students</span>
-            <strong>
-              {loading || aiLoading
-                ? "…"
-                : totalCount.toLocaleString("en-IN")}
-            </strong>
-            <p>Registered + dataset profiles</p>
-          </aside>
-        )}
+        <aside className="role-rec-total-card">
+          <span>Available {targetPlural.charAt(0).toUpperCase() + targetPlural.slice(1)}</span>
+          <strong>
+            {loading || aiLoading ? "…" : totalCount.toLocaleString("en-IN")}
+          </strong>
+          <p>Registered + dataset profiles</p>
+        </aside>
       </header>
 
       {(error || notice) && (
@@ -660,49 +737,51 @@ function RoleRecommendations({ role, targetRole }) {
         )}
       </section>
 
-      {isFounderStudentPage && (
-        <section className="role-rec-section">
-          <div className="role-rec-section-heading">
-            <div>
-              <h3>All Other Students in the AI Dataset</h3>
-              <p>
-                {remainingDataset.length.toLocaleString("en-IN")} matching
-                records from the remaining dataset recommendations.
-              </p>
-            </div>
+      <section className="role-rec-section">
+        <div className="role-rec-section-heading">
+          <div>
+            <h3>Explore All Other {targetPlural.charAt(0).toUpperCase() + targetPlural.slice(1)}</h3>
+            <p>
+              Browse the remaining AI dataset records. The five recommendations above
+              are excluded from this list.
+            </p>
           </div>
+        </div>
 
-          <div className="role-rec-search role-rec-dataset-search">
-            <Search size={18} />
-            <input
-              value={datasetSearch}
-              onChange={(event) => setDatasetSearch(event.target.value)}
-              placeholder="Search students, colleges, skills or domains..."
-            />
-          </div>
+        <div className="role-rec-search role-rec-dataset-search">
+          <Search size={18} />
+          <input
+            value={datasetSearch}
+            onChange={(event) => setDatasetSearch(event.target.value)}
+            placeholder={`Search remaining ${targetPlural}, locations or skills...`}
+          />
+        </div>
 
-          {aiLoading ? (
-            <p className="role-rec-empty">Loading student dataset...</p>
-          ) : remainingDataset.length ? (
+        {aiLoading ? (
+          <p className="role-rec-empty">Loading remaining dataset records...</p>
+        ) : remainingDataset.length ? (
+          <>
+            <p className="role-rec-results-count">
+              {remainingDataset.length.toLocaleString("en-IN")} other profiles found
+            </p>
             <div className="role-rec-grid">
-              {remainingDataset.map(
-                ({ key, recommendation, score }) =>
-                  renderCard(
-                    recommendation,
-                    recommendation,
-                    score,
-                    `dataset-${key}`,
-                    true
-                  )
+              {remainingDataset.map(({ key, recommendation, score }) =>
+                renderCard(
+                  recommendation,
+                  recommendation,
+                  score,
+                  `dataset-${key}`,
+                  true
+                )
               )}
             </div>
-          ) : (
-            <p className="role-rec-empty">
-              No additional student dataset records match your search.
-            </p>
-          )}
-        </section>
-      )}
+          </>
+        ) : (
+          <p className="role-rec-empty">
+            No additional dataset records match your search.
+          </p>
+        )}
+      </section>
 
       <section className="role-rec-section">
         <div className="role-rec-section-heading">
@@ -743,83 +822,7 @@ function RoleRecommendations({ role, targetRole }) {
         )}
       </section>
 
-      {selected && (
-        <div
-          className="role-rec-modal-backdrop"
-          role="presentation"
-          onClick={() => setSelected(null)}
-        >
-          <section
-            className="role-rec-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${nameOf(selected.profile, selected.targetRole)} profile`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="role-rec-modal-close"
-              aria-label="Close profile"
-              onClick={() => setSelected(null)}
-            >
-              <X size={20} />
-            </button>
 
-            <span className="role-rec-badge">
-              {selected.registered
-                ? "REGISTERED PROFILE"
-                : "AI DATASET PROFILE"}
-            </span>
-
-            <h2>{nameOf(selected.profile, selected.targetRole)}</h2>
-            <p className="role-rec-modal-location">
-              {locationOf(selected.profile)}
-            </p>
-
-            <div className="role-rec-modal-fields">
-              {Object.entries(selected.profile || {})
-                .filter(
-                  ([key, value]) =>
-                    ![
-                      "_id",
-                      "id",
-                      "userId",
-                      "aiDatasetId",
-                      "__v",
-                      "createdAt",
-                      "updatedAt",
-                    ].includes(key) &&
-                    value !== "" &&
-                    value != null
-                )
-                .map(([key, value]) => (
-                  <div className="role-rec-modal-field" key={key}>
-                    <span>
-                      {key
-                        .replace(/([A-Z])/g, " $1")
-                        .replace(/_/g, " ")}
-                    </span>
-                    <strong>
-                      {Array.isArray(value)
-                        ? value.join(", ")
-                        : typeof value === "object"
-                          ? JSON.stringify(value)
-                          : String(value)}
-                    </strong>
-                  </div>
-                ))}
-            </div>
-
-            {!selected.registered && (
-              <p className="role-rec-dataset-note">
-                This dataset record is not linked to a registered account.
-                You can inspect the profile, but you cannot send a connection
-                request to a dataset row.
-              </p>
-            )}
-          </section>
-        </div>
-      )}
     </section>
   );
 }

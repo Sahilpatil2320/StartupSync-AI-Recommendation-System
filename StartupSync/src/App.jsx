@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useEffect } from "react";
 
 import Navbar from "./components/Navbar";
@@ -34,11 +34,11 @@ import DashboardLayout from "./layouts/DashboardLayout";
 
 import FounderStartup from "./pages/dashboard/founder/FounderStartup";
 import FounderInvestors from "./pages/dashboard/founder/FounderInvestors";
-import InvestorProfile from "./pages/dashboard/founder/InvestorProfile";
 import FounderMentors from "./pages/dashboard/founder/FounderMentors";
 import FounderTeam from "./pages/dashboard/founder/FounderTeam";
 import FounderMessages from "./pages/dashboard/founder/FounderMessages";
 import FounderNotifications from "./pages/dashboard/founder/FounderNotifications";
+import InvestorProfile from "./pages/dashboard/founder/InvestorProfile";
 
 import InvestorDiscoverStartups from "./pages/dashboard/investor/InvestorDiscoverStartups";
 import InvestorInvestments from "./pages/dashboard/investor/InvestorInvestments";
@@ -46,6 +46,7 @@ import InvestorMessages from "./pages/dashboard/investor/InvestorMessages";
 import InvestorNotifications from "./pages/dashboard/investor/InvestorNotifications";
 
 import MentorStartups from "./pages/dashboard/mentor/MentorStartups";
+import MentorFounderProfileView from "./pages/dashboard/mentor/MentorFounderProfileView";
 import MentorMentorships from "./pages/dashboard/mentor/MentorMentorships";
 import MentorMessages from "./pages/dashboard/mentor/MentorMessages";
 import MentorNotifications from "./pages/dashboard/mentor/MentorNotifications";
@@ -62,6 +63,7 @@ import AdminReports from "./pages/dashboard/admin/AdminReports";
 import AdminNotifications from "./pages/dashboard/admin/AdminNotifications";
 import RoleRecommendations from "./pages/dashboard/shared/RoleRecommendations";
 import RoleProfile from "./pages/dashboard/shared/RoleProfile";
+import PublicProfile from "./pages/dashboard/shared/PublicProfile";
 import RoleSettings from "./pages/dashboard/shared/RoleSettings";
 
 function Home() {
@@ -90,11 +92,23 @@ function Home() {
     );
 }
 
+
+function DashboardPublicProfileRoute() {
+    const { viewerRole } = useParams();
+    const allowedRoles = ["founder", "investor", "mentor", "student"];
+    const role = allowedRoles.includes(viewerRole) ? viewerRole : "founder";
+    return <DashboardLayout role={role}><PublicProfile /></DashboardLayout>;
+}
+
 function App() {
     return (
         <BrowserRouter>
             <Routes>
 
+                <Route
+                    path="/dashboard/:viewerRole/profile/:targetRole"
+                    element={<DashboardPublicProfileRoute />}
+                />
                 <Route path="/" element={<Home />} />
                 <Route path="/ecosystem" element={<Navigate to="/#ecosystem" replace />} />
 
@@ -216,15 +230,6 @@ function App() {
                         </DashboardLayout>
                     }
                 />
-
-                <Route
-                    path="/dashboard/founder/investors/profile/:profileKey"
-                    element={
-                        <DashboardLayout role="founder">
-                            <InvestorProfile />
-                        </DashboardLayout>
-                    }
-                />
                 <Route
                     path="/dashboard/founder/mentors"
                     element={
@@ -254,6 +259,15 @@ function App() {
                     element={
                         <DashboardLayout role="founder">
                             <FounderNotifications />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
+                    path="/dashboard/founder/investors/profile/:profileKey"
+                    element={
+                        <DashboardLayout role="founder">
+                            <InvestorProfile />
                         </DashboardLayout>
                     }
                 />
@@ -295,6 +309,14 @@ function App() {
                     element={
                         <DashboardLayout role="mentor">
                             <MentorStartups />
+                        </DashboardLayout>
+                    }
+                />
+                <Route
+                    path="/dashboard/mentor/profile-view/founder/:founderId"
+                    element={
+                        <DashboardLayout role="mentor">
+                            <MentorFounderProfileView />
                         </DashboardLayout>
                     }
                 />

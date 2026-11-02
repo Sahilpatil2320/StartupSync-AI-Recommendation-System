@@ -738,8 +738,12 @@ class InvestorFounderEngine:
 
         return recommendations[:limit]
 
-    def recommend_founders(self, investor_id, top_n=5):
-        """Rank startup records for an investor present in the investor dataset."""
+    def recommend_founders(self, investor_id, top_n=650):
+        """Rank all startup records for a dataset investor, highest score first.
+
+        Defaults to the complete dataset. Call with top_n=5 only when a caller
+        explicitly needs just the five best matches.
+        """
         matches = self.investors[
             self.investors["id"]
             .astype(str)
@@ -827,10 +831,15 @@ class InvestorFounderEngine:
 
             recommendations.append(result)
 
+        # Return the full ranked list by default so the UI can assign a real
+        # compatibility score to BOTH the Top 5 and every remaining dataset card.
+        # The score is calculated from the investor's actual profile/dataset
+        # features; it is not artificially boosted or converted into a probability.
         recommendations.sort(
             key=lambda item: (
-                item["score"],
-                item["name"].lower(),
+                float(item.get("score", 0.0) or 0.0),
+                str(item.get("name", "")).strip().casefold(),
+                str(item.get("dataset_id", "")).strip().casefold(),
             ),
             reverse=True,
         )
@@ -838,7 +847,7 @@ class InvestorFounderEngine:
         try:
             limit = max(1, min(int(top_n), len(recommendations)))
         except (TypeError, ValueError):
-            limit = 5
+            limit = len(recommendations)
 
         return recommendations[:limit]
 
