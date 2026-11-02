@@ -10,21 +10,38 @@ import {
   RefreshCw,
   MessageCircle,
   UserRound,
+  FileText,
+  Image as ImageIcon,
+  Download,
+  Film,
+  Music,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import axios from "axios";
+import EmojiPicker from "emoji-picker-react";
 import "./StudentMessages.css";
+import "./StudentMessages.attachments.css";
 
 const API_BASE_URL = "http://localhost:5000/api/messages";
 
 function getInitials(name = "") {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0] || "")
-    .join("")
-    .toUpperCase() || "U";
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0] || "")
+      .join("")
+      .toUpperCase() || "U"
+  );
 }
 
 function formatTime(value) {
@@ -35,9 +52,8 @@ function formatTime(value) {
   if (Number.isNaN(date.getTime())) return "";
 
   const now = new Date();
-  const sameDay = date.toDateString() === now.toDateString();
 
-  if (sameDay) {
+  if (date.toDateString() === now.toDateString()) {
     return date.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -63,32 +79,83 @@ function formatMessageTime(value) {
       });
 }
 
+function formatFileSize(bytes = 0) {
+  if (!bytes) return "";
+
+  if (bytes < 1024) return `${bytes} B`;
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getAttachmentType(mimeType = "") {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+
+  return "document";
+}
+
+function getAttachmentIcon(mimeType = "") {
+  const type = getAttachmentType(mimeType);
+
+  if (type === "image") return ImageIcon;
+  if (type === "video") return Film;
+  if (type === "audio") return Music;
+
+  return FileText;
+}
+
 function StudentMessages() {
   const [conversations, setConversations] = useState([]);
-  const [selectedConversationId, setSelectedConversationId] = useState("");
+  const [selectedConversationId, setSelectedConversationId] =
+    useState("");
+
   const [messages, setMessages] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [messageText, setMessageText] = useState("");
+
   const [showEmojiPanel, setShowEmojiPanel] = useState(false);
-  const [loadingConversations, setLoadingConversations] = useState(true);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+
+  const [loadingConversations, setLoadingConversations] =
+    useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
   const [userSearch, setUserSearch] = useState("");
   const [userResults, setUserResults] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
+
+  const [selectedFiles, setSelectedFiles] = useState([]);
+
   const messagesEndRef = useRef(null);
   const requestIdRef = useRef(0);
 
+  const messageInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
   const currentUser = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem("startupsync_user") || "{}");
+      return JSON.parse(
+        localStorage.getItem("startupsync_user") || "{}"
+      );
     } catch {
       return {};
     }
   }, []);
+
+  const currentUserId = String(
+    currentUser._id || currentUser.id || ""
+  );
 
   const getAuthConfig = useCallback(() => {
     const currentToken = localStorage.getItem("startupsync_token");
@@ -114,7 +181,10 @@ function StudentMessages() {
         getAuthConfig()
       );
 
-      if (!response.data?.success || !Array.isArray(response.data.data)) {
+      if (
+        !response.data?.success ||
+        !Array.isArray(response.data.data)
+      ) {
         throw new Error("Unexpected conversations API response.");
       }
 
@@ -127,7 +197,11 @@ function StudentMessages() {
           name: user.name || "StartupSync user",
           role: user.role || "Member",
           avatar: getInitials(user.name),
-          lastMessage: lastMessage.text || "Start a conversation",
+          lastMessage:
+            lastMessage.text ||
+            (lastMessage.attachments?.length
+              ? "Attachment"
+              : "Start a conversation"),
           time: formatTime(lastMessage.createdAt),
           unread: item.unreadCount || 0,
           online: false,
@@ -163,6 +237,7 @@ function StudentMessages() {
       }
 
       const requestId = ++requestIdRef.current;
+
       setLoadingMessages(true);
       setError("");
 
@@ -172,7 +247,10 @@ function StudentMessages() {
           getAuthConfig()
         );
 
-        if (!response.data?.success || !Array.isArray(response.data.data)) {
+        if (
+          !response.data?.success ||
+          !Array.isArray(response.data.data)
+        ) {
           throw new Error("Unexpected messages API response.");
         }
 
@@ -182,10 +260,13 @@ function StudentMessages() {
           response.data.data.map((message) => ({
             id: String(message._id),
             sender:
-              String(message.sender) === String(currentUser._id)
+              String(message.sender?._id || message.sender) ===
+              currentUserId
                 ? "me"
                 : "them",
-            text: message.text,
+            text: message.text || "",
+            attachments: message.attachments || [],
+            readAt: message.readAt || null,
             time: formatMessageTime(message.createdAt),
             createdAt: message.createdAt,
           }))
@@ -212,7 +293,7 @@ function StudentMessages() {
         }
       }
     },
-    [currentUser._id, getAuthConfig]
+    [currentUserId, getAuthConfig]
   );
 
   useEffect(() => {
@@ -224,11 +305,45 @@ function StudentMessages() {
   }, [selectedConversationId, loadMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
   }, [messages]);
 
+  useEffect(() => {
+    return () => {
+      selectedFiles.forEach((file) => {
+        if (file.previewUrl) {
+          URL.revokeObjectURL(file.previewUrl);
+        }
+      });
+    };
+  }, [selectedFiles]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target)
+      ) {
+        setShowEmojiPanel(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick
+      );
+    };
+  }, []);
+
   const selectedConversation = conversations.find(
-    (conversation) => conversation.id === selectedConversationId
+    (conversation) =>
+      conversation.id === selectedConversationId
   );
 
   const filteredConversations = useMemo(() => {
@@ -247,28 +362,66 @@ function StudentMessages() {
   const handleSelectConversation = (id) => {
     setSelectedConversationId(id);
     setShowEmojiPanel(false);
+    setShowAttachmentMenu(false);
     setShowUserSearch(false);
     setNotice("");
+    setError("");
+    setSelectedFiles([]);
   };
 
   const handleSendMessage = async () => {
     const text = messageText.trim();
 
-    if (!text || !selectedConversationId || sending) return;
+    if (
+      (!text && selectedFiles.length === 0) ||
+      !selectedConversationId ||
+      sending
+    ) {
+      return;
+    }
 
     setSending(true);
     setError("");
     setNotice("");
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/${encodeURIComponent(selectedConversationId)}`,
-        { text },
-        getAuthConfig()
-      );
+      let response;
 
-      if (!response.data?.success || !response.data.data?._id) {
-        throw new Error("The server did not confirm saving this message.");
+      if (selectedFiles.length > 0) {
+        const formData = new FormData();
+
+        formData.append("text", text);
+
+        selectedFiles.forEach((file) => {
+          formData.append("files", file.file);
+        });
+
+        response = await axios.post(
+          `${API_BASE_URL}/${encodeURIComponent(
+            selectedConversationId
+          )}`,
+          formData,
+          {
+            ...getAuthConfig(),
+          }
+        );
+      } else {
+        response = await axios.post(
+          `${API_BASE_URL}/${encodeURIComponent(
+            selectedConversationId
+          )}`,
+          { text },
+          getAuthConfig()
+        );
+      }
+
+      if (
+        !response.data?.success ||
+        !response.data.data?._id
+      ) {
+        throw new Error(
+          "The server did not confirm saving this message."
+        );
       }
 
       const saved = response.data.data;
@@ -278,18 +431,26 @@ function StudentMessages() {
         {
           id: String(saved._id),
           sender: "me",
-          text: saved.text,
+          text: saved.text || "",
+          attachments: saved.attachments || [],
+          readAt: saved.readAt || null,
           time: formatMessageTime(saved.createdAt),
           createdAt: saved.createdAt,
         },
       ]);
+
+      const previewText =
+        saved.text ||
+        (saved.attachments?.length
+          ? `${saved.attachments.length} attachment(s)`
+          : "");
 
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === selectedConversationId
             ? {
                 ...conversation,
-                lastMessage: saved.text,
+                lastMessage: previewText,
                 time: formatTime(saved.createdAt),
                 lastMessageAt: saved.createdAt,
               }
@@ -298,7 +459,9 @@ function StudentMessages() {
       );
 
       setMessageText("");
+      setSelectedFiles([]);
       setShowEmojiPanel(false);
+      setShowAttachmentMenu(false);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -329,10 +492,13 @@ function StudentMessages() {
     setSearchingUsers(true);
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/users`, {
-        ...getAuthConfig(),
-        params: { search: value.trim() },
-      });
+      const response = await axios.get(
+        `${API_BASE_URL}/users`,
+        {
+          ...getAuthConfig(),
+          params: { search: value.trim() },
+        }
+      );
 
       setUserResults(response.data?.data || []);
     } catch (err) {
@@ -345,7 +511,7 @@ function StudentMessages() {
     }
   };
 
-  const startConversation = async (user) => {
+  const startConversation = (user) => {
     const id = String(user._id);
 
     setConversations((current) => {
@@ -374,19 +540,92 @@ function StudentMessages() {
     setUserSearch("");
     setUserResults([]);
     setNotice("");
+    setError("");
   };
 
-  const addEmoji = (emoji) => {
+  const addEmoji = (emojiData) => {
+    const emoji = emojiData.emoji;
+
     setMessageText((current) => `${current}${emoji}`);
     setShowEmojiPanel(false);
+    messageInputRef.current?.focus();
   };
 
-  const handleAttachment = () => {
-    setNotice("File attachments are not available yet.");
+  const openFilePicker = (type) => {
+    if (!fileInputRef.current) return;
+
+    const acceptTypes = {
+      image: "image/*",
+      video: "video/*",
+      document: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv",
+      audio: "audio/*",
+      all: "image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv",
+    };
+
+    fileInputRef.current.accept = acceptTypes[type] || acceptTypes.all;
+    fileInputRef.current.click();
+
+    setShowAttachmentMenu(false);
+  };
+
+  const handleFileSelection = (event) => {
+    const files = Array.from(event.target.files || []);
+
+    if (files.length === 0) return;
+
+    const maxSize = 10 * 1024 * 1024;
+    const validFiles = [];
+    const rejectedFiles = [];
+
+    files.forEach((file) => {
+      if (file.size > maxSize) {
+        rejectedFiles.push(file.name);
+      } else {
+        validFiles.push({
+          id: `${file.name}-${file.lastModified}-${Math.random()}`,
+          file,
+          previewUrl: file.type.startsWith("image/")
+            ? URL.createObjectURL(file)
+            : "",
+        });
+      }
+    });
+
+    setSelectedFiles((current) => [
+      ...current,
+      ...validFiles,
+    ]);
+
+    if (rejectedFiles.length > 0) {
+      setNotice(
+        `These files exceed the 10 MB limit: ${rejectedFiles.join(
+          ", "
+        )}`
+      );
+    } else {
+      setNotice("");
+    }
+
+    // Allow selecting the same file again after removing it.
+    event.target.value = "";
+  };
+
+  const removeSelectedFile = (id) => {
+    setSelectedFiles((current) => {
+      const removed = current.find((item) => item.id === id);
+
+      if (removed?.previewUrl) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+
+      return current.filter((item) => item.id !== id);
+    });
   };
 
   const handleCallAction = (type) => {
-    setNotice(`${type} calling is not implemented yet.`);
+    setNotice(
+      `${type} calling is not implemented yet.`
+    );
   };
 
   const handleRefresh = async () => {
@@ -395,6 +634,111 @@ function StudentMessages() {
     if (selectedConversationId) {
       await loadMessages(selectedConversationId);
     }
+  };
+
+  const renderAttachment = (attachment, index) => {
+    const type = getAttachmentType(attachment.mimeType);
+    const AttachmentIcon = getAttachmentIcon(
+      attachment.mimeType
+    );
+
+    if (type === "image") {
+      return (
+        <a
+          key={`${attachment.url}-${index}`}
+          href={attachment.url}
+          target="_blank"
+          rel="noreferrer"
+          className="student-message-image-link"
+        >
+          <img
+            src={attachment.url}
+            alt={attachment.originalName || "Shared image"}
+            className="student-message-image"
+            loading="lazy"
+          />
+        </a>
+      );
+    }
+
+    if (type === "video") {
+      return (
+        <div
+          key={`${attachment.url}-${index}`}
+          className="student-message-file-card"
+        >
+          <video
+            src={attachment.url}
+            controls
+            className="student-message-video"
+          />
+          <div className="student-message-file-details">
+            <Film size={18} />
+            <span>{attachment.originalName}</span>
+            <a
+              href={attachment.url}
+              download={attachment.originalName}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Download video"
+            >
+              <Download size={17} />
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    if (type === "audio") {
+      return (
+        <div
+          key={`${attachment.url}-${index}`}
+          className="student-message-file-card"
+        >
+          <audio
+            src={attachment.url}
+            controls
+            className="student-message-audio"
+          />
+          <div className="student-message-file-details">
+            <Music size={18} />
+            <span>{attachment.originalName}</span>
+            <a
+              href={attachment.url}
+              download={attachment.originalName}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Download audio"
+            >
+              <Download size={17} />
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <a
+        key={`${attachment.url}-${index}`}
+        href={attachment.url}
+        target="_blank"
+        rel="noreferrer"
+        className="student-message-document"
+      >
+        <span className="student-message-document-icon">
+          <AttachmentIcon size={22} />
+        </span>
+
+        <span className="student-message-document-info">
+          <strong>{attachment.originalName}</strong>
+          <small>
+            {formatFileSize(attachment.size)}
+          </small>
+        </span>
+
+        <Download size={18} />
+      </a>
+    );
   };
 
   return (
@@ -408,8 +752,8 @@ function StudentMessages() {
           <h2>Messages</h2>
 
           <p>
-            Connect with recruiters, founders and opportunity providers
-            through StartupSync.
+            Connect with recruiters, founders and opportunity
+            providers through StartupSync.
           </p>
         </div>
       </div>
@@ -434,57 +778,44 @@ function StudentMessages() {
           <div className="student-conversations-header">
             <div>
               <h3>Conversations</h3>
-              <span>{conversations.length} conversations</span>
+              <span>
+                {conversations.length} conversations
+              </span>
             </div>
 
-            <button
-              type="button"
-              title="Refresh conversations"
-              aria-label="Refresh conversations"
-              onClick={handleRefresh}
-              disabled={loadingConversations}
-              style={{
-                float: "right",
-                border: 0,
-                background: "transparent",
-                color: "#64748b",
-                cursor: "pointer",
-              }}
-            >
-              <RefreshCw size={16} />
-            </button>
+            <div className="student-conversations-header-actions">
+              <button
+                type="button"
+                title="Find a StartupSync user"
+                aria-label="Find a user"
+                onClick={() =>
+                  setShowUserSearch((value) => !value)
+                }
+              >
+                <UserRound size={17} />
+              </button>
 
-            <button
-              type="button"
-              title="Find a StartupSync user"
-              aria-label="Find a user"
-              onClick={() => setShowUserSearch((value) => !value)}
-              style={{
-                float: "right",
-                border: 0,
-                background: "transparent",
-                color: "#2563eb",
-                cursor: "pointer",
-                marginRight: 8,
-              }}
-            >
-              <UserRound size={16} />
-            </button>
+              <button
+                type="button"
+                title="Refresh conversations"
+                aria-label="Refresh conversations"
+                onClick={handleRefresh}
+                disabled={loadingConversations}
+              >
+                <RefreshCw size={16} />
+              </button>
+            </div>
           </div>
 
           {showUserSearch && (
-            <div style={{ padding: "0 14px 12px" }}>
+            <div className="student-user-search-panel">
               <input
                 value={userSearch}
-                onChange={(event) => searchPeople(event.target.value)}
+                onChange={(event) =>
+                  searchPeople(event.target.value)
+                }
                 placeholder="Search people by name..."
                 aria-label="Search StartupSync users"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 8,
-                }}
               />
 
               {searchingUsers && <p>Searching...</p>}
@@ -494,19 +825,7 @@ function StudentMessages() {
                   key={user._id}
                   type="button"
                   onClick={() => startConversation(user)}
-                  style={{
-                    display: "flex",
-                    width: "100%",
-                    gap: 10,
-                    alignItems: "center",
-                    padding: 10,
-                    marginTop: 5,
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 8,
-                    background: "#fff",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
+                  className="student-user-search-result"
                 >
                   <span className="student-conversation-avatar">
                     {getInitials(user.name)}
@@ -514,27 +833,29 @@ function StudentMessages() {
 
                   <span>
                     <strong>{user.name}</strong>
-                    <small style={{ display: "block", color: "#64748b" }}>
-                      {user.role}
-                    </small>
+                    <small>{user.role}</small>
                   </span>
                 </button>
               ))}
 
               {!searchingUsers &&
                 userSearch.trim().length >= 2 &&
-                userResults.length === 0 && <p>No users found.</p>}
+                userResults.length === 0 && (
+                  <p>No users found.</p>
+                )}
             </div>
           )}
 
           <div className="student-conversation-search">
-            <Search size={16} />
+            <Search size={17} />
 
             <input
               type="text"
               placeholder="Search conversations..."
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) =>
+                setSearchTerm(event.target.value)
+              }
             />
 
             {searchTerm && (
@@ -563,7 +884,9 @@ function StudentMessages() {
                       ? "student-conversation-active"
                       : ""
                   }`}
-                  onClick={() => handleSelectConversation(conversation.id)}
+                  onClick={() =>
+                    handleSelectConversation(conversation.id)
+                  }
                 >
                   <div className="student-conversation-avatar">
                     {conversation.avatar}
@@ -593,12 +916,14 @@ function StudentMessages() {
               ))
             ) : (
               <div className="student-conversations-empty">
-                <MessageCircle size={21} />
+                <MessageCircle size={22} />
+
                 <h4>
                   {searchTerm
                     ? "No conversations found"
                     : "No conversations yet"}
                 </h4>
+
                 <p>
                   {searchTerm
                     ? "Try another name or keyword."
@@ -630,7 +955,7 @@ function StudentMessages() {
                   title="Audio call"
                   onClick={() => handleCallAction("Audio")}
                 >
-                  <Phone size={17} />
+                  <Phone size={18} />
                 </button>
 
                 <button
@@ -639,7 +964,7 @@ function StudentMessages() {
                   title="Video call"
                   onClick={() => handleCallAction("Video")}
                 >
-                  <Video size={18} />
+                  <Video size={19} />
                 </button>
               </div>
             </header>
@@ -654,112 +979,241 @@ function StudentMessages() {
                   <p>Loading messages...</p>
                 </div>
               ) : messages.length > 0 ? (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`student-message-row ${
-                      message.sender === "me"
-                        ? "student-message-row-me"
-                        : "student-message-row-them"
-                    }`}
-                  >
+                messages.map((message) => {
+                  const isMine = message.sender === "me";
+
+                  return (
                     <div
-                      className={`student-message-bubble ${
-                        message.sender === "me"
-                          ? "student-message-bubble-me"
-                          : "student-message-bubble-them"
+                      key={message.id}
+                      className={`student-message-row ${
+                        isMine
+                          ? "student-message-row-me"
+                          : "student-message-row-them"
                       }`}
                     >
-                      <p>{message.text}</p>
-
-                      <div className="student-message-meta">
-                        <span>{message.time}</span>
-                        {message.sender === "me" && (
-                          <CheckCheck size={13} />
+                      <div
+                        className={`student-message-bubble ${
+                          isMine
+                            ? "student-message-bubble-me"
+                            : "student-message-bubble-them"
+                        }`}
+                      >
+                        {message.text && (
+                          <p className="student-message-text">
+                            {message.text}
+                          </p>
                         )}
+
+                        {message.attachments?.length > 0 && (
+                          <div className="student-message-attachments">
+                            {message.attachments.map(
+                              renderAttachment
+                            )}
+                          </div>
+                        )}
+
+                        <div className="student-message-meta">
+                          <span>{message.time}</span>
+
+                          {isMine && (
+                            <CheckCheck
+                              size={14}
+                              className={
+                                message.readAt
+                                  ? "student-message-read"
+                                  : ""
+                              }
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="student-chat-empty">
                   <div className="student-chat-empty-icon">
                     <MessageCircle size={22} />
                   </div>
+
                   <h3>Start a conversation</h3>
-                  <p>Send a message to begin chatting with this user.</p>
+
+                  <p>
+                    Send a message to begin chatting with this
+                    user.
+                  </p>
                 </div>
               )}
 
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="student-chat-composer">
-              {showEmojiPanel && (
-                <div className="student-emoji-panel">
-                  {[
-                    "😊",
-                    "👍",
-                    "🎉",
-                    "🚀",
-                    "💡",
-                    "👏",
-                    "🔥",
-                    "🙂",
-                    "❤️",
-                    "🙌",
-                  ].map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => addEmoji(emoji)}
+            <div className="student-chat-composer-wrapper">
+              {selectedFiles.length > 0 && (
+                <div className="student-selected-files">
+                  {selectedFiles.map((item) => (
+                    <div
+                      key={item.id}
+                      className="student-selected-file"
                     >
-                      {emoji}
-                    </button>
+                      {item.previewUrl ? (
+                        <img
+                          src={item.previewUrl}
+                          alt={item.file.name}
+                        />
+                      ) : (
+                        <FileText size={22} />
+                      )}
+
+                      <div>
+                        <strong>{item.file.name}</strong>
+                        <small>
+                          {formatFileSize(item.file.size)}
+                        </small>
+                      </div>
+
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item.file.name}`}
+                        onClick={() =>
+                          removeSelectedFile(item.id)
+                        }
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
 
-              <button
-                type="button"
-                className="student-composer-icon"
-                aria-label="Attach file"
-                title="Attach file"
-                onClick={handleAttachment}
-              >
-                <Paperclip size={18} />
-              </button>
+              <div className="student-chat-composer">
+                <div className="student-attachment-wrapper">
+                  <button
+                    type="button"
+                    className="student-composer-icon"
+                    aria-label="Attach file"
+                    title="Attach file"
+                    onClick={() =>
+                      setShowAttachmentMenu((value) => !value)
+                    }
+                  >
+                    <Paperclip size={19} />
+                  </button>
 
-              <button
-                type="button"
-                className="student-composer-icon"
-                aria-label="Add emoji"
-                title="Emoji"
-                onClick={() => setShowEmojiPanel((value) => !value)}
-              >
-                <Smile size={18} />
-              </button>
+                  {showAttachmentMenu && (
+                    <div className="student-attachment-menu">
+                      <button
+                        type="button"
+                        onClick={() => openFilePicker("image")}
+                      >
+                        <ImageIcon size={18} />
+                        <span>Photos</span>
+                      </button>
 
-              <textarea
-                value={messageText}
-                onChange={(event) => setMessageText(event.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                rows={1}
-                maxLength={5000}
-                disabled={sending}
-              />
+                      <button
+                        type="button"
+                        onClick={() => openFilePicker("video")}
+                      >
+                        <Film size={18} />
+                        <span>Videos</span>
+                      </button>
 
-              <button
-                type="button"
-                className="student-send-button"
-                aria-label="Send message"
-                title="Send message"
-                disabled={!messageText.trim() || sending}
-                onClick={handleSendMessage}
-              >
-                <Send size={17} />
-              </button>
+                      <button
+                        type="button"
+                        onClick={() => openFilePicker("document")}
+                      >
+                        <FileText size={18} />
+                        <span>Documents</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openFilePicker("audio")}
+                      >
+                        <Music size={18} />
+                        <span>Audio files</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openFilePicker("all")}
+                      >
+                        <Paperclip size={18} />
+                        <span>Browse files</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  className="student-emoji-wrapper"
+                  ref={emojiPickerRef}
+                >
+                  <button
+                    type="button"
+                    className="student-composer-icon"
+                    aria-label="Add emoji"
+                    title="Emoji"
+                    onClick={() =>
+                      setShowEmojiPanel((value) => !value)
+                    }
+                  >
+                    <Smile size={19} />
+                  </button>
+
+                  {showEmojiPanel && (
+                    <div className="student-emoji-panel">
+                      <EmojiPicker
+                        onEmojiClick={addEmoji}
+                        width={320}
+                        height={400}
+                        searchPlaceHolder="Search emoji..."
+                        previewConfig={{
+                          showPreview: false,
+                        }}
+                        skinTonesDisabled={false}
+                        lazyLoadEmojis={true}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <textarea
+                  ref={messageInputRef}
+                  value={messageText}
+                  onChange={(event) =>
+                    setMessageText(event.target.value)
+                  }
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type a message..."
+                  rows={1}
+                  maxLength={5000}
+                  disabled={sending}
+                />
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={handleFileSelection}
+                />
+
+                <button
+                  type="button"
+                  className="student-send-button"
+                  aria-label="Send message"
+                  title="Send message"
+                  disabled={
+                    (!messageText.trim() &&
+                      selectedFiles.length === 0) ||
+                    sending
+                  }
+                  onClick={handleSendMessage}
+                >
+                  <Send size={18} />
+                </button>
+              </div>
             </div>
           </div>
         ) : (

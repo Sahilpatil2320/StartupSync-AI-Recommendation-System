@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
@@ -17,33 +16,51 @@ const getConversations = async (req, res) => {
       .lean();
 
     const unreadCounts = new Map();
+    const conversations = new Map();
 
     for (const item of messages) {
       const senderId = String(item.sender?._id || item.sender);
       const receiverId = String(item.receiver?._id || item.receiver);
 
-      if (receiverId === String(userId) && senderId !== String(userId) && !item.readAt) {
-        unreadCounts.set(senderId, (unreadCounts.get(senderId) || 0) + 1);
+      if (
+        receiverId === String(userId) &&
+        senderId !== String(userId) &&
+        !item.readAt
+      ) {
+        unreadCounts.set(
+          senderId,
+          (unreadCounts.get(senderId) || 0) + 1
+        );
       }
     }
-
-    const conversations = new Map();
 
     for (const message of messages) {
       const senderId = String(message.sender?._id || message.sender);
       const receiverId = String(message.receiver?._id || message.receiver);
-      const otherId = senderId === String(userId) ? receiverId : senderId;
+      const otherId =
+        senderId === String(userId) ? receiverId : senderId;
 
-      if (otherId === String(userId) || conversations.has(otherId)) continue;
+      if (otherId === String(userId) || conversations.has(otherId)) {
+        continue;
+      }
 
-      const otherUser = senderId === otherId ? message.sender : message.receiver;
+      const otherUser =
+        senderId === otherId ? message.sender : message.receiver;
+
       if (!otherUser?._id) continue;
+
+      const attachmentCount = message.attachments?.length || 0;
 
       conversations.set(otherId, {
         user: otherUser,
         lastMessage: {
           _id: message._id,
-          text: message.text,
+          text:
+            message.text ||
+            (attachmentCount
+              ? `${attachmentCount} attachment(s)`
+              : ""),
+          attachments: message.attachments || [],
           createdAt: message.createdAt,
           senderId,
         },
@@ -57,6 +74,7 @@ const getConversations = async (req, res) => {
     });
   } catch (error) {
     console.error("Get conversations error:", error.message);
+
     return res.status(500).json({
       success: false,
       message: "Failed to load conversations",
@@ -83,7 +101,9 @@ const getMessages = async (req, res) => {
       });
     }
 
-    const otherUser = await User.findById(otherUserId).select("name role");
+    const otherUser = await User.findById(otherUserId).select(
+      "name role"
+    );
 
     if (!otherUser) {
       return res.status(404).json({
@@ -111,6 +131,7 @@ const getMessages = async (req, res) => {
     );
 
     const io = req.app.get("io");
+
     if (io) {
       io.to(`user:${currentUserId}`).emit("messages:read", {
         conversationUserId: String(otherUserId),
@@ -124,6 +145,7 @@ const getMessages = async (req, res) => {
     });
   } catch (error) {
     console.error("Get messages error:", error.message);
+
     return res.status(500).json({
       success: false,
       message: "Failed to load messages",
@@ -135,7 +157,13 @@ const sendMessage = async (req, res) => {
   try {
     const { userId: receiverId } = req.params;
     const senderId = req.user.userId;
-    const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
+
+    const text =
+      typeof req.body.text === "string"
+        ? req.body.text.trim()
+        : "";
+
+    const files = req.files || [];
 
     if (!mongoose.isValidObjectId(receiverId)) {
       return res.status(400).json({
@@ -151,10 +179,17 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    if (!text || text.length > 5000) {
+    if (!text && files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Message must contain between 1 and 5000 characters",
+        message: "Enter a message or attach a file",
+      });
+    }
+
+    if (text.length > 5000) {
+      return res.status(400).json({
+        success: false,
+        message: "Message cannot exceed 5000 characters",
       });
     }
 
@@ -177,10 +212,18 @@ const sendMessage = async (req, res) => {
       });
     }
 
+    const attachments = files.map((file) => ({
+      url: `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    }));
+
     const message = await Message.create({
       sender: senderId,
       receiver: receiverId,
       text,
+      attachments,
     });
 
     const messageData = {
@@ -188,6 +231,7 @@ const sendMessage = async (req, res) => {
       sender: String(senderId),
       receiver: String(receiverId),
       text: message.text,
+      attachments: message.attachments,
       readAt: message.readAt,
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
@@ -196,13 +240,20 @@ const sendMessage = async (req, res) => {
     let notificationData = null;
 
     try {
+      const notificationText =
+        text ||
+        (attachments.length === 1
+          ? `Sent an attachment: ${attachments[0].originalName}`
+          : `Sent ${attachments.length} attachments`);
+
       const notification = await Notification.create({
         user: receiverId,
         type: "message",
         title: `New message from ${sender.name}`,
-        message: text.length > 180
-          ? `${text.slice(0, 177)}...`
-          : text,
+        message:
+          notificationText.length > 180
+            ? `${notificationText.slice(0, 177)}...`
+            : notificationText,
         link: "/dashboard/messages",
       });
 
@@ -216,9 +267,10 @@ const sendMessage = async (req, res) => {
         createdAt: notification.createdAt,
       };
     } catch (notificationError) {
-      // The message is already saved; don't report it as failed
-      // just because notification creation failed.
-      console.error("Create message notification error:", notificationError.message);
+      console.error(
+        "Create message notification error:",
+        notificationError.message
+      );
     }
 
     const io = req.app.get("io");
@@ -236,7 +288,10 @@ const sendMessage = async (req, res) => {
       io.to(`user:${senderId}`).emit("message:sent", messageData);
 
       if (notificationData) {
-        io.to(`user:${receiverId}`).emit("notification:new", notificationData);
+        io.to(`user:${receiverId}`).emit(
+          "notification:new",
+          notificationData
+        );
       }
     }
 
@@ -248,9 +303,10 @@ const sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("Send message error:", error.message);
+
     return res.status(500).json({
       success: false,
-      message: "Failed to send message",
+      message: error.message || "Failed to send message",
     });
   }
 };
@@ -260,10 +316,16 @@ const searchUsers = async (req, res) => {
     const search = String(req.query.search || "").trim();
 
     if (search.length < 2) {
-      return res.json({ success: true, data: [] });
+      return res.json({
+        success: true,
+        data: [],
+      });
     }
 
-    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedSearch = search.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&"
+    );
 
     const users = await User.find({
       _id: { $ne: req.user.userId },
@@ -273,9 +335,13 @@ const searchUsers = async (req, res) => {
       .limit(20)
       .lean();
 
-    return res.json({ success: true, data: users });
+    return res.json({
+      success: true,
+      data: users,
+    });
   } catch (error) {
     console.error("Search users error:", error.message);
+
     return res.status(500).json({
       success: false,
       message: "Failed to search users",

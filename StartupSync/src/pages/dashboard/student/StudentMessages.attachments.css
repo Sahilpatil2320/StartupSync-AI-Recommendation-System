@@ -1,0 +1,461 @@
+/* Header action buttons */
+.student-conversations-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-conversations-header-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.student-conversations-header-actions button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* User search */
+.student-user-search-panel {
+  padding: 0 14px 12px;
+}
+
+.student-user-search-panel input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 9px;
+  outline: none;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.student-user-search-panel input:focus {
+  border-color: #2563eb;
+}
+
+.student-user-search-panel > p {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.student-user-search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  margin-top: 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.student-user-search-result:hover {
+  background: #f1f6ff;
+}
+
+.student-user-search-result small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+}
+
+/* Composer */
+.student-chat-composer-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.student-chat-composer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.student-composer-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.student-composer-icon:hover {
+  background: #e7efff;
+  color: #2563eb;
+}
+
+.student-chat-composer textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 120px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  outline: none;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.student-chat-composer textarea:focus {
+  border-color: #2563eb;
+  background: #fff;
+}
+
+.student-send-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 11px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.student-send-button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.student-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Attachment menu */
+.student-attachment-wrapper,
+.student-emoji-wrapper {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.student-attachment-menu {
+  position: absolute;
+  z-index: 30;
+  bottom: 55px;
+  left: 0;
+  width: 205px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.15);
+}
+
+.student-attachment-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.student-attachment-menu button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* Emoji picker */
+.student-emoji-panel {
+  position: absolute;
+  z-index: 40;
+  bottom: 55px;
+  left: -100px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.16);
+}
+
+.student-emoji-panel aside.EmojiPickerReact {
+  border: 0;
+}
+
+/* Selected files */
+.student-selected-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  max-height: 145px;
+  overflow-y: auto;
+  padding: 0 0 12px;
+}
+
+.student-selected-file {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 8px 32px 8px 9px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.student-selected-file > img {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.student-selected-file > svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.student-selected-file > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
+}
+
+.student-selected-file strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-selected-file small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.student-selected-file > button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  cursor: pointer;
+}
+
+.student-selected-file > button:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Message attachment layout */
+.student-message-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 7px;
+  max-width: 100%;
+}
+
+.student-message-image-link {
+  display: block;
+  max-width: 300px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.student-message-image {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.student-message-file-card {
+  width: 100%;
+  max-width: 310px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.student-message-video {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  background: #0f172a;
+}
+
+.student-message-audio {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 8px;
+}
+
+.student-message-file-details {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  color: #475569;
+}
+
+.student-message-file-details span {
+  flex: 1;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-message-file-details a {
+  display: flex;
+  align-items: center;
+  color: #2563eb;
+}
+
+.student-message-document {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  padding: 11px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.student-message-document:hover {
+  background: #f1f6ff;
+}
+
+.student-message-document-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 39px;
+  height: 39px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.student-message-document-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
+}
+
+.student-message-document-info strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-message-document-info small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.student-message-document > svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+/* Message text and read receipt */
+.student-message-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.student-message-read {
+  color: #bfdbfe;
+}
+
+/* Responsive */
+@media (max-width: 650px) {
+  .student-chat-composer-wrapper {
+    padding: 9px;
+  }
+
+  .student-chat-composer {
+    gap: 6px;
+  }
+
+  .student-composer-icon {
+    width: 36px;
+    height: 40px;
+  }
+
+  .student-send-button {
+    width: 40px;
+    height: 42px;
+  }
+
+  .student-chat-composer textarea {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .student-emoji-panel {
+    left: auto;
+    right: -55px;
+  }
+
+  .student-message-image-link {
+    max-width: 230px;
+  }
+}

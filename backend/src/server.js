@@ -23,6 +23,7 @@ const dealPipelineRoutes = require("./routes/dealPipelineRoutes");
 const pitchRoomRoutes = require("./routes/pitchRoomRoutes");
 const mentorshipRoutes = require("./routes/mentorshipRoutes");
 const ecosystemRoutes = require("./routes/ecosystemRoutes");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
@@ -112,6 +113,7 @@ app.use("/api/pipeline", dealPipelineRoutes);
 app.use("/api/pitch-room", pitchRoomRoutes);
 app.use("/api/mentorship", mentorshipRoutes);
 app.use("/api/ecosystem", ecosystemRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 const PORT = process.env.PORT || 5000;
 

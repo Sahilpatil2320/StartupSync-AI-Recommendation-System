@@ -101,10 +101,10 @@ function StudentNotifications() {
         time: formatTime(item.createdAt),
         date: item.createdAt
           ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })
           : "",
       }));
 
@@ -116,8 +116,8 @@ function StudentNotifications() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          err.message ||
-          "Unable to load notifications."
+        err.message ||
+        "Unable to load notifications."
       );
     } finally {
       setLoading(false);
@@ -246,6 +246,46 @@ function StudentNotifications() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (notifications.length === 0 || busy) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete all notifications?"
+    );
+
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await Promise.all(
+        notifications.map((item) =>
+          axios.delete(
+            `${API_URL}/${encodeURIComponent(item.id)}`,
+            getAuthConfig()
+          )
+        )
+      );
+
+      setNotifications([]);
+      setSelectedNotification(null);
+      setActiveFilter("all");
+      setNotice("All notifications cleared.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        "Unable to clear all notifications. Please refresh and try again."
+      );
+
+      // Refresh to show the notifications that remain on the server.
+      await loadNotifications();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleOpenNotification = (notification) => {
     setSelectedNotification(notification);
 
@@ -291,50 +331,38 @@ function StudentNotifications() {
         </div>
       )}
 
-      <div className="student-notifications-toolbar">
-        <div className="student-notification-filters">
-          {filterOptions.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              className={
-                activeFilter === filter.id
-                  ? "student-notification-filter-active"
-                  : ""
-              }
-              onClick={() => setActiveFilter(filter.id)}
-            >
-              {filter.label}
-              {filter.id === "unread" && unreadCount > 0 && (
-                <span>{unreadCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
+<div className="student-notification-toolbar-actions">
+  <button
+    type="button"
+    className="student-mark-all-button"
+    onClick={handleMarkAllRead}
+    disabled={unreadCount === 0 || busy}
+  >
+    <CheckCheck size={15} />
+    Mark all as read
+  </button>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            className="student-mark-all-button"
-            onClick={handleMarkAllRead}
-            disabled={unreadCount === 0 || busy}
-          >
-            <CheckCheck size={15} />
-            Mark all as read
-          </button>
+  <button
+    type="button"
+    className="student-clear-all-button"
+    onClick={handleClearAll}
+    disabled={notifications.length === 0 || busy}
+  >
+    <Trash2 size={15} />
+    Clear All
+  </button>
 
-          <button
-            type="button"
-            className="student-mark-all-button"
-            onClick={loadNotifications}
-            disabled={loading}
-            title="Refresh notifications"
-          >
-            <RefreshCw size={15} />
-            Refresh
-          </button>
-        </div>
-      </div>
+  <button
+    type="button"
+    className="student-mark-all-button"
+    onClick={loadNotifications}
+    disabled={loading || busy}
+    title="Refresh notifications"
+  >
+    <RefreshCw size={15} />
+    Refresh
+  </button>
+</div>
 
       <div className="student-notifications-result-heading">
         <div>
@@ -362,9 +390,8 @@ function StudentNotifications() {
             return (
               <article
                 key={notification.id}
-                className={`student-notification-card ${
-                  !notification.read ? "student-notification-unread" : ""
-                }`}
+                className={`student-notification-card ${!notification.read ? "student-notification-unread" : ""
+                  }`}
               >
                 <button
                   type="button"
