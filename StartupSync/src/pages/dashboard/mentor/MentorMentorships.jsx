@@ -6,108 +6,265 @@ import {
   MoreVertical,
   Search,
   UserRound,
-  X
+  X,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
 
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import api from "../../../services/api";
 import "./MentorMentorships.css";
 
-const initialMentorships = [
-  {
-    id: 1,
-    startup: "FinFlow",
-    founder: "Rahul Mehta",
-    industry: "FinTech",
-    stage: "Seed",
-    focus: "Business Strategy",
-    status: "pending",
-    requestedDate: "Sep 26, 2026",
-    message:
-      "We are looking for guidance on our business strategy and early-stage growth plans."
-  },
-  {
-    id: 2,
-    startup: "HealthNest",
-    founder: "Ananya Sharma",
-    industry: "HealthTech",
-    stage: "Pre-Seed",
-    focus: "Product Strategy",
-    status: "active",
-    requestedDate: "Sep 18, 2026",
-    nextMeeting: "Oct 2, 2026",
-    sessions: 4,
-    message:
-      "Helping the founding team validate product direction and prioritize upcoming features."
-  },
-  {
-    id: 3,
-    startup: "AgriNova",
-    founder: "Vikram Patil",
-    industry: "AgriTech",
-    stage: "Seed",
-    focus: "Fundraising",
-    status: "active",
-    requestedDate: "Sep 12, 2026",
-    nextMeeting: "Oct 5, 2026",
-    sessions: 6,
-    message:
-      "Supporting the founders with fundraising preparation and investor communication."
-  },
-  {
-    id: 4,
-    startup: "EduBridge",
-    founder: "Priya Deshmukh",
-    industry: "EdTech",
-    stage: "Growth",
-    focus: "Marketing Strategy",
-    status: "completed",
-    requestedDate: "Jul 10, 2026",
-    completedDate: "Sep 15, 2026",
-    sessions: 8,
-    message:
-      "Mentorship focused on customer acquisition, marketing planning and growth."
-  },
-  {
-    id: 5,
-    startup: "GreenGrid",
-    founder: "Amit Joshi",
-    industry: "CleanTech",
-    stage: "Pre-Seed",
-    focus: "Business Development",
-    status: "declined",
-    requestedDate: "Aug 28, 2026",
-    message:
-      "Startup requested guidance around partnerships and early business development."
-  }
+const tabs = [
+  { id: "all", label: "All" },
+  { id: "pending", label: "Pending" },
+  { id: "active", label: "Active" },
+  { id: "completed", label: "Completed" },
 ];
 
-const tabs = [
-  {
-    id: "all",
-    label: "All"
-  },
-  {
-    id: "pending",
-    label: "Pending"
-  },
-  {
-    id: "active",
-    label: "Active"
-  },
-  {
-    id: "completed",
-    label: "Completed"
+const getId = (value) =>
+  String(value?._id || value?.id || value || "");
+
+const formatDate = (value) => {
+  if (!value) return "Not specified";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "Not specified";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "Not scheduled";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "Not scheduled";
+
+  return `${date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })} at ${date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
+
+const normalizeStatus = (status) => {
+  const value = String(status || "").toLowerCase();
+
+  switch (value) {
+    case "requested":
+    case "pending":
+      return "pending";
+
+    case "confirmed":
+    case "active":
+      return "active";
+
+    case "completed":
+      return "completed";
+
+    case "cancelled":
+    case "canceled":
+    case "declined":
+      return "cancelled";
+
+    default:
+      return value || "pending";
   }
-];
+};
+
+const getStatusLabel = (status) => {
+  const labels = {
+    pending: "Pending",
+    active: "Active",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+
+  return labels[status] || status;
+};
+
+/*
+ * Converts the backend MentorshipSession document
+ * into the structure used by the existing UI.
+ */
+const mapSession = (session) => {
+  const mentee =
+    session.menteeUserId &&
+    typeof session.menteeUserId === "object"
+      ? session.menteeUserId
+      : {};
+
+  const goals = Array.isArray(session.goals)
+    ? session.goals
+    : [];
+
+  const status = normalizeStatus(session.status);
+
+  return {
+    id: getId(session._id || session.id),
+
+    founder:
+      mentee.name ||
+      mentee.fullName ||
+      "StartupSync User",
+
+    menteeEmail: mentee.email || "",
+    menteeRole: mentee.role || session.menteeRole || "founder",
+
+    // These fields are not present in the supplied session schema.
+    startup: mentee.startupName || mentee.startup?.name || "",
+
+    title: session.title || "Mentorship Session",
+
+    status,
+
+    requestedDate: formatDate(
+      session.createdAt || session.scheduledDate
+    ),
+
+    scheduledDate: session.scheduledDate || null,
+
+    scheduledDateLabel: formatDateTime(
+      session.scheduledDate
+    ),
+
+    durationMinutes: Number(session.durationMinutes || 45),
+
+    meetingLink: session.meetingLink || "",
+
+    goals,
+
+    message:
+      goals.map((goal) => goal.text).filter(Boolean).join(", ") ||
+      session.title ||
+      "No mentorship objectives provided.",
+
+    mentorNotes: session.mentorNotes || "",
+
+    actionItems: Array.isArray(session.actionItems)
+      ? session.actionItems
+      : [],
+
+    feedbackRating: session.feedbackRating ?? null,
+
+    createdAt: session.createdAt || null,
+    updatedAt: session.updatedAt || null,
+
+    raw: session,
+  };
+};
 
 function MentorMentorships() {
-  const [mentorships, setMentorships] =
-    useState(initialMentorships);
+  const [mentorships, setMentorships] = useState([]);
 
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+
   const [selectedMentorship, setSelectedMentorship] =
     useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatingId, setUpdatingId] = useState("");
+
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  // ------------------------------------------
+  // LOAD MENTORSHIP SESSIONS
+  // ------------------------------------------
+
+  const loadMentorships = useCallback(async (showRefresh = false) => {
+    if (showRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    setError("");
+
+    try {
+      const response = await api.get("/mentorship/sessions");
+
+      const rows = response.data?.sessions;
+
+      if (!response.data?.success || !Array.isArray(rows)) {
+        throw new Error(
+          "Unexpected mentorship API response. Expected a sessions array."
+        );
+      }
+
+      const mappedSessions = rows.map(mapSession);
+
+      setMentorships(mappedSessions);
+
+      setSelectedMentorship((current) => {
+        if (!current) return null;
+
+        return (
+          mappedSessions.find(
+            (item) => item.id === current.id
+          ) || null
+        );
+      });
+    } catch (err) {
+      console.error("Load mentorships error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load mentorship sessions."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMentorships();
+  }, [loadMentorships]);
+
+  // ------------------------------------------
+  // COUNTS
+  // ------------------------------------------
+
+  const counts = useMemo(() => {
+    return {
+      all: mentorships.length,
+
+      pending: mentorships.filter(
+        (item) => item.status === "pending"
+      ).length,
+
+      active: mentorships.filter(
+        (item) => item.status === "active"
+      ).length,
+
+      completed: mentorships.filter(
+        (item) => item.status === "completed"
+      ).length,
+    };
+  }, [mentorships]);
+
+  // ------------------------------------------
+  // SEARCH AND FILTER
+  // ------------------------------------------
 
   const filteredMentorships = useMemo(() => {
     const normalizedSearch = searchTerm
@@ -119,67 +276,120 @@ function MentorMentorships() {
         activeTab === "all" ||
         item.status === activeTab;
 
+      const searchableText = [
+        item.startup,
+        item.founder,
+        item.menteeEmail,
+        item.menteeRole,
+        item.title,
+        item.message,
+        item.status,
+        ...item.goals.map((goal) => goal.text || ""),
+      ]
+        .join(" ")
+        .toLowerCase();
+
       const matchesSearch =
         !normalizedSearch ||
-        item.startup
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        item.founder
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        item.industry
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        item.focus
-          .toLowerCase()
-          .includes(normalizedSearch);
+        searchableText.includes(normalizedSearch);
 
       return matchesTab && matchesSearch;
     });
   }, [mentorships, activeTab, searchTerm]);
 
-  const counts = {
-    all: mentorships.length,
-    pending: mentorships.filter(
-      (item) => item.status === "pending"
-    ).length,
-    active: mentorships.filter(
-      (item) => item.status === "active"
-    ).length,
-    completed: mentorships.filter(
-      (item) => item.status === "completed"
-    ).length
+  // ------------------------------------------
+  // UPDATE SESSION STATUS
+  // ------------------------------------------
+
+  const updateStatus = async (id, backendStatus) => {
+    if (!id || updatingId) return;
+
+    setUpdatingId(id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await api.patch(
+        `/mentorship/sessions/${encodeURIComponent(id)}/status`,
+        {
+          status: backendStatus,
+        }
+      );
+
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message ||
+            "Unable to update mentorship status."
+        );
+      }
+
+      const updatedSession = response.data.session;
+
+      if (updatedSession) {
+        const mappedSession = mapSession(updatedSession);
+
+        setMentorships((current) =>
+          current.map((item) =>
+            item.id === id ? mappedSession : item
+          )
+        );
+
+        setSelectedMentorship((current) =>
+          current?.id === id ? mappedSession : current
+        );
+      } else {
+        await loadMentorships(true);
+      }
+
+      const messages = {
+        Confirmed: "Mentorship request accepted successfully.",
+        Cancelled: "Mentorship request declined successfully.",
+        Completed: "Mentorship marked as completed.",
+      };
+
+      setNotice(
+        messages[backendStatus] ||
+          "Mentorship updated successfully."
+      );
+
+      if (backendStatus === "Cancelled") {
+        setSelectedMentorship(null);
+      }
+    } catch (err) {
+      console.error("Update mentorship status error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to update mentorship."
+      );
+    } finally {
+      setUpdatingId("");
+    }
   };
 
-  const updateStatus = (id, status) => {
-    setMentorships((current) =>
-      current.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status
-            }
-          : item
-      )
-    );
+  // ------------------------------------------
+  // DETAILS MODAL
+  // ------------------------------------------
 
+  const openDetails = (item) => {
+    setSelectedMentorship(item);
+    setError("");
+    setNotice("");
+  };
+
+  const closeDetails = () => {
     setSelectedMentorship(null);
   };
 
-  const getStatusLabel = (status) => {
-    const labels = {
-      pending: "Pending",
-      active: "Active",
-      completed: "Completed",
-      declined: "Declined"
-    };
-
-    return labels[status] || status;
-  };
+  // ------------------------------------------
+  // RENDER
+  // ------------------------------------------
 
   return (
     <div className="mentor-mentorships-page">
-      {/* Header */}
+
+      {/* HEADER */}
 
       <section className="mentor-mentorships-header">
         <div>
@@ -208,7 +418,7 @@ function MentorMentorships() {
         </div>
       </section>
 
-      {/* Search */}
+      {/* SEARCH */}
 
       <section className="mentor-mentorships-toolbar">
         <div className="mentor-mentorships-search">
@@ -216,7 +426,7 @@ function MentorMentorships() {
 
           <input
             type="text"
-            placeholder="Search startups, founders or expertise..."
+            placeholder="Search founders, email or mentorship goals..."
             value={searchTerm}
             onChange={(event) =>
               setSearchTerm(event.target.value)
@@ -225,7 +435,7 @@ function MentorMentorships() {
         </div>
       </section>
 
-      {/* Tabs */}
+      {/* TABS */}
 
       <section className="mentor-mentorships-tabs">
         {tabs.map((tab) => (
@@ -246,9 +456,86 @@ function MentorMentorships() {
         ))}
       </section>
 
-      {/* Mentorship list */}
+      {/* FEEDBACK */}
 
-      {filteredMentorships.length > 0 ? (
+      {error && (
+        <div
+          className="mentor-mentorship-feedback error"
+          role="alert"
+        >
+          <AlertCircle size={17} />
+          <span>{error}</span>
+
+          <button
+            type="button"
+            onClick={() => loadMentorships(true)}
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div
+          className="mentor-mentorship-feedback success"
+          role="status"
+        >
+          <Check size={17} />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      {/* LIST HEADER */}
+
+      <div className="mentor-mentorships-list-heading">
+        <div>
+          <h3>
+            {activeTab === "all"
+              ? "All Mentorships"
+              : `${tabs.find((tab) => tab.id === activeTab)?.label || ""} Mentorships`}
+          </h3>
+
+          <p>
+            {filteredMentorships.length}{" "}
+            {filteredMentorships.length === 1
+              ? "mentorship"
+              : "mentorships"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="mentor-mentorship-refresh"
+          onClick={() => loadMentorships(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw
+            size={16}
+            className={refreshing ? "spinning" : ""}
+          />
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
+
+      {/* LOADING */}
+
+      {loading ? (
+        <section className="mentor-mentorships-empty">
+          <RefreshCw
+            size={25}
+            className="spinning"
+          />
+
+          <h3>Loading mentorships...</h3>
+
+          <p>
+            Fetching your latest mentorship requests.
+          </p>
+        </section>
+      ) : filteredMentorships.length > 0 ? (
+
+        /* MENTORSHIP CARDS */
+
         <section className="mentor-mentorships-list">
           {filteredMentorships.map((item) => (
             <article
@@ -256,18 +543,31 @@ function MentorMentorships() {
               key={item.id}
             >
               <div className="mentor-mentorship-card-main">
+
                 <div className="mentor-mentorship-avatar">
-                  {item.startup.charAt(0)}
+                  {item.founder.charAt(0).toUpperCase()}
                 </div>
 
                 <div className="mentor-mentorship-content">
+
                   <div className="mentor-mentorship-title-row">
                     <div>
-                      <h3>{item.startup}</h3>
+                      <h3>
+                        {item.startup || item.title}
+                      </h3>
 
                       <p>
-                        Founder: {item.founder}
+                        {item.menteeRole === "student"
+                          ? "Student"
+                          : "Founder"}
+                        : {item.founder}
                       </p>
+
+                      {item.menteeEmail && (
+                        <p className="mentor-mentorship-email">
+                          {item.menteeEmail}
+                        </p>
+                      )}
                     </div>
 
                     <span
@@ -278,9 +578,17 @@ function MentorMentorships() {
                   </div>
 
                   <div className="mentor-mentorship-meta">
-                    <span>{item.industry}</span>
-                    <span>{item.stage}</span>
-                    <span>{item.focus}</span>
+                    <span>{item.title}</span>
+
+                    <span>
+                      {item.durationMinutes} minutes
+                    </span>
+
+                    <span>
+                      {item.menteeRole === "student"
+                        ? "Student"
+                        : "Founder"}
+                    </span>
                   </div>
 
                   <p className="mentor-mentorship-message">
@@ -290,57 +598,63 @@ function MentorMentorships() {
                   <div className="mentor-mentorship-details">
                     <span>
                       <CalendarDays size={15} />
-
-                      {item.status === "completed"
-                        ? `Completed ${item.completedDate}`
-                        : `Requested ${item.requestedDate}`}
+                      Requested {item.requestedDate}
                     </span>
 
-                    {item.nextMeeting && (
-                      <span>
-                        <Clock3 size={15} />
-                        Next meeting: {item.nextMeeting}
-                      </span>
-                    )}
-
-                    {item.sessions && (
-                      <span>
-                        {item.sessions} sessions
-                      </span>
-                    )}
+                    <span>
+                      <Clock3 size={15} />
+                      Scheduled: {item.scheduledDateLabel}
+                    </span>
                   </div>
+
+                  {item.goals.length > 0 && (
+                    <div className="mentor-mentorship-goals">
+                      <strong>Mentorship goals:</strong>
+
+                      <ul>
+                        {item.goals.slice(0, 3).map((goal, index) => (
+                          <li key={goal._id || index}>
+                            {goal.text}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* ACTIONS */}
+
               <div className="mentor-mentorship-actions">
+
                 {item.status === "pending" && (
                   <>
                     <button
                       type="button"
                       className="mentor-mentorship-decline"
+                      disabled={updatingId === item.id}
                       onClick={() =>
-                        updateStatus(
-                          item.id,
-                          "declined"
-                        )
+                        updateStatus(item.id, "Cancelled")
                       }
                     >
                       <X size={16} />
-                      Decline
+                      {updatingId === item.id
+                        ? "Updating..."
+                        : "Decline"}
                     </button>
 
                     <button
                       type="button"
                       className="mentor-mentorship-accept"
+                      disabled={updatingId === item.id}
                       onClick={() =>
-                        updateStatus(
-                          item.id,
-                          "active"
-                        )
+                        updateStatus(item.id, "Confirmed")
                       }
                     >
                       <Check size={16} />
-                      Accept
+                      {updatingId === item.id
+                        ? "Updating..."
+                        : "Accept"}
                     </button>
                   </>
                 )}
@@ -348,15 +662,14 @@ function MentorMentorships() {
                 {item.status === "active" && (
                   <button
                     type="button"
-                    className="mentor-mentorship-message-button"
+                    className="mentor-mentorship-view"
+                    disabled={updatingId === item.id}
                     onClick={() =>
-                      alert(
-                        `Messaging with ${item.startup} will connect to the Messages module.`
-                      )
+                      updateStatus(item.id, "Completed")
                     }
                   >
-                    <MessageSquare size={16} />
-                    Message
+                    <Check size={16} />
+                    Mark Completed
                   </button>
                 )}
 
@@ -364,9 +677,7 @@ function MentorMentorships() {
                   <button
                     type="button"
                     className="mentor-mentorship-view"
-                    onClick={() =>
-                      setSelectedMentorship(item)
-                    }
+                    onClick={() => openDetails(item)}
                   >
                     View Summary
                   </button>
@@ -375,9 +686,7 @@ function MentorMentorships() {
                 <button
                   type="button"
                   className="mentor-mentorship-more"
-                  onClick={() =>
-                    setSelectedMentorship(item)
-                  }
+                  onClick={() => openDetails(item)}
                   aria-label="View mentorship details"
                 >
                   <MoreVertical size={18} />
@@ -387,44 +696,64 @@ function MentorMentorships() {
           ))}
         </section>
       ) : (
+
+        /* EMPTY STATE */
+
         <section className="mentor-mentorships-empty">
           <div className="mentor-mentorships-empty-icon">
             <UserRound size={27} />
           </div>
 
-          <h3>No mentorships found</h3>
+          <h3>
+            {searchTerm
+              ? "No matching mentorships"
+              : "No mentorships found"}
+          </h3>
 
           <p>
-            Try changing your search or selecting another
-            mentorship status.
+            {searchTerm
+              ? "Try another search term."
+              : "New mentorship requests will appear here when someone requests your guidance."}
           </p>
+
+          {!searchTerm && (
+            <button
+              type="button"
+              className="mentor-mentorship-view"
+              onClick={() => loadMentorships(true)}
+            >
+              <RefreshCw size={15} />
+              Refresh
+            </button>
+          )}
         </section>
       )}
 
-      {/* Details Modal */}
+      {/* DETAILS MODAL */}
 
       {selectedMentorship && (
         <div
           className="mentor-mentorship-modal-overlay"
-          onClick={() => setSelectedMentorship(null)}
+          onClick={closeDetails}
         >
           <div
             className="mentor-mentorship-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+            onClick={(event) => event.stopPropagation()}
           >
+
             <div className="mentor-mentorship-modal-header">
               <div>
                 <span>Mentorship Details</span>
-                <h3>{selectedMentorship.startup}</h3>
+
+                <h3>
+                  {selectedMentorship.startup ||
+                    selectedMentorship.title}
+                </h3>
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  setSelectedMentorship(null)
-                }
+                onClick={closeDetails}
                 aria-label="Close"
               >
                 <X size={19} />
@@ -432,9 +761,12 @@ function MentorMentorships() {
             </div>
 
             <div className="mentor-mentorship-modal-body">
+
               <div className="mentor-modal-profile">
                 <div className="mentor-modal-avatar">
-                  {selectedMentorship.startup.charAt(0)}
+                  {selectedMentorship.founder
+                    .charAt(0)
+                    .toUpperCase()}
                 </div>
 
                 <div>
@@ -443,17 +775,25 @@ function MentorMentorships() {
                   </strong>
 
                   <span>
-                    {selectedMentorship.industry} ·{" "}
-                    {selectedMentorship.stage}
+                    {selectedMentorship.menteeRole === "student"
+                      ? "Student"
+                      : "Startup Founder"}
                   </span>
+
+                  {selectedMentorship.menteeEmail && (
+                    <span>
+                      {selectedMentorship.menteeEmail}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="mentor-modal-info-grid">
+
                 <div>
-                  <span>Mentoring Focus</span>
+                  <span>Session Title</span>
                   <strong>
-                    {selectedMentorship.focus}
+                    {selectedMentorship.title}
                   </strong>
                 </div>
 
@@ -474,45 +814,97 @@ function MentorMentorships() {
                 </div>
 
                 <div>
-                  <span>Sessions</span>
+                  <span>Duration</span>
                   <strong>
-                    {selectedMentorship.sessions || 0}
+                    {selectedMentorship.durationMinutes} minutes
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Scheduled Date</span>
+                  <strong>
+                    {selectedMentorship.scheduledDateLabel}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Feedback Rating</span>
+                  <strong>
+                    {selectedMentorship.feedbackRating
+                      ? `${selectedMentorship.feedbackRating}/5`
+                      : "Not rated"}
                   </strong>
                 </div>
               </div>
 
               <div className="mentor-modal-message">
-                <span>Mentorship Objective</span>
-                <p>
-                  {selectedMentorship.message}
-                </p>
+                <span>Mentorship Goals</span>
+
+                {selectedMentorship.goals.length > 0 ? (
+                  <ul>
+                    {selectedMentorship.goals.map(
+                      (goal, index) => (
+                        <li key={goal._id || index}>
+                          {goal.text}
+                          {goal.completed ? " ✓" : ""}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                ) : (
+                  <p>No goals have been added yet.</p>
+                )}
               </div>
+
+              {selectedMentorship.mentorNotes && (
+                <div className="mentor-modal-message">
+                  <span>Mentor Notes</span>
+                  <p>{selectedMentorship.mentorNotes}</p>
+                </div>
+              )}
+
+              {selectedMentorship.meetingLink && (
+                <div className="mentor-modal-message">
+                  <span>Meeting Link</span>
+
+                  <a
+                    href={selectedMentorship.meetingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Join Mentorship Meeting
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="mentor-mentorship-modal-footer">
-              {selectedMentorship.status ===
-                "pending" && (
+
+              {selectedMentorship.status === "pending" && (
                 <>
                   <button
                     type="button"
                     className="mentor-mentorship-decline"
+                    disabled={updatingId === selectedMentorship.id}
                     onClick={() =>
                       updateStatus(
                         selectedMentorship.id,
-                        "declined"
+                        "Cancelled"
                       )
                     }
                   >
+                    <X size={16} />
                     Decline Request
                   </button>
 
                   <button
                     type="button"
                     className="mentor-mentorship-accept"
+                    disabled={updatingId === selectedMentorship.id}
                     onClick={() =>
                       updateStatus(
                         selectedMentorship.id,
-                        "active"
+                        "Confirmed"
                       )
                     }
                   >
@@ -525,17 +917,27 @@ function MentorMentorships() {
               {selectedMentorship.status === "active" && (
                 <button
                   type="button"
-                  className="mentor-mentorship-message-button"
+                  className="mentor-mentorship-accept"
+                  disabled={updatingId === selectedMentorship.id}
                   onClick={() =>
-                    alert(
-                      "Messaging will connect to the Messages module."
+                    updateStatus(
+                      selectedMentorship.id,
+                      "Completed"
                     )
                   }
                 >
-                  <MessageSquare size={16} />
-                  Open Conversation
+                  <Check size={16} />
+                  Mark as Completed
                 </button>
               )}
+
+              <button
+                type="button"
+                className="mentor-mentorship-view"
+                onClick={closeDetails}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

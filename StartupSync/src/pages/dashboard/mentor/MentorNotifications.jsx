@@ -2,208 +2,428 @@ import {
   Bell,
   Check,
   CheckCheck,
-  CalendarDays,
-  MessageSquare,
-  Rocket,
   Trash2,
+  RefreshCw,
+  MessageCircle,
+  Rocket,
+  Handshake,
   UserRound,
-  X
+  FileText,
+  UsersRound,
+  X,
+  AlertCircle,
+  Inbox,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { useNavigate } from "react-router-dom";
+
+import api from "../../../services/api";
+import { connectSocket } from "../../../services/socket";
 
 import "./MentorNotifications.css";
 
-const initialNotifications = [
-  {
-    id: 1,
-    type: "startup",
-    title: "New mentorship request",
-    description:
-      "FinFlow has requested your mentorship for business strategy and early-stage growth.",
-    time: "15 minutes ago",
-    unread: true,
-    icon: Rocket
-  },
-  {
-    id: 2,
-    type: "mentorship",
-    title: "Mentorship request accepted",
-    description:
-      "Your mentorship with HealthNest is now active.",
-    time: "2 hours ago",
-    unread: true,
-    icon: Check
-  },
-  {
-    id: 3,
-    type: "message",
-    title: "New message from AgriNova",
-    description:
-      "Vikram Patil sent you a message about their investor presentation.",
-    time: "5 hours ago",
-    unread: true,
-    icon: MessageSquare
-  },
-  {
-    id: 4,
-    type: "meeting",
-    title: "Upcoming mentorship session",
-    description:
-      "Your next session with HealthNest is scheduled for October 2, 2026.",
-    time: "Yesterday",
-    unread: false,
-    icon: CalendarDays
-  },
-  {
-    id: 5,
-    type: "startup",
-    title: "New startup match",
-    description:
-      "ShopSphere matches your mentoring expertise in marketing and business strategy.",
-    time: "Yesterday",
-    unread: false,
-    icon: Rocket
-  },
-  {
-    id: 6,
-    type: "mentorship",
-    title: "Mentorship completed",
-    description:
-      "Your mentorship engagement with EduBridge has been marked as completed.",
-    time: "Sep 15, 2026",
-    unread: false,
-    icon: CheckCheck
-  },
-  {
-    id: 7,
-    type: "system",
-    title: "Welcome to Mentor Workspace",
-    description:
-      "Your StartupSync mentor profile is ready. Explore startups and mentoring opportunities.",
-    time: "Sep 10, 2026",
-    unread: false,
-    icon: UserRound
-  }
+const filterOptions = [
+  { id: "all", label: "All" },
+  { id: "unread", label: "Unread" },
+  { id: "mentorship", label: "Mentorships" },
+  { id: "startup", label: "Startups" },
+  { id: "message", label: "Messages" },
+  { id: "profile", label: "Profile" },
+  { id: "system", label: "System" },
 ];
 
-const filterOptions = [
-  {
-    id: "all",
-    label: "All"
-  },
-  {
-    id: "unread",
-    label: "Unread"
-  },
-  {
-    id: "startup",
-    label: "Startups"
-  },
-  {
-    id: "mentorship",
-    label: "Mentorships"
-  },
-  {
-    id: "message",
-    label: "Messages"
-  },
-  {
-    id: "system",
-    label: "System"
+const formatTime = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  const difference = Date.now() - date.getTime();
+
+  if (difference < 60_000) return "Just now";
+
+  if (difference < 3_600_000) {
+    const minutes = Math.floor(difference / 60_000);
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
   }
-];
+
+  if (difference < 86_400_000) {
+    const hours = Math.floor(difference / 3_600_000);
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  if (difference < 172_800_000) return "Yesterday";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year:
+      date.getFullYear() !== new Date().getFullYear()
+        ? "numeric"
+        : undefined,
+  });
+};
+
+const mapNotification = (item) => ({
+  ...item,
+  id: String(item._id || item.id),
+  type: String(item.type || "system").toLowerCase(),
+  title: item.title || "Notification",
+  message: item.message || "",
+  read: Boolean(item.isRead ?? item.read ?? false),
+  link: item.link || "",
+  createdAt: item.createdAt || item.updatedAt || "",
+  time: formatTime(item.createdAt || item.updatedAt),
+});
+
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "message":
+      return MessageCircle;
+
+    case "opportunity":
+    case "mentorship":
+    case "mentor":
+      return Handshake;
+
+    case "startup":
+      return Rocket;
+
+    case "profile":
+      return UserRound;
+
+    case "application":
+      return FileText;
+
+    case "interview":
+      return UsersRound;
+
+    default:
+      return Bell;
+  }
+};
+
+const getNotificationLabel = (type) => {
+  const labels = {
+    message: "Message",
+    opportunity: "Mentorship",
+    mentorship: "Mentorship",
+    mentor: "Mentorship",
+    startup: "Startup",
+    profile: "Profile",
+    application: "Application",
+    interview: "Interview",
+    system: "System",
+  };
+
+  return labels[type] || "System";
+};
+
+const matchesFilter = (notification, filter) => {
+  if (filter === "all") return true;
+
+  if (filter === "unread") {
+    return !notification.read;
+  }
+
+  if (filter === "mentorship") {
+    return ["mentorship", "mentor", "opportunity"].includes(
+      notification.type
+    );
+  }
+
+  if (filter === "startup") {
+    return notification.type === "startup";
+  }
+
+  return notification.type === filter;
+};
+
+const getNotificationDestination = (notification) => {
+  // Always prefer the destination supplied by the backend.
+  if (notification.link) {
+    return notification.link;
+  }
+
+  // Mentor-specific fallback destinations.
+  switch (notification.type) {
+    case "message":
+      return "/dashboard/mentor/messages";
+
+    case "opportunity":
+    case "mentorship":
+    case "mentor":
+      return "/dashboard/mentor/mentorships";
+
+    case "startup":
+      return "/dashboard/mentor/startups";
+
+    case "profile":
+      return "/dashboard/mentor/profile";
+
+    default:
+      return "/dashboard/mentor/notifications";
+  }
+};
 
 function MentorNotifications() {
-  const [notifications, setNotifications] = useState(
-    initialNotifications
+  const navigate = useNavigate();
+
+  const [notifications, setNotifications] = useState([]);
+  const [activeFilter, setActiveFilter] = useState("all");
+
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const unreadCount = useMemo(
+    () => notifications.filter((item) => !item.read).length,
+    [notifications]
   );
 
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [selectedNotification, setSelectedNotification] =
-    useState(null);
+  const filteredNotifications = useMemo(
+    () =>
+      notifications.filter((notification) =>
+        matchesFilter(notification, activeFilter)
+      ),
+    [notifications, activeFilter]
+  );
 
-  const unreadCount = notifications.filter(
-    (notification) => notification.unread
-  ).length;
+  const loadNotifications = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-  const mentorshipCount = notifications.filter(
-    (notification) =>
-      notification.type === "mentorship"
-  ).length;
+    try {
+      const response = await api.get("/notifications");
 
-  const filteredNotifications = useMemo(() => {
-    return notifications.filter((notification) => {
-      if (activeFilter === "all") {
-        return true;
+      if (!response.data?.success || !Array.isArray(response.data.data)) {
+        throw new Error("Unexpected notifications API response.");
       }
 
-      if (activeFilter === "unread") {
-        return notification.unread;
-      }
+      const rows = response.data.data.map(mapNotification);
 
-      return notification.type === activeFilter;
-    });
-  }, [notifications, activeFilter]);
-
-  const markAsRead = (id) => {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === id
-          ? {
-              ...notification,
-              unread: false
-            }
-          : notification
-      )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false
-      }))
-    );
-  };
-
-  const deleteNotification = (id) => {
-    setNotifications((current) =>
-      current.filter(
-        (notification) => notification.id !== id
-      )
-    );
-
-    if (selectedNotification?.id === id) {
-      setSelectedNotification(null);
+      setNotifications(rows);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load notifications."
+      );
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const openNotification = (notification) => {
-    setSelectedNotification(notification);
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
-    if (notification.unread) {
-      markAsRead(notification.id);
-    }
-  };
+  // Receive new notifications instantly.
+  useEffect(() => {
+    const socket = connectSocket();
 
-  const getNotificationLabel = (type) => {
-    const labels = {
-      startup: "Startup",
-      mentorship: "Mentorship",
-      message: "Message",
-      meeting: "Meeting",
-      system: "System"
+    if (!socket) return undefined;
+
+    const handleNewNotification = (notification) => {
+      if (!notification?._id && !notification?.id) return;
+
+      const mapped = mapNotification(notification);
+
+      setNotifications((previous) => {
+        const alreadyExists = previous.some(
+          (item) => item.id === mapped.id
+        );
+
+        if (alreadyExists) return previous;
+
+        return [mapped, ...previous];
+      });
     };
 
-    return labels[type] || "Activity";
+    const handleUpdatedNotification = (updated) => {
+      if (!updated?._id && !updated?.id) return;
+
+      const mapped = mapNotification(updated);
+
+      setNotifications((previous) =>
+        previous.map((item) =>
+          item.id === mapped.id ? { ...item, ...mapped } : item
+        )
+      );
+    };
+
+    const handleReadAll = () => {
+      setNotifications((previous) =>
+        previous.map((item) => ({ ...item, read: true }))
+      );
+    };
+
+    const handleDeletedNotification = (deleted) => {
+      const deletedId = String(
+        deleted?._id || deleted?.id || deleted
+      );
+
+      if (!deletedId) return;
+
+      setNotifications((previous) =>
+        previous.filter((item) => item.id !== deletedId)
+      );
+    };
+
+    socket.on("notification:new", handleNewNotification);
+    socket.on("notification:updated", handleUpdatedNotification);
+    socket.on("notification:read-all", handleReadAll);
+    socket.on("notification:deleted", handleDeletedNotification);
+
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+      socket.off("notification:updated", handleUpdatedNotification);
+      socket.off("notification:read-all", handleReadAll);
+      socket.off("notification:deleted", handleDeletedNotification);
+    };
+  }, []);
+
+  const handleMarkAsRead = async (id) => {
+    const notification = notifications.find(
+      (item) => item.id === id
+    );
+
+    if (!notification || notification.read || busy) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await api.patch(`/notifications/${encodeURIComponent(id)}/read`);
+
+      setNotifications((previous) =>
+        previous.map((item) =>
+          item.id === id ? { ...item, read: true } : item
+        )
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Unable to mark notification as read."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (unreadCount === 0 || busy) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await api.patch("/notifications/read-all");
+
+      setNotifications((previous) =>
+        previous.map((item) => ({ ...item, read: true }))
+      );
+
+      setNotice("All notifications marked as read.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Unable to mark all notifications as read."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (busy) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await api.delete(`/notifications/${encodeURIComponent(id)}`);
+
+      setNotifications((previous) =>
+        previous.filter((item) => item.id !== id)
+      );
+
+      setNotice("Notification deleted.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Unable to delete notification."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (notifications.length === 0 || busy) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete all notifications?"
+    );
+
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      // The existing API provides individual notification deletion.
+      // Delete all current notifications using that existing endpoint.
+      await Promise.all(
+        notifications.map((item) =>
+          api.delete(`/notifications/${encodeURIComponent(item.id)}`)
+        )
+      );
+
+      setNotifications([]);
+      setActiveFilter("all");
+      setNotice("All notifications cleared.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Some notifications could not be deleted. Refresh and try again."
+      );
+
+      await loadNotifications();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenNotification = async (notification) => {
+    if (!notification.read) {
+      await handleMarkAsRead(notification.id);
+    }
+
+    const destination = getNotificationDestination(notification);
+
+    navigate(destination);
   };
 
   return (
-    <div className="mentor-notifications-page">
+    <section className="mentor-notifications-page">
       {/* Header */}
 
-      <section className="mentor-notifications-header">
+      <div className="mentor-notifications-header">
         <div>
           <span className="mentor-notifications-badge">
             Activity Center
@@ -212,293 +432,248 @@ function MentorNotifications() {
           <h2>Notifications</h2>
 
           <p>
-            Stay updated with mentorship requests,
-            startup activity, messages and upcoming sessions.
+            Stay updated with mentorship requests, startup activity,
+            messages and upcoming sessions.
           </p>
         </div>
 
-        {unreadCount > 0 && (
+        <div className="mentor-notifications-summary">
+          <strong>{unreadCount}</strong>
+          <span>Unread</span>
+        </div>
+      </div>
+
+      {/* Error and success messages */}
+
+      {(error || notice) && (
+        <div
+          className={`mentor-notification-alert ${
+            error ? "mentor-notification-alert-error" : ""
+          }`}
+          role={error ? "alert" : "status"}
+        >
+          {error ? (
+            <AlertCircle size={17} />
+          ) : (
+            <Check size={17} />
+          )}
+
+          <span>{error || notice}</span>
+
           <button
             type="button"
-            className="mentor-mark-all-button"
-            onClick={markAllAsRead}
+            onClick={() => {
+              setError("");
+              setNotice("");
+            }}
+            aria-label="Dismiss message"
           >
-            <CheckCheck size={16} />
-            Mark all as read
+            <X size={16} />
           </button>
-        )}
-      </section>
-
-      {/* Summary */}
-
-      <section className="mentor-notification-summary">
-        <div className="mentor-notification-summary-card">
-          <div className="mentor-summary-icon">
-            <Bell size={19} />
-          </div>
-
-          <div>
-            <strong>{notifications.length}</strong>
-            <span>Total Notifications</span>
-          </div>
         </div>
+      )}
 
-        <div className="mentor-notification-summary-card">
-          <div className="mentor-summary-icon unread">
-            <Bell size={19} />
-          </div>
+      {/* Action buttons */}
 
-          <div>
-            <strong>{unreadCount}</strong>
-            <span>Unread</span>
-          </div>
+      <div className="mentor-notifications-actions">
+        <button
+          type="button"
+          className="mentor-notification-action-button"
+          onClick={handleMarkAllRead}
+          disabled={unreadCount === 0 || busy}
+        >
+          <CheckCheck size={17} />
+          Mark all as read
+        </button>
+
+        <button
+          type="button"
+          className="mentor-notification-action-button mentor-clear-all-button"
+          onClick={handleClearAll}
+          disabled={notifications.length === 0 || busy}
+        >
+          <Trash2 size={17} />
+          Clear All
+        </button>
+
+        <button
+          type="button"
+          className="mentor-notification-action-button"
+          onClick={loadNotifications}
+          disabled={loading || busy}
+        >
+          <RefreshCw
+            size={17}
+            className={loading ? "mentor-refresh-spinning" : ""}
+          />
+          Refresh
+        </button>
+      </div>
+
+      {/* Category filters */}
+
+      <div className="mentor-notifications-toolbar">
+        <div className="mentor-notification-filters">
+          {filterOptions.map((filter) => {
+            const count =
+              filter.id === "all"
+                ? notifications.length
+                : filter.id === "unread"
+                  ? unreadCount
+                  : notifications.filter((item) =>
+                      matchesFilter(item, filter.id)
+                    ).length;
+
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                className={
+                  activeFilter === filter.id
+                    ? "mentor-notification-filter-active"
+                    : ""
+                }
+                onClick={() => setActiveFilter(filter.id)}
+              >
+                {filter.label}
+                <span>{count}</span>
+              </button>
+            );
+          })}
         </div>
-
-        <div className="mentor-notification-summary-card">
-          <div className="mentor-summary-icon mentorship">
-            <UserRound size={19} />
-          </div>
-
-          <div>
-            <strong>{mentorshipCount}</strong>
-            <span>Mentorship Activity</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Filters */}
-
-      <section className="mentor-notification-filters">
-        {filterOptions.map((filter) => {
-          const count =
-            filter.id === "all"
-              ? notifications.length
-              : filter.id === "unread"
-                ? unreadCount
-                : notifications.filter(
-                    (notification) =>
-                      notification.type === filter.id
-                  ).length;
-
-          return (
-            <button
-              type="button"
-              key={filter.id}
-              className={
-                activeFilter === filter.id
-                  ? "mentor-notification-filter active"
-                  : "mentor-notification-filter"
-              }
-              onClick={() =>
-                setActiveFilter(filter.id)
-              }
-            >
-              {filter.label}
-              <span>{count}</span>
-            </button>
-          );
-        })}
-      </section>
+      </div>
 
       {/* Notification list */}
 
-      {filteredNotifications.length > 0 ? (
-        <section className="mentor-notification-list">
+      <div className="mentor-notifications-result-heading">
+        <div>
+          <h3>
+            {activeFilter === "all"
+              ? "Recent Notifications"
+              : filterOptions.find(
+                  (item) => item.id === activeFilter
+                )?.label}
+          </h3>
+
+          <p>
+            {filteredNotifications.length} notification
+            {filteredNotifications.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="mentor-notifications-empty">
+          <RefreshCw size={25} className="mentor-refresh-spinning" />
+          <p>Loading notifications...</p>
+        </div>
+      ) : filteredNotifications.length > 0 ? (
+        <div className="mentor-notifications-list">
           {filteredNotifications.map((notification) => {
-            const Icon = notification.icon;
+            const Icon = getNotificationIcon(notification.type);
 
             return (
               <article
                 key={notification.id}
-                className={`mentor-notification-item ${
-                  notification.unread
-                    ? "unread"
+                className={`mentor-notification-card ${
+                  !notification.read
+                    ? "mentor-notification-unread"
                     : ""
                 }`}
               >
                 <button
                   type="button"
-                  className="mentor-notification-content"
+                  className="mentor-notification-main"
                   onClick={() =>
-                    openNotification(notification)
+                    handleOpenNotification(notification)
                   }
                 >
                   <div
-                    className={`mentor-notification-icon notification-${notification.type}`}
+                    className={`mentor-notification-icon mentor-notification-icon-${notification.type}`}
                   >
-                    <Icon size={18} />
+                    <Icon size={19} />
                   </div>
 
-                  <div className="mentor-notification-text">
+                  <div className="mentor-notification-content">
                     <div className="mentor-notification-title-row">
-                      <h3>{notification.title}</h3>
+                      <h4>{notification.title}</h4>
 
-                      {notification.unread && (
-                        <span className="mentor-unread-dot" />
+                      {!notification.read && (
+                        <span className="mentor-notification-new">
+                          New
+                        </span>
                       )}
                     </div>
 
-                    <p>{notification.description}</p>
+                    <p>{notification.message}</p>
 
                     <div className="mentor-notification-meta">
                       <span>
-                        {getNotificationLabel(
-                          notification.type
-                        )}
+                        {getNotificationLabel(notification.type)}
                       </span>
 
                       <span>•</span>
 
-                      <span>
-                        {notification.time}
-                      </span>
+                      <span>{notification.time}</span>
+
+                      {!notification.read && (
+                        <span className="mentor-notification-unread-label">
+                          Unread
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>
 
-                <div className="mentor-notification-actions">
-                  {notification.unread && (
+                <div className="mentor-notification-card-actions">
+                  {!notification.read && (
                     <button
                       type="button"
-                      onClick={() =>
-                        markAsRead(notification.id)
-                      }
-                      aria-label="Mark as read"
                       title="Mark as read"
+                      aria-label="Mark notification as read"
+                      disabled={busy}
+                      onClick={() =>
+                        handleMarkAsRead(notification.id)
+                      }
                     >
-                      <Check size={16} />
+                      <Check size={17} />
                     </button>
                   )}
 
                   <button
                     type="button"
-                    onClick={() =>
-                      deleteNotification(
-                        notification.id
-                      )
-                    }
-                    aria-label="Delete notification"
                     title="Delete notification"
+                    aria-label="Delete notification"
+                    disabled={busy}
+                    onClick={() => handleDelete(notification.id)}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={17} />
                   </button>
                 </div>
               </article>
             );
           })}
-        </section>
+        </div>
       ) : (
-        <section className="mentor-notifications-empty">
+        <div className="mentor-notifications-empty">
           <div className="mentor-notifications-empty-icon">
-            <Bell size={28} />
+            <Inbox size={25} />
           </div>
 
-          <h3>No notifications</h3>
+          <h3>
+            {notifications.length === 0
+              ? "No notifications yet"
+              : "No notifications found"}
+          </h3>
 
           <p>
-            There are no notifications in this category.
+            {activeFilter === "unread"
+              ? "You are all caught up. There are no unread notifications."
+              : "Your mentorship and workspace updates will appear here."}
           </p>
-
-          {activeFilter !== "all" && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setActiveFilter("all")}
-            >
-              View All Notifications
-            </button>
-          )}
-        </section>
-      )}
-
-      {/* Notification details */}
-
-      {selectedNotification && (
-        <div
-          className="mentor-notification-modal-overlay"
-          onClick={() =>
-            setSelectedNotification(null)
-          }
-        >
-          <div
-            className="mentor-notification-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="mentor-notification-modal-header">
-              <div>
-                <span>Notification Details</span>
-                <h3>
-                  {selectedNotification.title}
-                </h3>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedNotification(null)
-                }
-                aria-label="Close"
-              >
-                <X size={19} />
-              </button>
-            </div>
-
-            <div className="mentor-notification-modal-body">
-              <div
-                className={`mentor-notification-modal-icon notification-${selectedNotification.type}`}
-              >
-                {(() => {
-                  const Icon =
-                    selectedNotification.icon;
-
-                  return <Icon size={24} />;
-                })()}
-              </div>
-
-              <span className="mentor-modal-category">
-                {getNotificationLabel(
-                  selectedNotification.type
-                )}
-              </span>
-
-              <p>
-                {selectedNotification.description}
-              </p>
-
-              <small>
-                {selectedNotification.time}
-              </small>
-            </div>
-
-            <div className="mentor-notification-modal-footer">
-              <button
-                type="button"
-                onClick={() =>
-                  deleteNotification(
-                    selectedNotification.id
-                  )
-                }
-              >
-                <Trash2 size={16} />
-                Delete
-              </button>
-
-              <button
-                type="button"
-                className="mentor-modal-close-button"
-                onClick={() =>
-                  setSelectedNotification(null)
-                }
-              >
-                Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 

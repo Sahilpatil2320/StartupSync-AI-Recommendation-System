@@ -636,3 +636,167 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Notification page action bar */
+
+.student-notifications-actions-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.student-clear-all-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-clear-all-button:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.student-clear-all-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.student-notification-feedback {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  margin-bottom: 14px;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+}
+
+.student-notification-feedback.error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.student-notification-feedback span {
+  flex: 1;
+}
+
+.student-notification-feedback button {
+  display: flex;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.student-refresh-spin {
+  animation: student-refresh-animation 1s linear infinite;
+}
+
+@keyframes student-refresh-animation {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Better classification filter layout */
+
+.student-notifications-toolbar {
+  display: block;
+  padding: 8px;
+  margin-bottom: 22px;
+  background: #f1f5f9;
+}
+
+.student-notification-filters {
+  gap: 7px;
+}
+
+.student-notification-filters button {
+  height: 40px;
+  padding: 0 13px;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+}
+
+.student-notification-filters button span {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 10px;
+}
+
+.student-notification-filters button.student-notification-filter-active {
+  background: #fff;
+  color: #2563eb;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.06);
+}
+
+.student-notification-filters button.student-notification-filter-active span {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.student-notification-icon-connection {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.student-notification-open-link {
+  margin-top: 16px;
+  padding: 9px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 850px) {
+  .student-notifications-actions-bar {
+    width: 100%;
+  }
+
+  .student-notifications-actions-bar button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .student-notifications-actions-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .student-notifications-actions-bar button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .student-notification-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .student-notification-filters button {
+    flex-shrink: 0;
+  }
+}

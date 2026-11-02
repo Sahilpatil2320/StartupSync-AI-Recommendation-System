@@ -10,12 +10,21 @@ import {
   X,
   RefreshCw,
   AlertCircle,
+  Handshake,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import "./StudentNotifications.css";
 
-const API_URL = "http://localhost:5000/api/notifications";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { useNavigate } from "react-router-dom";
+import api from "../../../services/api";
+import { connectSocket } from "../../../services/socket";
+
+import "./StudentNotifications.css";
 
 const iconMap = {
   application: Rocket,
@@ -33,25 +42,35 @@ const filterOptions = [
   { id: "interview", label: "Interviews" },
   { id: "message", label: "Messages" },
   { id: "opportunity", label: "Opportunities" },
+  { id: "profile", label: "Profile" },
+  { id: "system", label: "System" },
 ];
 
 function formatTime(value) {
   if (!value) return "Recently";
 
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return "Recently";
 
-  const now = new Date();
-  const elapsed = Math.max(0, now.getTime() - date.getTime());
+  const elapsed = Math.max(0, Date.now() - date.getTime());
   const minutes = Math.floor(elapsed / 60000);
 
   if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
 
-  if (date.toDateString() === new Date(now.getTime() - 86400000).toDateString()) {
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  if (
+    date.toDateString() ===
+    new Date(Date.now() - 86400000).toDateString()
+  ) {
     return "Yesterday";
   }
 
@@ -62,137 +81,110 @@ function formatTime(value) {
   });
 }
 
+const normalizeNotification = (item) => ({
+  ...item,
+  id: String(item._id || item.id),
+  read: Boolean(item.isRead ?? item.read),
+  message: item.message || item.description || "",
+  time: formatTime(item.createdAt || item.updatedAt),
+});
+
 function StudentNotifications() {
+  const navigate = useNavigate();
+
   const [notifications, setNotifications] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [selectedNotification, setSelectedNotification] =
+    useState(null);
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const getAuthConfig = useCallback(() => {
-    const token = localStorage.getItem("startupsync_token");
+  const unreadCount = notifications.filter(
+    (item) => !item.read
+  ).length;
 
-    if (!token) {
-      throw new Error("Please log in again to view your notifications.");
+  const filteredNotifications = useMemo(() => {
+    if (activeFilter === "all") return notifications;
+
+    if (activeFilter === "unread") {
+      return notifications.filter((item) => !item.read);
     }
 
-    return {
-      headers: { Authorization: `Bearer ${token}` },
-    };
-  }, []);
+    return notifications.filter(
+      (item) => item.type === activeFilter
+    );
+  }, [notifications, activeFilter]);
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await axios.get(API_URL, getAuthConfig());
+      const response = await api.get("/notifications");
+      const rows = response.data?.data || [];
 
-      if (!response.data?.success || !Array.isArray(response.data.data)) {
-        throw new Error("Unexpected notifications API response.");
-      }
-
-      const rows = response.data.data.map((item) => ({
-        ...item,
-        id: String(item._id),
-        read: Boolean(item.read ?? item.isRead),
-        time: formatTime(item.createdAt),
-        date: item.createdAt
-          ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-          : "",
-      }));
-
-      setNotifications(rows);
+      setNotifications(rows.map(normalizeNotification));
 
       setSelectedNotification((current) =>
-        current ? rows.find((item) => item.id === current.id) || null : null
+        current
+          ? rows
+              .map(normalizeNotification)
+              .find((item) => item.id === current.id) || null
+          : null
       );
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Unable to load notifications."
+          "Unable to load notifications."
       );
     } finally {
       setLoading(false);
     }
-  }, [getAuthConfig]);
+  }, []);
 
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
 
-  const unreadCount = notifications.filter((item) => !item.read).length;
+  // Real-time notification updates.
+  useEffect(() => {
+    const socket = connectSocket();
 
-  const filteredNotifications = useMemo(() => {
-    if (activeFilter === "all") return notifications;
-    if (activeFilter === "unread") {
-      return notifications.filter((item) => !item.read);
-    }
-    return notifications.filter((item) => item.type === activeFilter);
-  }, [notifications, activeFilter]);
+    if (!socket) return undefined;
 
-  const handleMarkRead = async (id) => {
-    const item = notifications.find((notification) => notification.id === id);
-    if (!item || item.read || busy) return;
+    const handleNew = (notification) => {
+      if (!notification?._id && !notification?.id) return;
 
-    setBusy(true);
-    setError("");
-    setNotice("");
+      const newItem = normalizeNotification(notification);
 
-    try {
-      const response = await axios.patch(
-        `${API_URL}/${encodeURIComponent(id)}/read`,
-        {},
-        getAuthConfig()
-      );
+      setNotifications((current) => {
+        if (current.some((item) => item.id === newItem.id)) {
+          return current;
+        }
 
-      if (!response.data?.success) {
-        throw new Error("The notification could not be marked as read.");
+        return [newItem, ...current];
+      });
+    };
+
+    const handleUpdated = (notification) => {
+      if (!notification?._id && !notification?.id) {
+        loadNotifications();
+        return;
       }
+
+      const updated = normalizeNotification(notification);
 
       setNotifications((current) =>
-        current.map((notification) =>
-          notification.id === id ? { ...notification, read: true } : notification
+        current.map((item) =>
+          item.id === updated.id ? updated : item
         )
       );
+    };
 
-      setSelectedNotification((current) =>
-        current?.id === id ? { ...current, read: true } : current
-      );
-    } catch (err) {
-      setError(
-        err.response?.data?.message || err.message || "Unable to update notification."
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    if (unreadCount === 0 || busy) return;
-
-    setBusy(true);
-    setError("");
-    setNotice("");
-
-    try {
-      const response = await axios.patch(
-        `${API_URL}/read-all`,
-        {},
-        getAuthConfig()
-      );
-
-      if (!response.data?.success) {
-        throw new Error("Notifications could not be updated.");
-      }
-
+    const handleReadAll = () => {
       setNotifications((current) =>
         current.map((item) => ({ ...item, read: true }))
       );
@@ -200,32 +192,20 @@ function StudentNotifications() {
       setSelectedNotification((current) =>
         current ? { ...current, read: true } : null
       );
+    };
 
-      setNotice("All notifications marked as read.");
-    } catch (err) {
-      setError(
-        err.response?.data?.message || err.message || "Unable to update notifications."
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (busy) return;
-
-    setBusy(true);
-    setError("");
-    setNotice("");
-
-    try {
-      const response = await axios.delete(
-        `${API_URL}/${encodeURIComponent(id)}`,
-        getAuthConfig()
+    const handleDeleted = (payload) => {
+      const id = String(
+        payload?._id ||
+          payload?.id ||
+          payload?.notificationId ||
+          payload ||
+          ""
       );
 
-      if (!response.data?.success) {
-        throw new Error("The notification could not be deleted.");
+      if (!id) {
+        loadNotifications();
+        return;
       }
 
       setNotifications((current) =>
@@ -235,22 +215,101 @@ function StudentNotifications() {
       setSelectedNotification((current) =>
         current?.id === id ? null : current
       );
+    };
 
-      setNotice("Notification deleted.");
+    socket.on("notification:new", handleNew);
+    socket.on("notification:updated", handleUpdated);
+    socket.on("notification:read-all", handleReadAll);
+    socket.on("notification:deleted", handleDeleted);
+
+    return () => {
+      socket.off("notification:new", handleNew);
+      socket.off("notification:updated", handleUpdated);
+      socket.off("notification:read-all", handleReadAll);
+      socket.off("notification:deleted", handleDeleted);
+    };
+  }, [loadNotifications]);
+
+  const handleMarkRead = async (id) => {
+    const item = notifications.find(
+      (notification) => notification.id === id
+    );
+
+    if (!item || item.read || busy) return;
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await api.patch(
+        `/notifications/${encodeURIComponent(id)}/read`
+      );
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === id
+            ? { ...notification, read: true, isRead: true }
+            : notification
+        )
+      );
+
+      setSelectedNotification((current) =>
+        current?.id === id
+          ? { ...current, read: true, isRead: true }
+          : current
+      );
     } catch (err) {
       setError(
-        err.response?.data?.message || err.message || "Unable to delete notification."
+        err.response?.data?.message ||
+          "Unable to update notification."
       );
     } finally {
       setBusy(false);
     }
   };
 
+  const handleMarkAllRead = async () => {
+    if (!unreadCount || busy) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await api.patch("/notifications/read-all");
+
+      setNotifications((current) =>
+        current.map((item) => ({
+          ...item,
+          read: true,
+          isRead: true,
+        }))
+      );
+
+      setSelectedNotification((current) =>
+        current
+          ? { ...current, read: true, isRead: true }
+          : null
+      );
+
+      setNotice("All notifications marked as read.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Unable to mark all notifications as read."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The existing backend has individual DELETE endpoints.
+  // Clear All uses those endpoints rather than assuming a new API exists.
   const handleClearAll = async () => {
-    if (notifications.length === 0 || busy) return;
+    if (!notifications.length || busy) return;
 
     const confirmed = window.confirm(
-      "Are you sure you want to delete all notifications?"
+      "Are you sure you want to clear all notifications?"
     );
 
     if (!confirmed) return;
@@ -262,9 +321,8 @@ function StudentNotifications() {
     try {
       await Promise.all(
         notifications.map((item) =>
-          axios.delete(
-            `${API_URL}/${encodeURIComponent(item.id)}`,
-            getAuthConfig()
+          api.delete(
+            `/notifications/${encodeURIComponent(item.id)}`
           )
         )
       );
@@ -276,33 +334,113 @@ function StudentNotifications() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        "Unable to clear all notifications. Please refresh and try again."
+          "Some notifications could not be deleted. Refresh and try again."
       );
 
-      // Refresh to show the notifications that remain on the server.
       await loadNotifications();
     } finally {
       setBusy(false);
     }
   };
 
-  const handleOpenNotification = (notification) => {
-    setSelectedNotification(notification);
+  const handleDelete = async (id) => {
+    if (busy) return;
 
-    if (!notification.read) {
-      handleMarkRead(notification.id);
+    setBusy(true);
+    setError("");
+
+    try {
+      await api.delete(
+        `/notifications/${encodeURIComponent(id)}`
+      );
+
+      setNotifications((current) =>
+        current.filter((item) => item.id !== id)
+      );
+
+      setSelectedNotification((current) =>
+        current?.id === id ? null : current
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Unable to delete notification."
+      );
+    } finally {
+      setBusy(false);
     }
+  };
+
+  const handleOpenNotification = async (notification) => {
+    if (!notification.read) {
+      await handleMarkRead(notification.id);
+    }
+
+    const type = String(notification.type || "").toLowerCase();
+
+    // Message notification: open the messages page.
+    if (type === "message") {
+      const senderId =
+        notification.sender?._id ||
+        notification.sender?.id ||
+        notification.senderId ||
+        notification.relatedUser?._id ||
+        notification.relatedUserId ||
+        notification.metadata?.senderId ||
+        "";
+
+      navigate("/dashboard/student/messages", {
+        state: {
+          openUserId: senderId ? String(senderId) : "",
+          notificationId: notification.id,
+        },
+      });
+
+      return;
+    }
+
+    // Connection/profile notification: open the notifications page.
+    if (
+      type === "profile" ||
+      type === "application" ||
+      type === "interview" ||
+      type === "opportunity" ||
+      type === "system"
+    ) {
+      setSelectedNotification(notification);
+    }
+
+    // Use an explicitly supplied link for other supported cases.
+    if (
+      notification.link &&
+      type !== "message" &&
+      type !== "profile"
+    ) {
+      navigate(notification.link);
+    }
+  };
+
+  const getIcon = (type) => {
+    if (type === "connection") return Handshake;
+
+    return iconMap[type] || Bell;
   };
 
   return (
     <section className="student-notifications-page">
+      {/* Header */}
+
       <div className="student-notifications-header">
         <div>
-          <span className="student-notifications-badge">Activity Center</span>
+          <span className="student-notifications-badge">
+            Activity Center
+          </span>
+
           <h2>Notifications</h2>
+
           <p>
-            Stay updated with your applications, interviews, messages and new
-            opportunities.
+            Stay updated with your applications, interviews,
+            messages and new opportunities.
           </p>
         </div>
 
@@ -315,62 +453,113 @@ function StudentNotifications() {
       {(error || notice) && (
         <div
           role="status"
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            padding: "10px 12px",
-            marginBottom: 14,
-            borderRadius: 9,
-            background: error ? "#fef2f2" : "#eff6ff",
-            color: error ? "#b91c1c" : "#1d4ed8",
-          }}
+          className={`student-notification-feedback ${
+            error ? "error" : ""
+          }`}
         >
-          {error ? <AlertCircle size={16} /> : <Check size={16} />}
+          {error ? (
+            <AlertCircle size={16} />
+          ) : (
+            <Check size={16} />
+          )}
+
           <span>{error || notice}</span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setError("");
+              setNotice("");
+            }}
+            aria-label="Dismiss message"
+          >
+            <X size={15} />
+          </button>
         </div>
       )}
 
-<div className="student-notification-toolbar-actions">
-  <button
-    type="button"
-    className="student-mark-all-button"
-    onClick={handleMarkAllRead}
-    disabled={unreadCount === 0 || busy}
-  >
-    <CheckCheck size={15} />
-    Mark all as read
-  </button>
+      {/* Action buttons */}
 
-  <button
-    type="button"
-    className="student-clear-all-button"
-    onClick={handleClearAll}
-    disabled={notifications.length === 0 || busy}
-  >
-    <Trash2 size={15} />
-    Clear All
-  </button>
+      <div className="student-notifications-actions-bar">
+        <button
+          type="button"
+          className="student-mark-all-button"
+          onClick={handleMarkAllRead}
+          disabled={!unreadCount || busy}
+        >
+          <CheckCheck size={16} />
+          Mark all as read
+        </button>
 
-  <button
-    type="button"
-    className="student-mark-all-button"
-    onClick={loadNotifications}
-    disabled={loading || busy}
-    title="Refresh notifications"
-  >
-    <RefreshCw size={15} />
-    Refresh
-  </button>
-</div>
+        <button
+          type="button"
+          className="student-clear-all-button"
+          onClick={handleClearAll}
+          disabled={!notifications.length || busy}
+        >
+          <Trash2 size={16} />
+          Clear All
+        </button>
+
+        <button
+          type="button"
+          className="student-mark-all-button"
+          onClick={loadNotifications}
+          disabled={loading || busy}
+        >
+          <RefreshCw
+            size={16}
+            className={loading ? "student-refresh-spin" : ""}
+          />
+          Refresh
+        </button>
+      </div>
+
+      {/* Classification filters */}
+
+      <div className="student-notifications-toolbar">
+        <div className="student-notification-filters">
+          {filterOptions.map((filter) => {
+            const count =
+              filter.id === "all"
+                ? notifications.length
+                : filter.id === "unread"
+                  ? unreadCount
+                  : notifications.filter(
+                      (item) => item.type === filter.id
+                    ).length;
+
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                className={
+                  activeFilter === filter.id
+                    ? "student-notification-filter-active"
+                    : ""
+                }
+                onClick={() => setActiveFilter(filter.id)}
+              >
+                {filter.label}
+                <span>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent notifications */}
 
       <div className="student-notifications-result-heading">
         <div>
           <h3>
             {activeFilter === "all"
               ? "Recent Notifications"
-              : filterOptions.find((item) => item.id === activeFilter)?.label}
+              : filterOptions.find(
+                  (item) => item.id === activeFilter
+                )?.label}
           </h3>
+
           <p>
             {filteredNotifications.length} notification
             {filteredNotifications.length !== 1 ? "s" : ""}
@@ -385,37 +574,53 @@ function StudentNotifications() {
       ) : filteredNotifications.length > 0 ? (
         <div className="student-notifications-list">
           {filteredNotifications.map((notification) => {
-            const Icon = iconMap[notification.type] || Bell;
+            const Icon = getIcon(notification.type);
 
             return (
               <article
                 key={notification.id}
-                className={`student-notification-card ${!notification.read ? "student-notification-unread" : ""
-                  }`}
+                className={`student-notification-card ${
+                  !notification.read
+                    ? "student-notification-unread"
+                    : ""
+                }`}
               >
                 <button
                   type="button"
                   className="student-notification-main"
-                  onClick={() => handleOpenNotification(notification)}
+                  onClick={() =>
+                    handleOpenNotification(notification)
+                  }
                 >
                   <div
                     className={`student-notification-icon student-notification-icon-${notification.type}`}
                   >
-                    <Icon size={18} />
+                    <Icon size={19} />
                   </div>
 
                   <div className="student-notification-content">
                     <div className="student-notification-title-row">
                       <h4>{notification.title}</h4>
+
                       {!notification.read && (
-                        <span className="student-notification-new">New</span>
+                        <span className="student-notification-new">
+                          New
+                        </span>
                       )}
                     </div>
 
                     <p>{notification.message}</p>
 
                     <div className="student-notification-meta">
+                      <span>
+                        {notification.type?.charAt(0).toUpperCase() +
+                          notification.type?.slice(1)}
+                      </span>
+
+                      <span>•</span>
+
                       <span>{notification.time}</span>
+
                       {!notification.read && (
                         <span className="student-notification-unread-label">
                           Unread
@@ -432,9 +637,11 @@ function StudentNotifications() {
                       aria-label="Mark notification as read"
                       title="Mark as read"
                       disabled={busy}
-                      onClick={() => handleMarkRead(notification.id)}
+                      onClick={() =>
+                        handleMarkRead(notification.id)
+                      }
                     >
-                      <Check size={15} />
+                      <Check size={16} />
                     </button>
                   )}
 
@@ -443,9 +650,11 @@ function StudentNotifications() {
                     aria-label="Delete notification"
                     title="Delete notification"
                     disabled={busy}
-                    onClick={() => handleDelete(notification.id)}
+                    onClick={() =>
+                      handleDelete(notification.id)
+                    }
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </article>
@@ -455,21 +664,33 @@ function StudentNotifications() {
       ) : (
         <div className="student-notifications-empty">
           <div className="student-notifications-empty-icon">
-            <Bell size={23} />
+            <Bell size={24} />
           </div>
-          <h3>{notifications.length ? "No notifications found" : "No notifications yet"}</h3>
+
+          <h3>
+            {notifications.length
+              ? "No notifications found"
+              : "No notifications yet"}
+          </h3>
+
           <p>
             {notifications.length
               ? "There are no notifications in this category right now."
               : "Notifications will appear here when the backend creates them."}
           </p>
+
           {activeFilter !== "all" && (
-            <button type="button" onClick={() => setActiveFilter("all")}>
+            <button
+              type="button"
+              onClick={() => setActiveFilter("all")}
+            >
               View all notifications
             </button>
           )}
         </div>
       )}
+
+      {/* Notification detail */}
 
       {selectedNotification && (
         <div
@@ -486,7 +707,7 @@ function StudentNotifications() {
                   className={`student-notification-icon student-notification-icon-${selectedNotification.type}`}
                 >
                   {(() => {
-                    const Icon = iconMap[selectedNotification.type] || Bell;
+                    const Icon = getIcon(selectedNotification.type);
                     return <Icon size={19} />;
                   })()}
                 </div>
@@ -512,16 +733,30 @@ function StudentNotifications() {
 
               <div className="student-notification-detail-row">
                 <span>Status</span>
-                <strong>{selectedNotification.read ? "Read" : "Unread"}</strong>
+                <strong>
+                  {selectedNotification.read ? "Read" : "Unread"}
+                </strong>
               </div>
 
               <div className="student-notification-detail-row">
                 <span>Category</span>
                 <strong>
-                  {selectedNotification.type.charAt(0).toUpperCase() +
-                    selectedNotification.type.slice(1)}
+                  {selectedNotification.type}
                 </strong>
               </div>
+
+              {selectedNotification.link && (
+                <button
+                  type="button"
+                  className="student-notification-open-link"
+                  onClick={() => {
+                    setSelectedNotification(null);
+                    navigate(selectedNotification.link);
+                  }}
+                >
+                  Open related page
+                </button>
+              )}
             </div>
 
             <div className="student-notification-modal-actions">
@@ -538,7 +773,9 @@ function StudentNotifications() {
                   type="button"
                   className="student-notification-read-button"
                   disabled={busy}
-                  onClick={() => handleMarkRead(selectedNotification.id)}
+                  onClick={() =>
+                    handleMarkRead(selectedNotification.id)
+                  }
                 >
                   <Check size={15} />
                   Mark as read

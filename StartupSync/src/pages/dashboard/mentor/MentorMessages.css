@@ -458,3 +458,138 @@
     width: 32px;
   }
 }
+
+/* Additional dynamic messaging styles */
+
+.mentor-conversation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mentor-conversation-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.mentor-conversation-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.mentor-conversation-header button,
+.mentor-conversation-search button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.mentor-conversation-header button:hover {
+  color: var(--primary);
+}
+
+.mentor-search-section-label {
+  padding: 10px 15px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mentor-chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 25px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.mentor-chat-empty-state h3 {
+  margin: 12px 0 5px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.mentor-chat-empty-state p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.mentor-conversation-sidebar-hidden {
+  display: none;
+}
+
+.mentor-chat-area-mobile-open {
+  display: flex;
+}
+
+.mentor-chat-no-selection {
+  align-items: center;
+  justify-content: center;
+}
+
+.mentor-mobile-close {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .mentor-messages-workspace {
+    position: relative;
+    display: block;
+  }
+
+  .mentor-conversation-sidebar {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+  }
+
+  .mentor-conversation-sidebar.mentor-conversation-sidebar-hidden {
+    display: none;
+  }
+
+  .mentor-chat-area {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .mentor-chat-area.mentor-chat-area-mobile-open {
+    display: flex;
+  }
+
+  .mentor-mobile-close {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: #f1f5f9;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .mentor-chat-user {
+    min-width: 0;
+  }
+
+  .mentor-chat-user > div:last-child {
+    min-width: 0;
+  }
+}

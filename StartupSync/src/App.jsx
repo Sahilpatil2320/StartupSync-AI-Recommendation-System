@@ -39,17 +39,20 @@ import FounderTeam from "./pages/dashboard/founder/FounderTeam";
 import FounderMessages from "./pages/dashboard/founder/FounderMessages";
 import FounderNotifications from "./pages/dashboard/founder/FounderNotifications";
 import InvestorProfile from "./pages/dashboard/founder/InvestorProfile";
+import FounderEcosystem from "./pages/dashboard/founder/FounderEcosystem";
 
 import InvestorDiscoverStartups from "./pages/dashboard/investor/InvestorDiscoverStartups";
 import InvestorInvestments from "./pages/dashboard/investor/InvestorInvestments";
 import InvestorMessages from "./pages/dashboard/investor/InvestorMessages";
 import InvestorNotifications from "./pages/dashboard/investor/InvestorNotifications";
+import InvestorEcosystem from "./pages/dashboard/investor/InvestorEcosystem";
 
 import MentorStartups from "./pages/dashboard/mentor/MentorStartups";
 import MentorFounderProfileView from "./pages/dashboard/mentor/MentorFounderProfileView";
 import MentorMentorships from "./pages/dashboard/mentor/MentorMentorships";
 import MentorMessages from "./pages/dashboard/mentor/MentorMessages";
 import MentorNotifications from "./pages/dashboard/mentor/MentorNotifications";
+import MentorEcosystem from "./pages/dashboard/mentor/MentorEcosystem";
 
 import StudentInternships from "./pages/dashboard/student/StudentInternships";
 import StudentInvestors from "./pages/dashboard/student/StudentInvestors";
@@ -57,6 +60,8 @@ import StudentOpportunities from "./pages/dashboard/student/StudentOpportunities
 import StudentApplications from "./pages/dashboard/student/StudentApplications";
 import StudentMessages from "./pages/dashboard/student/StudentMessages";
 import StudentNotifications from "./pages/dashboard/student/StudentNotifications";
+import StudentEcosystem from "./pages/dashboard/student/StudentEcosystem";
+
 import AdminUsers from "./pages/dashboard/admin/AdminUsers";
 import AdminStartups from "./pages/dashboard/admin/AdminStartups";
 import AdminReports from "./pages/dashboard/admin/AdminReports";
@@ -273,6 +278,15 @@ function App() {
                 />
 
                 <Route
+                    path="/dashboard/founder/ecosystem"
+                    element={
+                        <DashboardLayout role="founder">
+                            <FounderEcosystem />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
                     path="/dashboard/investor/startups"
                     element={
                         <DashboardLayout role="investor">
@@ -301,6 +315,15 @@ function App() {
                     element={
                         <DashboardLayout role="investor">
                             <InvestorNotifications />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
+                    path="/dashboard/investor/ecosystem"
+                    element={
+                        <DashboardLayout role="investor">
+                            <InvestorEcosystem />
                         </DashboardLayout>
                     }
                 />
@@ -344,6 +367,10 @@ function App() {
                         </DashboardLayout>
                     }
                 />
+                <Route
+  path="/dashboard/mentor/ecosystem"
+  element={<MentorEcosystem />}
+/>
                 <Route
                     path="/dashboard/student/internships"
                     element={
@@ -390,6 +417,15 @@ function App() {
                     element={
                         <DashboardLayout role="student">
                             <StudentNotifications />
+                        </DashboardLayout>
+                    }
+                />
+
+                <Route
+                    path="/dashboard/student/ecosystem"
+                    element={
+                        <DashboardLayout role="student">
+                            <StudentEcosystem />
                         </DashboardLayout>
                     }
                 />

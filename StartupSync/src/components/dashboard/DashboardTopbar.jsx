@@ -1,19 +1,29 @@
-
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
-  ChevronDown,
-  CircleUserRound,
-  LogOut,
   Menu,
   Search,
-  Settings,
+  MessageSquare,
   UserRound,
+  Rocket,
+  CalendarDays,
   X,
+  Settings,
+  LogOut,
+  ChevronDown,
 } from "lucide-react";
+
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
+
 import api from "../../services/api";
 import { connectSocket } from "../../services/socket";
+
 import "./DashboardTopbar.css";
 
 const roleTitles = {
@@ -24,276 +34,321 @@ const roleTitles = {
   admin: "Administration",
 };
 
-const getId = (item) => String(item?._id || item?.id || "");
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "message":
+      return MessageSquare;
+    case "application":
+    case "opportunity":
+      return Rocket;
+    case "interview":
+      return CalendarDays;
+    case "profile":
+      return UserRound;
+    default:
+      return Bell;
+  }
+};
 
 const formatTime = (value) => {
-  if (!value) return "";
+  if (!value) return "Recently";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
 
-  const diff = Date.now() - date.getTime();
+  if (Number.isNaN(date.getTime())) return "Recently";
 
-  if (diff < 60_000) return "Just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  const minutes = Math.floor(
+    Math.max(0, Date.now() - date.getTime()) / 60000
+  );
 
-  return date.toLocaleDateString([], {
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) return `${hours}h ago`;
+
+  return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
   });
 };
 
+function getCurrentUser() {
+  try {
+    return JSON.parse(
+      localStorage.getItem("startupsync_user") || "{}"
+    );
+  } catch {
+    return {};
+  }
+}
+
+function getInitial(name) {
+  return name?.trim()?.charAt(0)?.toUpperCase() || "U";
+}
+
 function DashboardTopbar({ role, onMenuClick }) {
   const navigate = useNavigate();
-  const menuRef = useRef(null);
-  const searchRef = useRef(null);
-  const notificationRef = useRef(null);
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [notifications, setNotifications] = useState([]);
-  const [notificationLoading, setNotificationLoading] = useState(false);
-  const [notificationError, setNotificationError] = useState("");
+  const [showNotificationPopup, setShowNotificationPopup] =
+    useState(false);
 
-  const storedUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("startupsync_user") || "{}");
-    } catch {
-      return {};
-    }
-  })();
+  const [notificationLoading, setNotificationLoading] =
+    useState(false);
 
-  const displayName =
-    storedUser.name ||
-    storedUser.fullName ||
-    storedUser.username ||
-    storedUser.email?.split("@")[0] ||
-    "User";
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("");
+  const currentUser = getCurrentUser();
+
+  const userName = currentUser.name || "User";
+  const userEmail = currentUser.email || "";
+
+  const notificationRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const unreadCount = notifications.filter(
-    (item) => !(item.isRead ?? item.read ?? false)
+    (item) => !item.isRead
   ).length;
 
+  // --------------------------------------------------
+  // LOAD NOTIFICATIONS
+  // --------------------------------------------------
+
   const loadNotifications = useCallback(async () => {
+    if (role !== "student") return;
+
     setNotificationLoading(true);
 
     try {
       const response = await api.get("/notifications");
+
       setNotifications(response.data?.data || []);
-      setNotificationError("");
     } catch (error) {
-      setNotificationError(
-        error.response?.data?.message || "Could not load notifications."
+      console.error(
+        "Could not load notification preview:",
+        error
       );
     } finally {
       setNotificationLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+    if (role === "student") {
+      loadNotifications();
+    }
+  }, [role, loadNotifications]);
 
+  // --------------------------------------------------
+  // SOCKET NOTIFICATIONS
+  // --------------------------------------------------
 
   useEffect(() => {
+    if (role !== "student") return undefined;
+
     const socket = connectSocket();
+
     if (!socket) return undefined;
 
-    const handleNewNotification = (notification) => {
-      if (!getId(notification)) return;
+    const handleNew = (notification) => {
+      if (!notification?._id) return;
 
-      setNotifications((previous) => {
-        if (previous.some((item) => getId(item) === getId(notification))) {
-          return previous;
+      setNotifications((current) => {
+        if (
+          current.some(
+            (item) =>
+              String(item._id) === String(notification._id)
+          )
+        ) {
+          return current;
         }
 
-        return [notification, ...previous].slice(0, 50);
+        return [notification, ...current];
       });
     };
 
-    const handleNotificationUpdated = (payload) => {
-      const updated = payload?.notification;
-      if (!getId(updated)) return;
+    const handleUpdated = (notification) => {
+      if (!notification?._id) {
+        loadNotifications();
+        return;
+      }
 
-      setNotifications((previous) =>
-        previous.map((item) =>
-          getId(item) === getId(updated)
-            ? { ...item, ...updated, isRead: updated.isRead, read: updated.isRead }
+      setNotifications((current) =>
+        current.map((item) =>
+          String(item._id) === String(notification._id)
+            ? notification
             : item
         )
       );
     };
 
-    const handleAllNotificationsRead = () => {
-      setNotifications((previous) =>
-        previous.map((item) => ({ ...item, isRead: true, read: true }))
+    const handleReadAll = () => {
+      setNotifications((current) =>
+        current.map((item) => ({
+          ...item,
+          isRead: true,
+        }))
       );
     };
 
-    const handleNotificationDeleted = (payload) => {
-      const deletedId = String(payload?.notificationId || "");
-      if (!deletedId) return;
+    const handleDeleted = (payload) => {
+      const id = String(
+        payload?._id ||
+          payload?.id ||
+          payload?.notificationId ||
+          payload ||
+          ""
+      );
 
-      setNotifications((previous) =>
-        previous.filter((item) => getId(item) !== deletedId)
+      if (!id) {
+        loadNotifications();
+        return;
+      }
+
+      setNotifications((current) =>
+        current.filter(
+          (item) => String(item._id) !== id
+        )
       );
     };
 
-    socket.on("notification:new", handleNewNotification);
-    socket.on("notification:updated", handleNotificationUpdated);
-    socket.on("notification:read-all", handleAllNotificationsRead);
-    socket.on("notification:deleted", handleNotificationDeleted);
+    socket.on("notification:new", handleNew);
+    socket.on("notification:updated", handleUpdated);
+    socket.on("notification:read-all", handleReadAll);
+    socket.on("notification:deleted", handleDeleted);
 
     return () => {
-      socket.off("notification:new", handleNewNotification);
-      socket.off("notification:updated", handleNotificationUpdated);
-      socket.off("notification:read-all", handleAllNotificationsRead);
-      socket.off("notification:deleted", handleNotificationDeleted);
+      socket.off("notification:new", handleNew);
+      socket.off("notification:updated", handleUpdated);
+      socket.off("notification:read-all", handleReadAll);
+      socket.off("notification:deleted", handleDeleted);
     };
-  }, []);
+  }, [role, loadNotifications]);
 
+  // --------------------------------------------------
+  // CLOSE DROPDOWNS WHEN CLICKING OUTSIDE
+  // --------------------------------------------------
 
   useEffect(() => {
-    function handleOutsideClick(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
-
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setSearchOpen(false);
-      }
-
+    const handleOutsideClick = (event) => {
       if (
         notificationRef.current &&
         !notificationRef.current.contains(event.target)
       ) {
-        setNotificationOpen(false);
+        setShowNotificationPopup(false);
       }
-    }
 
-    function handleEscape(event) {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-        setSearchOpen(false);
-        setNotificationOpen(false);
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target)
+      ) {
+        setShowUserMenu(false);
       }
-    }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowUserMenu(false);
+        setShowNotificationPopup(false);
+      }
+    };
 
     document.addEventListener("mousedown", handleOutsideClick);
     document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick
+      );
+
+      document.removeEventListener(
+        "keydown",
+        handleEscape
+      );
     };
   }, []);
 
-  const goTo = (page) => {
-    setMenuOpen(false);
-    setSearchOpen(false);
-    setNotificationOpen(false);
-    navigate(page ? `/dashboard/${role}/${page}` : `/dashboard/${role}`);
+  // --------------------------------------------------
+  // USER MENU ACTIONS
+  // --------------------------------------------------
+
+  const openProfile = () => {
+    setShowUserMenu(false);
+    navigate(`/dashboard/${role}/profile`);
+  };
+
+  const openSettings = () => {
+    setShowUserMenu(false);
+    navigate(`/dashboard/${role}/settings`);
   };
 
   const handleSignOut = () => {
-    setMenuOpen(false);
+    setShowUserMenu(false);
+
     localStorage.removeItem("startupsync_token");
     localStorage.removeItem("startupsync_user");
-    navigate("/login", { replace: true });
+
+    navigate("/", { replace: true });
   };
 
-  const markNotificationRead = async (notification) => {
-    if (notification.isRead ?? notification.read ?? false) return;
+  // --------------------------------------------------
+  // NOTIFICATION ACTION
+  // --------------------------------------------------
 
-    try {
-      await api.patch(`/notifications/${getId(notification)}/read`);
+  const handleNotificationClick = async (notification) => {
+    setShowNotificationPopup(false);
 
-      setNotifications((previous) =>
-        previous.map((item) =>
-          getId(item) === getId(notification)
-            ? { ...item, isRead: true, read: true }
-            : item
-        )
-      );
-    } catch (error) {
-      setNotificationError(
-        error.response?.data?.message || "Could not mark as read."
-      );
-    }
-  };
+    if (!notification.isRead) {
+      try {
+        await api.patch(
+          `/notifications/${encodeURIComponent(
+            notification._id
+          )}/read`
+        );
 
-  const openNotification = async (notification) => {
-    await markNotificationRead(notification);
-    setNotificationOpen(false);
-
-    if (notification.link) {
-      if (notification.link.startsWith("/")) {
-        navigate(notification.link);
-      } else {
-        navigate(`/dashboard/${role}/notifications`);
+        setNotifications((current) =>
+          current.map((item) =>
+            String(item._id) === String(notification._id)
+              ? { ...item, isRead: true }
+              : item
+          )
+        );
+      } catch (error) {
+        console.error(
+          "Could not mark notification as read:",
+          error
+        );
       }
-    } else {
-      navigate(`/dashboard/${role}/notifications`);
     }
+
+    if (notification.type === "message") {
+      const senderId =
+        notification.sender?._id ||
+        notification.sender?.id ||
+        notification.senderId ||
+        notification.relatedUser?._id ||
+        notification.relatedUserId ||
+        notification.metadata?.senderId ||
+        "";
+
+      navigate(`/dashboard/${role}/messages`, {
+        state: {
+          openUserId: senderId ? String(senderId) : "",
+        },
+      });
+
+      return;
+    }
+
+    navigate(`/dashboard/${role}/notifications`);
   };
 
-  const searchPages = [
-    { label: "Dashboard", page: "", keywords: "home overview" },
-    { label: "Profile", page: "profile", keywords: "account personal details" },
-    { label: "Settings", page: "settings", keywords: "preferences security" },
-    { label: "Messages", page: "messages", keywords: "chat conversations" },
-    { label: "Notifications", page: "notifications", keywords: "alerts activity" },
-    ...(role === "founder"
-      ? [
-        { label: "My Startup", page: "startup", keywords: "company business" },
-        { label: "Investors", page: "investors", keywords: "funding capital" },
-        { label: "Mentors", page: "mentors", keywords: "guidance expertise" },
-        { label: "Team", page: "team", keywords: "members invitations" },
-      ]
-      : []),
-    ...(role === "investor"
-      ? [
-        { label: "Discover Startups", page: "startups", keywords: "companies founders" },
-        { label: "My Investments", page: "investments", keywords: "portfolio funding" },
-      ]
-      : []),
-    ...(role === "mentor"
-      ? [
-        { label: "Startups", page: "startups", keywords: "founders companies" },
-        { label: "Mentorships", page: "mentorships", keywords: "guidance requests" },
-      ]
-      : []),
-    ...(role === "student"
-      ? [
-        { label: "Internships", page: "internships", keywords: "jobs career" },
-        { label: "Opportunities", page: "opportunities", keywords: "events programs" },
-        { label: "Applications", page: "applications", keywords: "submitted status" },
-      ]
-      : []),
-    ...(role === "admin"
-      ? [
-        { label: "Users", page: "users", keywords: "accounts" },
-        { label: "Startups", page: "startups", keywords: "companies" },
-        { label: "Reports", page: "reports", keywords: "analytics" },
-      ]
-      : []),
-  ];
-
-  const filteredPages = searchPages.filter((item) =>
-    `${item.label} ${item.keywords}`
-      .toLowerCase()
-      .includes(searchTerm.trim().toLowerCase())
-  );
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
 
   return (
     <header className="dashboard-topbar">
@@ -308,200 +363,221 @@ function DashboardTopbar({ role, onMenuClick }) {
         </button>
 
         <div>
-          <h1>{roleTitles[role] || "StartupSync Workspace"}</h1>
+          <h1>{roleTitles[role]}</h1>
           <p>Manage your StartupSync workspace</p>
         </div>
       </div>
 
       <div className="dashboard-topbar-actions">
-        <div className="dashboard-topbar-search" ref={searchRef}>
-          <button
-            type="button"
-            className="dashboard-topbar-icon"
-            aria-label="Search workspace"
-            aria-expanded={searchOpen}
-            onClick={() => {
-              setSearchOpen((open) => !open);
-              setMenuOpen(false);
-              setNotificationOpen(false);
-              setSearchTerm("");
-            }}
-          >
-            {searchOpen ? <X size={19} /> : <Search size={19} />}
-          </button>
-
-          {searchOpen && (
-            <div className="dashboard-search-popover">
-              <input
-                autoFocus
-                type="search"
-                placeholder="Search workspace..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                aria-label="Search workspace pages"
-              />
-
-              <div className="dashboard-search-results">
-                {filteredPages.length ? (
-                  filteredPages.map((item) => (
-                    <button
-                      type="button"
-                      key={`${item.label}-${item.page}`}
-                      onClick={() => goTo(item.page)}
-                    >
-                      <Search size={15} />
-                      <span>{item.label}</span>
-                    </button>
-                  ))
-                ) : (
-                  <p className="dashboard-search-empty">
-                    No matching pages found.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="dashboard-topbar-search dashboard-notification-wrapper"
-          ref={notificationRef}
+        {/* SEARCH */}
+        <button
+          type="button"
+          className="dashboard-topbar-icon"
+          onClick={() =>
+            navigate(`/dashboard/${role}/search`)
+          }
+          aria-label="Search"
         >
+          <Search size={19} />
+        </button>
+
+        {/* NOTIFICATIONS */}
+        {role === "student" ? (
+          <div
+            className="dashboard-notification-wrapper"
+            ref={notificationRef}
+          >
+            <button
+              type="button"
+              className="dashboard-topbar-icon dashboard-notification-button"
+              onClick={() =>
+                setShowNotificationPopup((current) => !current)
+              }
+              aria-label="Notifications"
+              aria-expanded={showNotificationPopup}
+            >
+              <Bell size={19} />
+
+              {unreadCount > 0 && (
+                <span className="dashboard-notification-count">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotificationPopup && (
+              <div className="dashboard-notification-popup">
+                <div className="dashboard-notification-popup-header">
+                  <div>
+                    <h3>Notifications</h3>
+
+                    <span>
+                      {unreadCount} unread notification
+                      {unreadCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowNotificationPopup(false)
+                    }
+                    aria-label="Close notifications"
+                  >
+                    <X size={17} />
+                  </button>
+                </div>
+
+                <div className="dashboard-notification-popup-list">
+                  {notificationLoading ? (
+                    <p className="dashboard-notification-popup-empty">
+                      Loading notifications...
+                    </p>
+                  ) : notifications.length ? (
+                    notifications.slice(0, 5).map((notification) => {
+                      const Icon = getNotificationIcon(
+                        notification.type
+                      );
+
+                      return (
+                        <button
+                          type="button"
+                          key={notification._id}
+                          className={`dashboard-notification-preview ${
+                            !notification.isRead ? "unread" : ""
+                          }`}
+                          onClick={() =>
+                            handleNotificationClick(notification)
+                          }
+                        >
+                          <span className="dashboard-notification-preview-icon">
+                            <Icon size={17} />
+                          </span>
+
+                          <span className="dashboard-notification-preview-content">
+                            <strong>
+                              {notification.title}
+                            </strong>
+
+                            <span>
+                              {notification.message}
+                            </span>
+
+                            <small>
+                              {formatTime(notification.createdAt)}
+                            </small>
+                          </span>
+
+                          {!notification.isRead && (
+                            <span className="dashboard-notification-preview-dot" />
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="dashboard-notification-popup-empty">
+                      No notifications yet.
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="dashboard-notification-view-all"
+                  onClick={() => {
+                    setShowNotificationPopup(false);
+
+                    navigate(
+                      `/dashboard/${role}/notifications`
+                    );
+                  }}
+                >
+                  View all notifications
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
           <button
             type="button"
             className="dashboard-topbar-icon dashboard-notification-button"
-            onClick={() => {
-              setNotificationOpen((open) => !open);
-              setSearchOpen(false);
-              setMenuOpen(false);
-
-              if (!notificationOpen) loadNotifications();
-            }}
-            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-            aria-expanded={notificationOpen}
+            onClick={() =>
+              navigate(`/dashboard/${role}/notifications`)
+            }
+            aria-label="Notifications"
           >
             <Bell size={19} />
-            {unreadCount > 0 && (
-              <span className="dashboard-notification-dot">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
           </button>
+        )}
 
-          {notificationOpen && (
-            <div className="dashboard-search-popover dashboard-notification-popover">
-              <div className="dashboard-notification-popover-header">
-                <strong>Notifications</strong>
-                <button
-                  type="button"
-                  onClick={() => goTo("notifications")}
-                >
-                  View all
-                </button>
-              </div>
-
-              {notificationError && (
-                <p className="dashboard-search-empty">
-                  {notificationError}
-                </p>
-              )}
-
-              {notificationLoading ? (
-                <p className="dashboard-search-empty">Loading notifications...</p>
-              ) : notifications.length ? (
-                <div className="dashboard-search-results">
-                  {notifications.slice(0, 6).map((notification) => {
-                    const isRead =
-                      notification.isRead ?? notification.read ?? false;
-
-                    return (
-                      <button
-                        type="button"
-                        key={getId(notification)}
-                        className={`dashboard-notification-entry ${!isRead ? "dashboard-notification-entry-unread" : ""
-                          }`}
-                        onClick={() => openNotification(notification)}
-                      >
-                        <span className="dashboard-notification-entry-icon">
-                          <Bell size={16} />
-                        </span>
-                        <span className="dashboard-notification-entry-content">
-                          <strong>{notification.title || "Notification"}</strong>
-                          <span>{notification.message || ""}</span>
-                          <small>
-                            {formatTime(
-                              notification.createdAt || notification.updatedAt
-                            )}
-                          </small>
-                        </span>
-                        {!isRead && (
-                          <span className="dashboard-notification-entry-dot" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="dashboard-search-empty">
-                  No notifications yet.
-                </p>
-              )}
-
-              <button
-                type="button"
-                className="dashboard-notification-view-all"
-                onClick={() => goTo("notifications")}
-              >
-                Open notification center
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="dashboard-user-menu" ref={menuRef}>
+        {/* USER PROFILE DROPDOWN */}
+        <div
+          className="dashboard-user-menu"
+          ref={userMenuRef}
+        >
           <button
             type="button"
             className="dashboard-topbar-profile"
-            onClick={() => {
-              setMenuOpen((open) => !open);
-              setSearchOpen(false);
-              setNotificationOpen(false);
-            }}
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
+            onClick={() =>
+              setShowUserMenu((current) => !current)
+            }
+            aria-label="Open user menu"
+            aria-expanded={showUserMenu}
           >
             <span className="dashboard-profile-avatar">
-              {initials || <CircleUserRound size={20} />}
+              {getInitial(userName)}
             </span>
-            <span className="dashboard-profile-name">{displayName}</span>
-            <ChevronDown size={15} />
+
+            <span className="dashboard-profile-name">
+              {userName}
+            </span>
+
+            <ChevronDown
+              size={15}
+              className={`dashboard-user-chevron ${
+                showUserMenu ? "open" : ""
+              }`}
+            />
           </button>
 
-          {menuOpen && (
-            <div className="dashboard-user-popover" role="menu">
+          {showUserMenu && (
+            <div className="dashboard-user-popover">
               <div className="dashboard-user-popover-header">
                 <span className="dashboard-profile-avatar">
-                  {initials || <CircleUserRound size={20} />}
+                  {getInitial(userName)}
                 </span>
+
                 <div>
-                  <strong>{displayName}</strong>
-                  <span>{roleTitles[role] || role}</span>
+                  <strong>{userName}</strong>
+
+                  {userEmail && <span>{userEmail}</span>}
+
+                  <span className="dashboard-user-role">
+                    {role
+                      ? role.charAt(0).toUpperCase() + role.slice(1)
+                      : "User"}
+                  </span>
                 </div>
               </div>
 
-              <button type="button" role="menuitem" onClick={() => goTo("profile")}>
+              <button
+                type="button"
+                onClick={openProfile}
+              >
                 <UserRound size={17} />
                 <span>My Profile</span>
               </button>
 
-              <button type="button" role="menuitem" onClick={() => goTo("settings")}>
+              <button
+                type="button"
+                onClick={openSettings}
+              >
                 <Settings size={17} />
                 <span>Settings</span>
               </button>
 
               <button
                 type="button"
-                role="menuitem"
                 className="dashboard-user-signout"
                 onClick={handleSignOut}
               >

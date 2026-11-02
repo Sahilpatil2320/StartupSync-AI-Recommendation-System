@@ -1,0 +1,813 @@
+.student-ecosystem-page {
+  width: 100%;
+  max-width: 1450px;
+  min-width: 0;
+  margin: 0 auto;
+  color: #0f172a;
+}
+
+.student-ecosystem-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+
+.student-ecosystem-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.student-ecosystem-header h1 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 29px;
+  font-weight: 750;
+  letter-spacing: -0.7px;
+}
+
+.student-ecosystem-header p {
+  max-width: 680px;
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.student-ecosystem-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.student-ecosystem-refresh:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+  color: #2563eb;
+}
+
+.student-ecosystem-refresh:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.is-spinning {
+  animation: student-spin 1s linear infinite;
+}
+
+@keyframes student-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading and error */
+
+.student-ecosystem-loading {
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  text-align: center;
+}
+
+.student-ecosystem-loading h3 {
+  margin: 18px 0 5px;
+  color: #0f172a;
+}
+
+.student-ecosystem-loading p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.student-ecosystem-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid #dbeafe;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: student-spin 0.8s linear infinite;
+}
+
+.student-ecosystem-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 13px 16px;
+  margin-bottom: 18px;
+  border: 1px solid #fecaca;
+  border-radius: 11px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.student-ecosystem-error button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+/* Statistics */
+
+.student-ecosystem-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 32px;
+}
+
+.student-ecosystem-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 19px;
+  border: 1px solid #e8edf4;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.025);
+}
+
+.student-ecosystem-stat-icon,
+.student-role-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+}
+
+.student-ecosystem-stat-icon.blue,
+.student-role-icon.blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.student-ecosystem-stat-icon.purple,
+.student-role-icon.purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.student-ecosystem-stat-icon.green,
+.student-role-icon.green {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.student-ecosystem-stat-icon.orange,
+.student-role-icon.orange {
+  background: #fff7ed;
+  color: #d97706;
+}
+
+.student-ecosystem-stat-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.student-ecosystem-stat-card strong {
+  color: #0f172a;
+  font-size: 25px;
+  font-weight: 750;
+}
+
+/* Section headings */
+
+.student-ecosystem-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 16px;
+}
+
+.student-ecosystem-section-heading h2,
+.student-ecosystem-graph-header h2 {
+  margin: 0 0 5px;
+  color: #0f172a;
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.student-ecosystem-section-heading p,
+.student-ecosystem-graph-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.student-ecosystem-section-heading > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* Role cards */
+
+.student-ecosystem-role-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 34px;
+}
+
+.student-ecosystem-role-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid #e8edf4;
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.student-ecosystem-role-card:hover {
+  transform: translateY(-3px);
+  border-color: #bfdbfe;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.student-ecosystem-role-card > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-ecosystem-role-card h3 {
+  margin: 0 0 5px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.student-ecosystem-role-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.student-ecosystem-role-card > svg {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+/* Network graph */
+
+.student-ecosystem-graph-card {
+  padding: 22px;
+  margin-bottom: 34px;
+  overflow: hidden;
+  border: 1px solid #e8edf4;
+  border-radius: 17px;
+  background: #ffffff;
+  box-shadow: 0 5px 22px rgba(15, 23, 42, 0.025);
+}
+
+.student-ecosystem-graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 18px;
+}
+
+.student-ecosystem-graph-header p {
+  max-width: 650px;
+}
+
+.student-ecosystem-connection-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.student-ecosystem-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.student-ecosystem-filters button {
+  padding: 8px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.student-ecosystem-filters button:hover {
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+
+.student-ecosystem-filters button.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.student-ecosystem-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 500px;
+  padding: 0 12px;
+  margin-bottom: 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  color: #94a3b8;
+}
+
+.student-ecosystem-search input {
+  width: 100%;
+  height: 41px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+}
+
+.student-ecosystem-search input::placeholder {
+  color: #94a3b8;
+}
+
+.student-ecosystem-search button {
+  display: flex;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.student-ecosystem-graph-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.student-ecosystem-svg {
+  display: block;
+  width: 100%;
+  min-width: 650px;
+  height: auto;
+  min-height: 390px;
+}
+
+.student-ecosystem-edge {
+  stroke: #cbd5e1;
+  stroke-width: 1.7;
+  opacity: 0.8;
+}
+
+.student-ecosystem-node {
+  cursor: pointer;
+  outline: none;
+}
+
+.student-ecosystem-node circle {
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.student-ecosystem-node:hover circle,
+.student-ecosystem-node.selected circle {
+  stroke: #0f172a;
+  stroke-width: 2.5px;
+}
+
+.student-ecosystem-node-label {
+  fill: #334155;
+  font-size: 11px;
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.student-ecosystem-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 17px;
+  padding-top: 17px;
+  margin-top: 12px;
+  border-top: 1px solid #edf1f6;
+}
+
+.student-ecosystem-legend > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.student-ecosystem-legend > div > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.student-ecosystem-legend strong {
+  color: #334155;
+}
+
+/* Empty state */
+
+.student-ecosystem-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.student-ecosystem-empty h3 {
+  margin: 13px 0 5px;
+  color: #334155;
+  font-size: 15px;
+}
+
+.student-ecosystem-empty p {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* Members */
+
+.student-ecosystem-member-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.student-ecosystem-member-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #e8edf4;
+  border-radius: 13px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.student-ecosystem-member-card:hover {
+  border-color: #bfdbfe;
+  background: #fbfdff;
+}
+
+.student-member-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 43px;
+  height: 43px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.student-member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-member-info h3 {
+  overflow: hidden;
+  margin: 0 0 4px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-member-info > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.student-member-info p {
+  overflow: hidden;
+  margin: 0 0 5px;
+  color: #64748b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-member-info small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.student-ecosystem-member-card > svg {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.student-ecosystem-showing {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Call to action */
+
+.student-ecosystem-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  margin-top: 30px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(110deg, #eff6ff, #f8faff);
+}
+
+.student-ecosystem-cta h2 {
+  margin: 0 0 6px;
+  color: #1e3a8a;
+  font-size: 18px;
+}
+
+.student-ecosystem-cta p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.student-ecosystem-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.student-ecosystem-cta-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 14px;
+  border: 1px solid #2563eb;
+  border-radius: 9px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.student-ecosystem-cta-actions button:last-child {
+  border-color: #bfdbfe;
+  background: #ffffff;
+  color: #2563eb;
+}
+
+/* Member details modal */
+
+.student-ecosystem-modal-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.student-ecosystem-modal {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
+}
+
+.student-ecosystem-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.student-member-avatar.large {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 13px;
+  font-size: 18px;
+}
+
+.student-ecosystem-modal h2 {
+  margin: 0 0 5px;
+  color: #0f172a;
+  font-size: 21px;
+}
+
+.student-ecosystem-modal-role {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.student-ecosystem-modal-details {
+  margin-top: 22px;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.student-ecosystem-modal-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.student-ecosystem-modal-details span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.student-ecosystem-modal-details strong {
+  max-width: 60%;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.student-ecosystem-modal-note {
+  margin: 16px 0 0;
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+  .student-ecosystem-stats,
+  .student-ecosystem-role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-ecosystem-member-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .student-ecosystem-header {
+    flex-direction: column;
+  }
+
+  .student-ecosystem-header h1 {
+    font-size: 24px;
+  }
+
+  .student-ecosystem-refresh {
+    width: 100%;
+  }
+
+  .student-ecosystem-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .student-ecosystem-stat-card {
+    padding: 13px;
+    gap: 9px;
+  }
+
+  .student-ecosystem-stat-icon {
+    width: 37px;
+    height: 37px;
+  }
+
+  .student-ecosystem-stat-card strong {
+    font-size: 21px;
+  }
+
+  .student-ecosystem-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-ecosystem-graph-card {
+    padding: 14px;
+  }
+
+  .student-ecosystem-graph-header {
+    flex-direction: column;
+  }
+
+  .student-ecosystem-member-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-ecosystem-cta {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 19px;
+  }
+
+  .student-ecosystem-cta-actions {
+    flex-direction: column;
+  }
+
+  .student-ecosystem-cta-actions button {
+    width: 100%;
+  }
+
+  .student-ecosystem-legend {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .student-ecosystem-stats {
+    grid-template-columns: 1fr;
+  }
+}
